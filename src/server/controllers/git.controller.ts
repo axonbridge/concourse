@@ -3,6 +3,7 @@ import {
   checkoutGitBranch,
   commit as gitCommit,
   createPullRequest as gitCreatePullRequest,
+  discardFileChanges,
   getGitDiff,
   getGitStatus,
   gitErrorPayload,
@@ -16,6 +17,10 @@ import { HTTP_BAD_REQUEST } from "~/shared/http-status";
 
 const stageBody = z.object({
   files: z.array(z.string()).optional().default([]),
+  worktreeId: z.string().nullable().optional(),
+});
+const discardBody = z.object({
+  file: z.string().trim().min(1),
   worktreeId: z.string().nullable().optional(),
 });
 const commitBody = z.object({
@@ -103,6 +108,19 @@ export async function unstage(rawId: string, request: Request): Promise<Response
   if (!parsed.ok) return parsed.response;
   try {
     await unstageFiles(idParsed.data, parsed.data.files, parsed.data.worktreeId ?? null);
+    return json({ ok: true });
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function discard(rawId: string, request: Request): Promise<Response> {
+  const idParsed = idParam.safeParse(rawId);
+  if (!idParsed.success) return notFound();
+  const parsed = await parseJsonBody(request, discardBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    await discardFileChanges(idParsed.data, parsed.data.file, parsed.data.worktreeId ?? null);
     return json({ ok: true });
   } catch (e) {
     return handleDomainError(e) ?? asGitErrorResponse(e);

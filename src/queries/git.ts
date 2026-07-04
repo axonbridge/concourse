@@ -106,6 +106,16 @@ export function useUnstageFiles(projectId: string, worktreeId?: string | null) {
   });
 }
 
+/** Discard a file's uncommitted changes: restore a tracked file to HEAD, or
+ *  remove a new/untracked file from disk. */
+export function useDiscardFile(projectId: string, worktreeId?: string | null) {
+  const invalidate = useInvalidateGit(projectId, worktreeId);
+  return useMutation({
+    mutationFn: (file: string) => api.discardGitFile(projectId, file, worktreeId),
+    onSettled: invalidate,
+  });
+}
+
 export function useGitCommit(projectId: string, worktreeId?: string | null) {
   const invalidate = useInvalidateGit(projectId, worktreeId);
   return useMutation({

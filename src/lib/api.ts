@@ -494,6 +494,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ files, worktreeId: worktreeId ?? null }),
     }),
+  discardGitFile: (projectId: string, file: string, worktreeId?: string | null) =>
+    req<{ ok: true }>(`/api/projects/${projectId}/git/discard`, {
+      method: "POST",
+      body: JSON.stringify({ file, worktreeId: worktreeId ?? null }),
+    }),
   gitCommit: (
     projectId: string,
     opts: {

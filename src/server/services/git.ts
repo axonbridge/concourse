@@ -317,6 +317,48 @@ export async function deleteProjectFile(
   }
 }
 
+/**
+ * Discard a file's uncommitted changes: a tracked file is restored to its
+ * HEAD content (staged and unstaged edits both dropped); an untracked or
+ * newly-added file is removed from disk. Irreversible — callers confirm first.
+ */
+export async function discardFileChanges(
+  projectId: string,
+  relPath: string,
+  worktreeId?: string | null,
+): Promise<void> {
+  if (!relPath || relPath.trim() === "") {
+    throw new GitError("file path is required");
+  }
+  const cwd = projectCwd(projectId, worktreeId);
+  const abs = path.resolve(cwd, relPath);
+  const rootWithSep = cwd.endsWith(path.sep) ? cwd : cwd + path.sep;
+  if (abs === cwd || !abs.startsWith(rootWithSep)) {
+    throw new GitError("path escapes project root");
+  }
+
+  const st = await runGit(cwd, ["status", "--porcelain", "--", relPath]);
+  const entry = st.stdout.split("\n").find((l) => l.trim() !== "");
+  if (!entry) return; // nothing to discard
+  if (entry.startsWith("??")) {
+    await fs.promises.rm(abs, { force: true });
+    return;
+  }
+
+  // Tracked: restore index + worktree from HEAD in one step.
+  const r = await runGit(cwd, ["checkout", "HEAD", "--", relPath]);
+  if (r.code !== 0) {
+    // Newly-added file (staged, absent from HEAD) or a repo with no commits
+    // yet: drop it from the index and remove it from disk.
+    if (/pathspec .* did not match|ambiguous argument 'HEAD'/i.test(r.stderr)) {
+      await runGit(cwd, ["rm", "--cached", "--force", "--", relPath]);
+      await fs.promises.rm(abs, { force: true });
+      return;
+    }
+    throw new GitError("git discard failed", r.stderr.trim());
+  }
+}
+
 export async function unstageFiles(
   projectId: string,
   files: string[],

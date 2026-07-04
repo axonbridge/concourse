@@ -4,6 +4,7 @@ import { TiPin, TiPinOutline } from "react-icons/ti";
 
 export type IconName =
   | "plus"
+  | "minus"
   | "pin"
   | "pin-fill"
   | "search"
@@ -65,6 +66,8 @@ export function Icon({ name, size = 14, style }: { name: IconName; size?: number
   switch (name) {
     case "plus":
       return <svg {...common}><path d="M8 3v10M3 8h10" /></svg>;
+    case "minus":
+      return <svg {...common}><path d="M3 8h10" /></svg>;
     case "pin":
       return <TiPinOutline size={size} style={style} />;
     case "pin-fill":

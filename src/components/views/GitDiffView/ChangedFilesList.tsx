@@ -69,6 +69,7 @@ export function ChangedFilesList({
   onStageAll,
   onUnstageAll: _onUnstageAll,
   onDeleteFile,
+  onDiscardFile,
   busyPaths,
   projectId,
   worktreeId,
@@ -83,6 +84,7 @@ export function ChangedFilesList({
   onStageAll: () => void;
   onUnstageAll: () => void;
   onDeleteFile: (path: string) => void;
+  onDiscardFile: (path: string) => void;
   busyPaths: Set<string>;
   projectId: string;
   worktreeId?: string | null;
@@ -96,6 +98,7 @@ export function ChangedFilesList({
   const [shipError, setShipError] = useState<string | null>(null);
   const [menu, setMenu] = useState<FileContextMenu | null>(null);
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
+  const [confirmDiscardPath, setConfirmDiscardPath] = useState<string | null>(null);
   const initialCachedViewRef = useRef<FileListView | null>(null);
   const [viewMode, setViewMode] = useState<FileListView>(() =>
     readSavedFileListView(initialCachedViewRef),
@@ -304,6 +307,7 @@ export function ChangedFilesList({
               onToggleFolder={toggleFolder}
               onSelect={(file) => onSelect({ path: file.path, staged: false })}
               onAction={(file) => onStage([file.path])}
+              onDiscard={(file) => setConfirmDiscardPath(file.path)}
               onContextMenu={(e, file) => openMenu(e, file.path, false)}
             />
           ) : (
@@ -318,6 +322,7 @@ export function ChangedFilesList({
                 isBusy={busyPaths.has(f.path)}
                 onSelect={() => onSelect({ path: f.path, staged: false })}
                 onAction={() => onStage([f.path])}
+                onDiscard={() => setConfirmDiscardPath(f.path)}
                 onContextMenu={(e) => openMenu(e, f.path, false)}
               />
             ))
@@ -383,6 +388,20 @@ export function ChangedFilesList({
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
+            {!menu.staged && (
+              <DropdownMenuItem
+                danger
+                icon="minus"
+                disabled={busyPaths.has(menu.path)}
+                onClick={() => {
+                  const path = menu.path;
+                  setMenu(null);
+                  setConfirmDiscardPath(path);
+                }}
+              >
+                Discard change
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               danger
               icon="trash"
@@ -398,6 +417,27 @@ export function ChangedFilesList({
           </CardFrame>,
           document.body,
         )}
+      <ConfirmDialog
+        open={confirmDiscardPath !== null}
+        onClose={() => setConfirmDiscardPath(null)}
+        onConfirm={() => {
+          if (confirmDiscardPath) onDiscardFile(confirmDiscardPath);
+          setConfirmDiscardPath(null);
+        }}
+        title="Discard change"
+        confirmLabel="Discard"
+        variant="danger"
+        icon="minus"
+        width={440}
+      >
+        <div style={{ fontSize: 13, color: "var(--text)", marginBottom: 6 }}>
+          Discard changes to <code>{confirmDiscardPath}</code>?
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+          An edited file is restored to its last committed version; a new file
+          is removed from disk. This cannot be undone.
+        </div>
+      </ConfirmDialog>
       <ConfirmDialog
         open={confirmPath !== null}
         onClose={() => setConfirmPath(null)}
@@ -621,6 +661,7 @@ function FileTreeRows({
   onToggleFolder,
   onSelect,
   onAction,
+  onDiscard,
   onContextMenu,
 }: {
   files: GitChangedFile[];
@@ -632,6 +673,7 @@ function FileTreeRows({
   onToggleFolder: (path: string) => void;
   onSelect: (file: GitChangedFile) => void;
   onAction: (file: GitChangedFile) => void;
+  onDiscard?: (file: GitChangedFile) => void;
   onContextMenu: (e: React.MouseEvent, file: GitChangedFile) => void;
 }) {
   const nodes = useMemo(() => buildFileTree(files), [files]);
@@ -651,6 +693,7 @@ function FileTreeRows({
           onToggleFolder={onToggleFolder}
           onSelect={onSelect}
           onAction={onAction}
+          onDiscard={onDiscard}
           onContextMenu={onContextMenu}
         />
       ))}
@@ -669,6 +712,7 @@ function TreeNodeRow({
   onToggleFolder,
   onSelect,
   onAction,
+  onDiscard,
   onContextMenu,
 }: {
   node: FileTreeNode;
@@ -681,6 +725,7 @@ function TreeNodeRow({
   onToggleFolder: (path: string) => void;
   onSelect: (file: GitChangedFile) => void;
   onAction: (file: GitChangedFile) => void;
+  onDiscard?: (file: GitChangedFile) => void;
   onContextMenu: (e: React.MouseEvent, file: GitChangedFile) => void;
 }) {
   if (node.kind === "dir") {
@@ -752,6 +797,7 @@ function TreeNodeRow({
               onToggleFolder={onToggleFolder}
               onSelect={onSelect}
               onAction={onAction}
+              onDiscard={onDiscard}
               onContextMenu={onContextMenu}
             />
           ))}
@@ -770,6 +816,7 @@ function TreeNodeRow({
       showDir={false}
       onSelect={() => onSelect(node.file)}
       onAction={() => onAction(node.file)}
+      onDiscard={onDiscard ? () => onDiscard(node.file) : undefined}
       onContextMenu={(e) => onContextMenu(e, node.file)}
     />
   );
@@ -785,6 +832,7 @@ function FileRow({
   showDir = true,
   onSelect,
   onAction,
+  onDiscard,
   onContextMenu,
 }: {
   file: GitChangedFile;
@@ -796,6 +844,7 @@ function FileRow({
   showDir?: boolean;
   onSelect: () => void;
   onAction: () => void;
+  onDiscard?: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const { letter: statusLetter, color: statusColor } = STATUS_META[file.status];
@@ -813,12 +862,13 @@ function FileRow({
         padding: `5px 10px 5px ${12 + depth * 14}px`,
         cursor: "pointer",
         background: isSelected ? "var(--surface-2)" : "transparent",
+        // Selected keeps an accent bar so it stays distinct from the hover tint.
+        boxShadow: isSelected ? "inset 2px 0 0 var(--accent)" : "none",
         opacity: isBusy ? 0.5 : 1,
         transition: "background 0.08s",
       }}
       onMouseEnter={(e) => {
-        if (!isSelected)
-          e.currentTarget.style.background = "var(--surface-1)";
+        if (!isSelected) e.currentTarget.style.background = "var(--surface-2)";
       }}
       onMouseLeave={(e) => {
         if (!isSelected) e.currentTarget.style.background = "transparent";
@@ -890,6 +940,21 @@ function FileRow({
       >
         {statusLetter}
       </span>
+      {onDiscard && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDiscard();
+          }}
+          disabled={isBusy}
+          title="Discard change"
+          aria-label={`Discard changes to ${file.path}`}
+          style={iconBtnStyle}
+        >
+          <Icon name="minus" size={11} />
+        </button>
+      )}
       <button
         type="button"
         onClick={(e) => {

@@ -272,6 +272,7 @@ async function dispatch(
     if (action === "diff" && method === "GET") return gitController.diff(id, url);
     if (action === "stage" && method === "POST") return gitController.stage(id, request);
     if (action === "unstage" && method === "POST") return gitController.unstage(id, request);
+    if (action === "discard" && method === "POST") return gitController.discard(id, request);
     if (action === "commit" && method === "POST") return gitController.commit(id, request);
     if (action === "push" && method === "POST") return gitController.push(id, request);
     if (action === "create-pr" && method === "POST") return gitController.createPr(id, request);

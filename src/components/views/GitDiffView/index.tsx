@@ -5,6 +5,7 @@ import { StaticHotkeyTooltip } from "~/components/ui/Tooltip";
 import { useHotkey } from "~/lib/use-hotkey";
 import {
   useDeleteProjectFile,
+  useDiscardFile,
   useGitDiff,
   useGitStatus,
   useStageFiles,
@@ -36,6 +37,7 @@ export function GitDiffView({
   const stageM = useStageFiles(projectId, worktreeId);
   const unstageM = useUnstageFiles(projectId, worktreeId);
   const deleteM = useDeleteProjectFile(projectId, worktreeId);
+  const discardM = useDiscardFile(projectId, worktreeId);
 
   const [selection, setSelection] = useState<FileSelection>(null);
   const stagedFiles = useMemo(() => status?.staged ?? [], [status]);
@@ -97,8 +99,9 @@ export function GitDiffView({
     if (unstageM.isPending && unstageM.variables) {
       for (const p of unstageM.variables) s.add(p);
     }
+    if (discardM.isPending && discardM.variables) s.add(discardM.variables);
     return s;
-  }, [stageM.isPending, stageM.variables, unstageM.isPending, unstageM.variables]);
+  }, [stageM.isPending, stageM.variables, unstageM.isPending, unstageM.variables, discardM.isPending, discardM.variables]);
 
   const diffQuery = useGitDiff(
     projectId,
@@ -214,6 +217,7 @@ export function GitDiffView({
             onStageAll={onStageAll}
             onUnstageAll={onUnstageAll}
             onDeleteFile={(p) => deleteM.mutate(p)}
+            onDiscardFile={(p) => discardM.mutate(p)}
             busyPaths={busyPaths}
             projectId={projectId}
             worktreeId={worktreeId}
