@@ -2,14 +2,14 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { academyUrl } from "~/shared/academy";
 import { isNewerSemver } from "~/shared/semver";
 
-declare const __MC_VERSION__: string;
+declare const __CONCOURSE_VERSION__: string;
 
 const DOWNLOADS_URL = academyUrl("/downloads");
 const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 
-export const CURRENT_MC_VERSION: string =
-  typeof __MC_VERSION__ !== "undefined" ? __MC_VERSION__ : "0.0.0";
+export const CURRENT_CONCOURSE_VERSION: string =
+  typeof __CONCOURSE_VERSION__ !== "undefined" ? __CONCOURSE_VERSION__ : "0.0.0";
 
 type LatestRelease = {
   latestVersion: string | null;
@@ -27,7 +27,7 @@ async function fetchLatest(): Promise<LatestRelease> {
   return {
     latestVersion: remote,
     downloadUrl: DOWNLOADS_URL,
-    isUpdateAvailable: !!remote && isNewerSemver(remote, CURRENT_MC_VERSION),
+    isUpdateAvailable: !!remote && isNewerSemver(remote, CURRENT_CONCOURSE_VERSION),
   };
 }
 

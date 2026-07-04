@@ -12,7 +12,7 @@ const pkg = JSON.parse(
 
 export default defineConfig({
   define: {
-    __MC_VERSION__: JSON.stringify(pkg.version),
+    __CONCOURSE_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
     port: DEV_SERVER_PORT,

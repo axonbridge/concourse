@@ -57,7 +57,7 @@ export function requestIp(request: Request): string {
 
 export function hookCallRateLimit(request: Request, taskId: string): RateLimitResult {
   return rateLimit(`hook-call:${requestIp(request)}:${taskId || "no-task"}`, {
-    limit: envNumber("MC_HOOK_RATE_LIMIT_PER_MINUTE", 120),
+    limit: envNumber("CONCOURSE_HOOK_RATE_LIMIT_PER_MINUTE", 120),
     windowMs: RATE_LIMIT_WINDOW_MS,
     message: "too many hook calls",
   });

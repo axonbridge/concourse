@@ -18,7 +18,7 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let _sqlite: Database.Database | null = null;
 
 export function resolveUserDataDir(): string {
-  if (process.env.MC_USER_DATA_DIR) return process.env.MC_USER_DATA_DIR;
+  if (process.env.CONCOURSE_USER_DATA_DIR) return process.env.CONCOURSE_USER_DATA_DIR;
   const platform = process.platform;
   const home = os.homedir();
   if (platform === "darwin") return path.join(home, "Library/Application Support/Concourse");

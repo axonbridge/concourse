@@ -168,7 +168,7 @@ A `Group` has many `Projects`. A `Project` has many `Tasks`. A `Task` has zero o
 ## Auth & Authorization
 
 - **No user accounts** — single-user desktop app; the bearer token is the only credential.
-- **HTTP API (UI and external):** every `/api/*` route requires `Authorization: Bearer <token>`; `/api/events` SSE uses a short-lived single-use ticket from `POST /api/events/ticket` because `EventSource` cannot send headers. The renderer attaches the bearer automatically via the IPC-fetched token; external CLIs (Claude, Codex, Cursor) inherit `$MC_API_TOKEN` when launched from MC. Token generated on first launch, stored in `app_settings`, copyable from Settings → API.
+- **HTTP API (UI and external):** every `/api/*` route requires `Authorization: Bearer <token>`; `/api/events` SSE uses a short-lived single-use ticket from `POST /api/events/ticket` because `EventSource` cannot send headers. The renderer attaches the bearer automatically via the IPC-fetched token; external CLIs (Claude, Codex, Cursor) inherit `$CONCOURSE_API_TOKEN` when launched from MC. Token generated on first launch, stored in `app_settings`, copyable from Settings → API.
 - **Same-origin gate:** before bearer check, every `/api/*` request must come from a loopback `Origin`/`Host` to defeat DNS rebinding and cross-origin browser fetches.
 - **Network bind:** API binds to `127.0.0.1` only. Never exposed to LAN.
 
@@ -297,7 +297,7 @@ The Electron main process is the only writer for SQLite. The TanStack Start serv
   - Skills: `architecture`, `tanstack-start`
   - Complexity: L
   - Dependencies: T1
-  - Status: Dev mode done — Electron waits on `wait-on tcp:5173` then loads `MC_DEV_URL`. Prod build path (`pnpm package`) wired but unverified.
+  - Status: Dev mode done — Electron waits on `wait-on tcp:5173` then loads `CONCOURSE_DEV_URL`. Prod build path (`pnpm package`) wired but unverified.
 
 - [x] **T3: Global design tokens + Tailwind setup** — port `--bg`, `--surface-*`, `--text*`, `--border*`, `--accent`, `--status-*`, `--mono`, `--sans`, `--radius-*` from `designs/Concourse.html` to a global CSS file. Configure Tailwind to read those tokens. Add Geist + Geist Mono via `@fontsource`. Add the keyframes (`shimmer`, `pulse-dot`, `caret`, `fade-up`, `slide-right`).
   - Skills: `ui-design`

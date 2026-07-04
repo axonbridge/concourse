@@ -17,25 +17,25 @@ const STALE_SERVER_GRACE_MS = 1_500;
 
 const mode = process.argv[2] ?? "electron";
 const env = { ...process.env };
-env.MC_DEV_HOST ||= "127.0.0.1";
-env.MC_DEV_PORT = String(parsePort(env.MC_DEV_PORT, DEFAULT_DEV_PORT));
+env.CONCOURSE_DEV_HOST ||= "127.0.0.1";
+env.CONCOURSE_DEV_PORT = String(parsePort(env.CONCOURSE_DEV_PORT, DEFAULT_DEV_PORT));
 // Isolate dev's SQLite store + app state from an INSTALLED Concourse.app,
 // which uses the default ~/Library/.../Concourse path and may run a
 // schema-divergent build against the same DB file (corrupting both). Honor an
 // explicit override for CI / custom setups.
-env.MC_USER_DATA_DIR ||= resolve(root, ".dev-userdata");
-console.log(`[dev] user data dir: ${env.MC_USER_DATA_DIR}`);
+env.CONCOURSE_USER_DATA_DIR ||= resolve(root, ".dev-userdata");
+console.log(`[dev] user data dir: ${env.CONCOURSE_USER_DATA_DIR}`);
 
 if (mode !== "electron") {
   console.error(`[dev] unknown mode "${mode}". Expected "electron".`);
   process.exit(1);
 }
 
-const port = await chooseDevPort(Number(env.MC_DEV_PORT), env.MC_DEV_HOST);
-const origin = `http://${env.MC_DEV_HOST}:${port}`;
-env.MC_DEV_PORT = String(port);
-env.MC_DEV_URL ||= origin;
-env.MC_SERVER_ORIGIN ||= origin;
+const port = await chooseDevPort(Number(env.CONCOURSE_DEV_PORT), env.CONCOURSE_DEV_HOST);
+const origin = `http://${env.CONCOURSE_DEV_HOST}:${port}`;
+env.CONCOURSE_DEV_PORT = String(port);
+env.CONCOURSE_DEV_URL ||= origin;
+env.CONCOURSE_SERVER_ORIGIN ||= origin;
 
 console.log(`[dev] using Concourse dev server on ${origin}`);
 
@@ -154,7 +154,7 @@ function cleanupStaleDevServer(port) {
   if (stalePids.length === 0) return;
 
   console.log(
-    `[dev] stopping stale Concourse dev server on ${env.MC_DEV_HOST}:${port} ` +
+    `[dev] stopping stale Concourse dev server on ${env.CONCOURSE_DEV_HOST}:${port} ` +
       `(pid${stalePids.length === 1 ? "" : "s"} ${stalePids.join(", ")})`,
   );
 

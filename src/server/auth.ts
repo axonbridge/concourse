@@ -5,7 +5,7 @@ import { HTTP_FORBIDDEN, HTTP_UNAUTHORIZED } from "~/shared/http-status";
 /**
  * Server-only accessor for the bearer token. SSR-side `req<T>` in
  * src/lib/api.ts dynamic-imports this so its loopback fetches can
- * authenticate. We deliberately avoid seeding `process.env.MC_API_TOKEN`
+ * authenticate. We deliberately avoid seeding `process.env.CONCOURSE_API_TOKEN`
  * here — that would widen the token's blast radius to every child
  * process that inherits `process.env` (git, claude-cli, etc.); only the
  * PTYs that explicitly need the token receive it via the curated

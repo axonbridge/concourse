@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 
 const userData =
-  process.env.MC_USER_DATA_DIR ||
+  process.env.CONCOURSE_USER_DATA_DIR ||
   path.join(
     os.homedir(),
     process.platform === "darwin"

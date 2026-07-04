@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { emptyVoiceCommandAliases } from "~/shared/voice-command-aliases";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-settings-test-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const { handleApiRequest } = await import("../api-router");
 const { getDb } = await import("~/db/client");

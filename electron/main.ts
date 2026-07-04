@@ -88,14 +88,14 @@ function configureUserDataDir(): string {
   // generated dist-electron/package.json only declares CommonJS, so Electron's
   // package-name-derived default can become "Electron" or "concourse",
   // splitting API tokens and project roots across separate SQLite files.
-  const dir = (process.env.MC_USER_DATA_DIR || defaultUserDataDir()).trim();
+  const dir = (process.env.CONCOURSE_USER_DATA_DIR || defaultUserDataDir()).trim();
   fs.mkdirSync(dir, { recursive: true });
   // Display name (menu bar) is "Concourse"; APP_NAME stays "Concourse" for
   // the user-data dir so existing data isn't orphaned. setPath below pins the dir
   // explicitly regardless of the display name.
   app.setName("Concourse");
   app.setPath("userData", dir);
-  process.env.MC_USER_DATA_DIR = dir;
+  process.env.CONCOURSE_USER_DATA_DIR = dir;
   return dir;
 }
 
@@ -120,9 +120,9 @@ ignoreBrokenPipe(process.stdout);
 ignoreBrokenPipe(process.stderr);
 
 const isDev = process.env.NODE_ENV === "development";
-const devServerHost = process.env.MC_DEV_HOST ?? "127.0.0.1";
-const devServerPort = Number(process.env.MC_DEV_PORT ?? DEFAULT_DEV_SERVER_PORT);
-const devUrl = process.env.MC_DEV_URL ?? `http://${devServerHost}:${devServerPort}`;
+const devServerHost = process.env.CONCOURSE_DEV_HOST ?? "127.0.0.1";
+const devServerPort = Number(process.env.CONCOURSE_DEV_PORT ?? DEFAULT_DEV_SERVER_PORT);
+const devUrl = process.env.CONCOURSE_DEV_URL ?? `http://${devServerHost}:${devServerPort}`;
 
 // HTTP readiness polling: wait up to DEV_SERVER_READY_TIMEOUT_MS for the
 // server to respond, polling every HTTP_POLL_INTERVAL_MS while waiting.
@@ -267,11 +267,11 @@ async function startProductionServer(): Promise<string> {
       SERVER_ENTRY: entry,
       PORT: String(port),
       HOST: devServerHost,
-      MC_SERVER_ORIGIN: origin,
-      MC_DEV_URL: origin,
-      MC_DEV_PORT: String(port),
+      CONCOURSE_SERVER_ORIGIN: origin,
+      CONCOURSE_DEV_URL: origin,
+      CONCOURSE_DEV_PORT: String(port),
       ELECTRON_RUN_AS_NODE: "1",
-      MC_USER_DATA_DIR: concourseUserDataDir,
+      CONCOURSE_USER_DATA_DIR: concourseUserDataDir,
     },
     stdio: ["ignore", "inherit", "inherit"],
   });

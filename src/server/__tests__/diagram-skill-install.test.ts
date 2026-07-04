@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { DIAGRAM_SKILL_INSTALL_TARGETS } from "~/shared/diagram-skill-install";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-diagram-skill-test-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const { handleApiRequest } = await import("../api-router");
 const { getOrCreateApiToken } = await import("../services/settings");
@@ -78,8 +78,8 @@ describe("diagram skill install API", () => {
     );
 
     const claudeSkill = path.join(projectPath, ".claude", "skills", "diagram", "SKILL.md");
-    expect(fs.readFileSync(claudeSkill, "utf8")).toContain("POST $MC_API_URL/api/diagram");
-    expect(fs.readFileSync(claudeSkill, "utf8")).toContain("MC_THEME");
+    expect(fs.readFileSync(claudeSkill, "utf8")).toContain("POST $CONCOURSE_API_URL/api/diagram");
+    expect(fs.readFileSync(claudeSkill, "utf8")).toContain("CONCOURSE_THEME");
   });
 
   it("reports install status for a project", async () => {

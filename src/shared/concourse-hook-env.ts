@@ -11,7 +11,7 @@ export const LOCAL_HOOK_API_HOST = "127.0.0.1";
 /** Hostname agent hooks POST to — the app's own loopback HTTP server. */
 export const AGENT_LOCAL_HOOK_API_HOST = LOCAL_HOOK_API_HOST;
 
-// The PTY/agent hook commands POST to whatever host is baked into MC_API_URL —
+// The PTY/agent hook commands POST to whatever host is baked into CONCOURSE_API_URL —
 // always the host loopback.
 const ALLOWED_HOOK_HOSTS = new Set<string>([LOCAL_HOOK_API_HOST, AGENT_LOCAL_HOOK_API_HOST]);
 

@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-test-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const { createProject } = await import("../projects");
 const {

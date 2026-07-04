@@ -5,7 +5,7 @@ const CORE_PLUGIN_NAME = "agentsystem-core";
 
 function corePluginRootCandidates(): string[] {
   const candidates: string[] = [];
-  const explicitRoot = process.env.MC_CORE_PLUGIN_ROOT?.trim();
+  const explicitRoot = process.env.CONCOURSE_CORE_PLUGIN_ROOT?.trim();
   if (explicitRoot) {
     candidates.push(path.resolve(explicitRoot));
   }

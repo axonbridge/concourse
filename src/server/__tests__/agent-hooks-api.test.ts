@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { TaskAgent } from "~/shared/domain";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-agent-hooks-api-test-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const { handleApiRequest } = await import("../api-router");
 const { getOrCreateApiToken } = await import("../services/settings");

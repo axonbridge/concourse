@@ -11,13 +11,13 @@ You are running inside a terminal launched by Concourse. There is a task ID asso
 
 Two values you need:
 
-- `MC_PORT` — the port Concourse is listening on
-- `MC_TOKEN` — bearer token for the writable API
-- `MC_TASK_ID` — the task ID for this terminal
+- `CONCOURSE_PORT` — the port Concourse is listening on
+- `CONCOURSE_TOKEN` — bearer token for the writable API
+- `CONCOURSE_TASK_ID` — the task ID for this terminal
 
 Lookup order:
 
-1. Read environment variables `MC_PORT`, `MC_TOKEN`, `MC_TASK_ID` if set.
+1. Read environment variables `CONCOURSE_PORT`, `CONCOURSE_TOKEN`, `CONCOURSE_TASK_ID` if set.
 2. Otherwise, read `~/Library/Application Support/Concourse/.port` (macOS) or `~/.config/Concourse/.port` (Linux) for the port. The token can be copied from the Concourse Settings page (it stays the same across launches).
 3. The task ID is shown in the terminal pane header inside Concourse. Ask the user if you can't find it.
 
@@ -25,29 +25,29 @@ Lookup order:
 
 - **Right after you finish a chunk of work** that's safe to commit/review:
   ```bash
-  curl -s -H "Authorization: Bearer $MC_TOKEN" \
-    -X POST http://127.0.0.1:$MC_PORT/api/tasks/$MC_TASK_ID/status \
+  curl -s -H "Authorization: Bearer $CONCOURSE_TOKEN" \
+    -X POST http://127.0.0.1:$CONCOURSE_PORT/api/tasks/$CONCOURSE_TASK_ID/status \
     -d '{"status":"finished","preview":"Refactor complete. Tests green."}'
   ```
 
 - **When you have a blocking question for the user**:
   ```bash
-  curl -s -H "Authorization: Bearer $MC_TOKEN" \
-    -X POST http://127.0.0.1:$MC_PORT/api/tasks/$MC_TASK_ID/status \
+  curl -s -H "Authorization: Bearer $CONCOURSE_TOKEN" \
+    -X POST http://127.0.0.1:$CONCOURSE_PORT/api/tasks/$CONCOURSE_TASK_ID/status \
     -d '{"status":"needs-input","preview":"Should I drop sessions older than 24h?"}'
   ```
 
 - **When you resume work** after answering a question:
   ```bash
-  curl -s -H "Authorization: Bearer $MC_TOKEN" \
-    -X POST http://127.0.0.1:$MC_PORT/api/tasks/$MC_TASK_ID/status \
+  curl -s -H "Authorization: Bearer $CONCOURSE_TOKEN" \
+    -X POST http://127.0.0.1:$CONCOURSE_PORT/api/tasks/$CONCOURSE_TASK_ID/status \
     -d '{"status":"running","preview":"Resuming on the registry refactor"}'
   ```
 
 - **When you fail or hit a hard error**:
   ```bash
-  curl -s -H "Authorization: Bearer $MC_TOKEN" \
-    -X POST http://127.0.0.1:$MC_PORT/api/tasks/$MC_TASK_ID/status \
+  curl -s -H "Authorization: Bearer $CONCOURSE_TOKEN" \
+    -X POST http://127.0.0.1:$CONCOURSE_PORT/api/tasks/$CONCOURSE_TASK_ID/status \
     -d '{"status":"terminated","preview":"node-pty build failed on arm64"}'
   ```
 

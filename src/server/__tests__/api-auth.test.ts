@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-api-auth-test-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const { handleApiRequest, ANONYMOUS_ROUTES, redactSensitiveErrorText } = await import("../api-router");
 const { getOrCreateApiToken } = await import("../services/settings");

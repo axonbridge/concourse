@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-path-security-test-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const { getDb } = await import("~/db/client");
 const { projects, tasks, groups, appSettings } = await import("~/db/schema");

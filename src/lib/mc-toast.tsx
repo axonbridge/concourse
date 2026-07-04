@@ -3,38 +3,38 @@ import { toast, type ExternalToast, type ToastClassnames } from "sonner";
 import { Btn } from "~/components/ui/Btn";
 import { Icon } from "~/components/ui/Icon";
 
-export const MC_TOAST_CLOSE_BTN_CLASS =
+export const CONCOURSE_TOAST_CLOSE_BTN_CLASS =
   "mc-btn mc-btn-ghost mc-btn-sm mc-toast-close-btn";
 
-export const MC_TOAST_CUSTOM_SHELL = "mc-toast-custom-shell";
+export const CONCOURSE_TOAST_CUSTOM_SHELL = "mc-toast-custom-shell";
 
-const MC_TOAST_CUSTOM_CLASS_NAMES = {
-  toast: MC_TOAST_CUSTOM_SHELL,
-  default: MC_TOAST_CUSTOM_SHELL,
-  info: MC_TOAST_CUSTOM_SHELL,
-  warning: MC_TOAST_CUSTOM_SHELL,
-  loading: MC_TOAST_CUSTOM_SHELL,
-  success: MC_TOAST_CUSTOM_SHELL,
-  error: MC_TOAST_CUSTOM_SHELL,
+const CONCOURSE_TOAST_CUSTOM_CLASS_NAMES = {
+  toast: CONCOURSE_TOAST_CUSTOM_SHELL,
+  default: CONCOURSE_TOAST_CUSTOM_SHELL,
+  info: CONCOURSE_TOAST_CUSTOM_SHELL,
+  warning: CONCOURSE_TOAST_CUSTOM_SHELL,
+  loading: CONCOURSE_TOAST_CUSTOM_SHELL,
+  success: CONCOURSE_TOAST_CUSTOM_SHELL,
+  error: CONCOURSE_TOAST_CUSTOM_SHELL,
 } satisfies ToastClassnames;
 
-export const MC_TOAST_CLOSE_ICON = (
+export const CONCOURSE_TOAST_CLOSE_ICON = (
   <span className="mc-btn-content">
     <Icon name="x" size={12} />
   </span>
 );
 
-export const MC_TOAST_CLASS_NAMES = {
+export const CONCOURSE_TOAST_CLASS_NAMES = {
   default: "mc-toast-panel",
   info: "mc-toast-panel",
   warning: "mc-toast-panel mc-toast-warning",
   loading: "mc-toast-panel mc-toast-loading",
   success: "mc-toast-panel mc-toast-success",
   error: "mc-toast-panel mc-toast-error",
-  closeButton: MC_TOAST_CLOSE_BTN_CLASS,
+  closeButton: CONCOURSE_TOAST_CLOSE_BTN_CLASS,
 } satisfies ToastClassnames;
 
-export const MC_TOAST_OPTS = {
+export const CONCOURSE_TOAST_OPTS = {
   closeButton: true,
   dismissible: true,
 } satisfies Pick<ExternalToast, "closeButton" | "dismissible">;
@@ -55,7 +55,7 @@ function McToastSpinner() {
 export function mcToastLoading(message: string, options?: ExternalToast): string | number {
   const { classNames, ...rest } = options ?? {};
   return toast(message, {
-    ...MC_TOAST_OPTS,
+    ...CONCOURSE_TOAST_OPTS,
     duration: Infinity,
     icon: <McToastSpinner />,
     classNames: {
@@ -107,8 +107,8 @@ export function mcToastCustom(
 ): string | number {
   const { classNames, ...rest } = options ?? {};
   return toast.custom((toastId) => render(toastId), {
-    ...MC_TOAST_OPTS,
-    classNames: { ...MC_TOAST_CUSTOM_CLASS_NAMES, ...classNames },
+    ...CONCOURSE_TOAST_OPTS,
+    classNames: { ...CONCOURSE_TOAST_CUSTOM_CLASS_NAMES, ...classNames },
     ...rest,
   });
 }

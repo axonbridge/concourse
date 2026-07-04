@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WORKTREE_NAME_RE } from "~/shared/worktrees";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-worktrees-test-db-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 const {
   WorktreeDirtyError,

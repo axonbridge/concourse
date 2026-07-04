@@ -10,8 +10,8 @@ import { resolveCorePluginRoot } from "../core-plugin-path";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-ship-skill-test-"));
 const corePluginRoot = path.join(tmpRoot, "agentsystem-core");
-process.env.MC_USER_DATA_DIR = tmpRoot;
-process.env.MC_CORE_PLUGIN_ROOT = corePluginRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_CORE_PLUGIN_ROOT = corePluginRoot;
 
 function writeCorePluginFixture(): void {
   fs.mkdirSync(path.join(corePluginRoot, "skills", "ship"), { recursive: true });

@@ -53,7 +53,7 @@ import { VoiceController } from "~/components/views/VoiceController";
 import { VoicePushToTalkButton } from "~/components/views/VoicePushToTalkButton";
 import { SessionNotificationsButton } from "~/components/views/SessionNotificationsButton";
 import { Toaster } from "sonner";
-import { MC_TOAST_CLASS_NAMES, MC_TOAST_CLOSE_ICON } from "~/lib/mc-toast";
+import { CONCOURSE_TOAST_CLASS_NAMES, CONCOURSE_TOAST_CLOSE_ICON } from "~/lib/mc-toast";
 import { useSessionFinishNotifications } from "~/lib/use-session-finish-notifications";
 import {
   mergeAppNotificationLists,
@@ -593,12 +593,12 @@ function Shell() {
           theme={theme === "light" ? "light" : "dark"}
           closeButton
           offset={16}
-          icons={{ close: MC_TOAST_CLOSE_ICON }}
+          icons={{ close: CONCOURSE_TOAST_CLOSE_ICON }}
           toastOptions={{
             unstyled: true,
             closeButton: true,
             closeButtonAriaLabel: "Close",
-            classNames: MC_TOAST_CLASS_NAMES,
+            classNames: CONCOURSE_TOAST_CLASS_NAMES,
           }}
         />
         <VoiceController />

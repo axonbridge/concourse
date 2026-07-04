@@ -5,7 +5,7 @@ import * as path from "node:path";
 export const OPENCODE_CONCOURSE_PLUGIN_MARKER = "@concourse-managed";
 
 /** Env vars the host injects so a spawned agent can reach the MC hook API. */
-export const MC_AGENT_ENV_KEYS = ["MC_TASK_ID", "MC_API_URL", "MC_API_TOKEN"] as const;
+export const CONCOURSE_AGENT_ENV_KEYS = ["CONCOURSE_TASK_ID", "CONCOURSE_API_URL", "CONCOURSE_API_TOKEN"] as const;
 
 export const OPENCODE_CONCOURSE_PLUGIN_SEGMENTS = [
   ".opencode",
@@ -33,9 +33,9 @@ function sessionIdFrom(event) {
 }
 
 async function postConcourseHook(hookEventName, body = {}) {
-  const taskId = process.env.MC_TASK_ID;
-  const apiUrl = process.env.MC_API_URL;
-  const token = process.env.MC_API_TOKEN;
+  const taskId = process.env.CONCOURSE_TASK_ID;
+  const apiUrl = process.env.CONCOURSE_API_URL;
+  const token = process.env.CONCOURSE_API_TOKEN;
   if (!taskId || !apiUrl || !token) return;
 
   const url =
@@ -64,7 +64,7 @@ async function postConcourseHook(hookEventName, body = {}) {
 export const ConcourseStatus = async () => {
   return {
     "shell.env": async (_input, output) => {
-      ${MC_AGENT_ENV_KEYS.map(
+      ${CONCOURSE_AGENT_ENV_KEYS.map(
         (key) => `if (process.env.${key}) output.env.${key} = process.env.${key};`,
       ).join("\n      ")}
     },

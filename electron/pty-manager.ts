@@ -36,8 +36,8 @@ function sanitizeEnv(): Record<string, string> {
   // natively, but xterm.js sends `\x1b\r` (the iTerm sequence) instead of LF.
   delete out.TERM_PROGRAM;
   delete out.TERM_PROGRAM_VERSION;
-  delete out.MC_API_URL;
-  delete out.MC_API_TOKEN;
+  delete out.CONCOURSE_API_URL;
+  delete out.CONCOURSE_API_TOKEN;
   return out;
 }
 
@@ -479,11 +479,11 @@ export function registerPtyHandlers(
       }
 
       const mcEnv = plan.mode === "agent" ? getHookEnv() : null;
-      env.MC_TASK_ID = opts.taskId;
+      env.CONCOURSE_TASK_ID = opts.taskId;
       if (mcEnv) {
-        env.MC_API_URL = mcEnv.apiUrl;
-        env.MC_API_TOKEN = mcEnv.token;
-        env.MC_THEME = opts.concourseTheme === "light" ? "light" : "dark";
+        env.CONCOURSE_API_URL = mcEnv.apiUrl;
+        env.CONCOURSE_API_TOKEN = mcEnv.token;
+        env.CONCOURSE_THEME = opts.concourseTheme === "light" ? "light" : "dark";
       }
       applyAgentPtyEnv(env, opts.agent);
 

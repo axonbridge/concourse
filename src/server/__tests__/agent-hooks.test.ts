@@ -68,7 +68,7 @@ describe("agent hook installation", () => {
       shell: "powershell",
     });
     expect(hook?.command).toContain("Invoke-RestMethod");
-    expect(hook?.command).toContain("$env:MC_API_URL");
+    expect(hook?.command).toContain("$env:CONCOURSE_API_URL");
     expect(hook?.command).not.toContain("if [");
   });
 
@@ -97,7 +97,7 @@ describe("agent hook installation", () => {
       ],
     });
     expect(settings.hooks.UserPromptSubmit?.[0]?.hooks?.[0]?.command).toContain(
-      "/api/hooks/codex?taskId=$MC_TASK_ID&hookEvent=UserPromptSubmit"
+      "/api/hooks/codex?taskId=$CONCOURSE_TASK_ID&hookEvent=UserPromptSubmit"
     );
     expect(settings.hooks.Stop?.[0]?.hooks?.[0]?.command).toContain("hookEvent=Stop");
     expect(settings.hooks.PermissionRequest?.[0]?.hooks?.[0]?.command).toContain(
@@ -121,7 +121,7 @@ describe("agent hook installation", () => {
       _mcManaged: true,
     });
     expect(settings.hooks.beforeSubmitPrompt?.[0]?.command).toContain(
-      "/api/hooks/cursor?taskId=$MC_TASK_ID&hookEvent=beforeSubmitPrompt"
+      "/api/hooks/cursor?taskId=$CONCOURSE_TASK_ID&hookEvent=beforeSubmitPrompt"
     );
     expect(settings.hooks.beforeSubmitPrompt?.[0]?.command).toContain(
       '{"continue":true}'

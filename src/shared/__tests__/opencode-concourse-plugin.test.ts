@@ -20,7 +20,7 @@ describe("opencode concourse plugin", () => {
     expect(source).toContain('postConcourseHook("UserPromptSubmit"');
     expect(source).toContain('postConcourseHook("SessionStart"');
     expect(source).toContain('"PermissionRequest"');
-    expect(source).toContain("MC_TASK_ID");
+    expect(source).toContain("CONCOURSE_TASK_ID");
     expect(source).toContain('"shell.env"');
     expect(source).toContain('"chat.message"');
     expect(source).toContain('"tool.execute.before"');

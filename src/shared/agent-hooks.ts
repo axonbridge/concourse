@@ -78,12 +78,12 @@ function buildPosixHookCommand(
 ): string {
   // Read stdin (the agent's hook payload JSON) and forward to Concourse.
   // Fail-soft: never block the user's session if MC is down.
-  const url = `"$MC_API_URL/api/hooks/${endpointSlug}?taskId=$MC_TASK_ID&hookEvent=${encodeURIComponent(event)}"`;
+  const url = `"$CONCOURSE_API_URL/api/hooks/${endpointSlug}?taskId=$CONCOURSE_TASK_ID&hookEvent=${encodeURIComponent(event)}"`;
   if (style === "cursor") {
     return (
-      'if [ -z "$MC_TASK_ID" ] || [ -z "$MC_API_URL" ]; then printf \'{"continue":true}\\n\'; exit 0; fi; ' +
+      'if [ -z "$CONCOURSE_TASK_ID" ] || [ -z "$CONCOURSE_API_URL" ]; then printf \'{"continue":true}\\n\'; exit 0; fi; ' +
       "cat | curl -sS -m 3 -X POST " +
-      '-H "Authorization: Bearer $MC_API_TOKEN" ' +
+      '-H "Authorization: Bearer $CONCOURSE_API_TOKEN" ' +
       '-H "X-Concourse-Runtime: electron-local" ' +
       '-H "Content-Type: application/json" ' +
       `--data-binary @- ${url} >/dev/null 2>&1 || true; ` +
@@ -91,9 +91,9 @@ function buildPosixHookCommand(
     );
   }
   return (
-    'if [ -z "$MC_TASK_ID" ] || [ -z "$MC_API_URL" ]; then exit 0; fi; ' +
+    'if [ -z "$CONCOURSE_TASK_ID" ] || [ -z "$CONCOURSE_API_URL" ]; then exit 0; fi; ' +
     "curl -sS -m 3 -X POST " +
-    '-H "Authorization: Bearer $MC_API_TOKEN" ' +
+    '-H "Authorization: Bearer $CONCOURSE_API_TOKEN" ' +
     '-H "X-Concourse-Runtime: electron-local" ' +
     '-H "Content-Type: application/json" ' +
     "--data-binary @- " +
@@ -110,17 +110,17 @@ function buildPowerShellHookCommand(
   const eventParam = encodeURIComponent(event);
   const missingEnv =
     style === "cursor"
-      ? 'if (-not $env:MC_TASK_ID -or -not $env:MC_API_URL) { Write-Output \'{"continue":true}\'; exit 0 }'
-      : "if (-not $env:MC_TASK_ID -or -not $env:MC_API_URL) { exit 0 }";
+      ? 'if (-not $env:CONCOURSE_TASK_ID -or -not $env:CONCOURSE_API_URL) { Write-Output \'{"continue":true}\'; exit 0 }'
+      : "if (-not $env:CONCOURSE_TASK_ID -or -not $env:CONCOURSE_API_URL) { exit 0 }";
   const continueOutput =
     style === "cursor" ? '; Write-Output \'{"continue":true}\'' : "";
 
   return [
     missingEnv,
     "$payload = [Console]::In.ReadToEnd()",
-    "$taskId = [System.Uri]::EscapeDataString($env:MC_TASK_ID)",
-    `$url = "$($env:MC_API_URL)/api/hooks/${endpointSlug}?taskId=$taskId&hookEvent=${eventParam}"`,
-    '$headers = @{ Authorization = "Bearer $($env:MC_API_TOKEN)"; "X-Concourse-Runtime" = "electron-local" }',
+    "$taskId = [System.Uri]::EscapeDataString($env:CONCOURSE_TASK_ID)",
+    `$url = "$($env:CONCOURSE_API_URL)/api/hooks/${endpointSlug}?taskId=$taskId&hookEvent=${eventParam}"`,
+    '$headers = @{ Authorization = "Bearer $($env:CONCOURSE_API_TOKEN)"; "X-Concourse-Runtime" = "electron-local" }',
     'try { Invoke-RestMethod -Method Post -Uri $url -Headers $headers -Body $payload -ContentType "application/json" -TimeoutSec 3 -ErrorAction Stop | Out-Null } catch {}' +
       continueOutput,
   ].join("; ");

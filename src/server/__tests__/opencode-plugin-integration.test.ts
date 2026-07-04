@@ -10,7 +10,7 @@ import {
 import { TITLE_GENERATING, TITLE_WAITING } from "~/lib/task-sentinels";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-opencode-plugin-integration-"));
-process.env.MC_USER_DATA_DIR = tmpRoot;
+process.env.CONCOURSE_USER_DATA_DIR = tmpRoot;
 
 vi.mock("../services/claude-cli", () => ({
   runCli: vi.fn().mockResolvedValue("TITLE: Add dark mode toggle\nICON: palette"),
@@ -68,9 +68,9 @@ describe("OpenCode plugin runtime integration", () => {
     });
     taskId = task.id;
 
-    process.env.MC_TASK_ID = taskId;
-    process.env.MC_API_URL = "http://127.0.0.1:5173";
-    process.env.MC_API_TOKEN = getOrCreateApiToken();
+    process.env.CONCOURSE_TASK_ID = taskId;
+    process.env.CONCOURSE_API_URL = "http://127.0.0.1:5173";
+    process.env.CONCOURSE_API_TOKEN = getOrCreateApiToken();
 
     originalFetch = globalThis.fetch;
     globalThis.fetch = async (input, init) => {
@@ -88,9 +88,9 @@ describe("OpenCode plugin runtime integration", () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    delete process.env.MC_TASK_ID;
-    delete process.env.MC_API_URL;
-    delete process.env.MC_API_TOKEN;
+    delete process.env.CONCOURSE_TASK_ID;
+    delete process.env.CONCOURSE_API_URL;
+    delete process.env.CONCOURSE_API_TOKEN;
   });
 
   it("installs the plugin and drives card status through the real hook API", async () => {
@@ -286,9 +286,9 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("no-ops when Concourse env vars are missing", async () => {
-    delete process.env.MC_TASK_ID;
-    delete process.env.MC_API_URL;
-    delete process.env.MC_API_TOKEN;
+    delete process.env.CONCOURSE_TASK_ID;
+    delete process.env.CONCOURSE_API_URL;
+    delete process.env.CONCOURSE_API_TOKEN;
 
     writeOpencodeConcoursePlugin(projectDir);
     const hooks = await loadConcoursePluginHooks(projectDir);

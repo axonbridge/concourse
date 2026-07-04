@@ -14,7 +14,7 @@ describe("ensureDiagramSkillForAgent", () => {
     expect(fs.existsSync(path.join(cwd, ".cursor", "skills", "diagram", "SKILL.md"))).toBe(true);
     expect(fs.existsSync(path.join(cwd, ".agents", "skills", "diagram", "SKILL.md"))).toBe(true);
     expect(fs.readFileSync(path.join(cwd, ".cursor", "skills", "diagram", "SKILL.md"), "utf8")).toContain(
-      "POST $MC_API_URL/api/diagram",
+      "POST $CONCOURSE_API_URL/api/diagram",
     );
   });
 

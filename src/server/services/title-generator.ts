@@ -182,7 +182,7 @@ export async function generateTitleForTask(taskId: string, prompt: string): Prom
   try {
     const raw = await runCli(invocation.cmd, invocation.args);
     const parsed = parseResponse(raw);
-    if (process.env.MC_LOG_TITLE_GEN) {
+    if (process.env.CONCOURSE_LOG_TITLE_GEN) {
       // Opt-in diagnostic. Pipe to a file when starting the app to capture
       // CLI output verbatim while iterating on the prompt format.
       console.log("[title-gen] raw:\n" + raw);
@@ -196,7 +196,7 @@ export async function generateTitleForTask(taskId: string, prompt: string): Prom
       updateTask(taskId, { title: fallbackTitle(prompt) });
     }
   } catch (e) {
-    if (process.env.MC_LOG_TITLE_GEN) {
+    if (process.env.CONCOURSE_LOG_TITLE_GEN) {
       console.error("[title-gen] CLI error:", e);
     }
     const fresh = getTask(taskId);

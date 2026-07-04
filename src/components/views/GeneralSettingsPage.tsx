@@ -7,7 +7,7 @@ import { getElectron } from "~/lib/electron";
 import { api, type AppSettings } from "~/lib/api";
 import { queryKeys, useSettings } from "~/queries";
 import {
-  CURRENT_MC_VERSION,
+  CURRENT_CONCOURSE_VERSION,
   useLatestConcourseVersion,
 } from "~/queries/concourse-version";
 import {
@@ -463,7 +463,7 @@ function AboutSection() {
         >
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 3 }}>
-              Installed: v{CURRENT_MC_VERSION}
+              Installed: v{CURRENT_CONCOURSE_VERSION}
             </div>
             <div
               id={statusId}

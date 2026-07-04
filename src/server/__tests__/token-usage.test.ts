@@ -94,21 +94,21 @@ describe("syncTokenUsage", () => {
     });
     savedHome = process.env.HOME;
     process.env.HOME = fakeHome;
-    savedUserData = process.env.MC_USER_DATA_DIR;
-    process.env.MC_USER_DATA_DIR = tempUserDataDir;
+    savedUserData = process.env.CONCOURSE_USER_DATA_DIR;
+    process.env.CONCOURSE_USER_DATA_DIR = tempUserDataDir;
   });
 
   afterEach(() => {
     if (savedHome === undefined) delete process.env.HOME;
     else process.env.HOME = savedHome;
-    if (savedUserData === undefined) delete process.env.MC_USER_DATA_DIR;
-    else process.env.MC_USER_DATA_DIR = savedUserData;
+    if (savedUserData === undefined) delete process.env.CONCOURSE_USER_DATA_DIR;
+    else process.env.CONCOURSE_USER_DATA_DIR = savedUserData;
     fs.rmSync(tempUserDataDir, { recursive: true, force: true });
     fs.rmSync(fakeHome, { recursive: true, force: true });
   });
 
   it("ingests assistant lines, dedupes on re-run, and advances byte offset", async () => {
-    // Fresh module load so it picks up our env-overridden MC_USER_DATA_DIR.
+    // Fresh module load so it picks up our env-overridden CONCOURSE_USER_DATA_DIR.
     const { getDb, getSqlite } = await import("~/db/client");
     const { syncTokenUsage, _resetSyncSingleton } = await import(
       "../services/token-usage"
