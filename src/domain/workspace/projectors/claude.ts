@@ -63,11 +63,27 @@ function readManifest(claudeDir: string): Manifest | null {
   }
 }
 
-/** Project a CWF workspace into .claude/. No-op for non-CWF dirs; hash-skipped
- *  when sources are unchanged. Returns whether a (re)projection ran. */
+function hasCwfContent(dir: string): boolean {
+  for (const sub of PROJECTED_DIRS) {
+    try {
+      if (fs.readdirSync(path.join(dir, sub)).some((f) => f.endsWith(".md"))) return true;
+    } catch {
+      /* dir absent */
+    }
+  }
+  return false;
+}
+
+/** Project CWF sources into the vendor conventions. Full workspaces (with
+ *  workspace.md) also get CLAUDE.md/AGENTS.md; a classic repo with CWF content
+ *  dirs gets ONLY the command/agent/skill/template fan-out — its own
+ *  CLAUDE.md/AGENTS.md are never touched. No-op when there is nothing to
+ *  project; hash-skipped when sources are unchanged. Returns whether a
+ *  (re)projection ran. */
 export function projectClaudeWorkspace(dir: string): boolean {
   const entry = path.join(dir, CWF_ENTRY_FILE);
-  if (!fs.existsSync(entry)) return false;
+  const hasEntry = fs.existsSync(entry);
+  if (!hasEntry && !hasCwfContent(dir)) return false;
 
   const claudeDir = path.join(dir, ".claude");
   const hash = sourceHash(dir);
@@ -77,15 +93,17 @@ export function projectClaudeWorkspace(dir: string): boolean {
   const owned: string[] = [];
   fs.mkdirSync(claudeDir, { recursive: true });
 
-  // CLAUDE.md ← workspace.md body (frontmatter stripped; Claude doesn't need it).
-  const { body } = parseFrontmatter(fs.readFileSync(entry, "utf8"));
-  fs.writeFileSync(path.join(dir, "CLAUDE.md"), `${SENTINEL}\n\n${body.trimStart()}`, "utf8");
-  owned.push("CLAUDE.md");
+  if (hasEntry) {
+    // CLAUDE.md ← workspace.md body (frontmatter stripped; Claude doesn't need it).
+    const { body } = parseFrontmatter(fs.readFileSync(entry, "utf8"));
+    fs.writeFileSync(path.join(dir, "CLAUDE.md"), `${SENTINEL}\n\n${body.trimStart()}`, "utf8");
+    owned.push("CLAUDE.md");
 
-  // AGENTS.md — the cross-vendor convention (OpenCode, Codex, Cursor all read
-  // it). Same content as CLAUDE.md: one source, N projections (plan §M6).
-  fs.writeFileSync(path.join(dir, "AGENTS.md"), `${SENTINEL}\n\n${body.trimStart()}`, "utf8");
-  owned.push("AGENTS.md");
+    // AGENTS.md — the cross-vendor convention (OpenCode, Codex, Cursor all read
+    // it). Same content as CLAUDE.md: one source, N projections (plan §M6).
+    fs.writeFileSync(path.join(dir, "AGENTS.md"), `${SENTINEL}\n\n${body.trimStart()}`, "utf8");
+    owned.push("AGENTS.md");
+  }
 
   // OpenCode slash commands: .opencode/command/*.md ← commands/*.md (verbatim;
   // OpenCode tolerates unknown frontmatter keys the same way Claude does).

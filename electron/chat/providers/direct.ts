@@ -5,7 +5,7 @@ import { app } from "electron";
 import log from "electron-log/main";
 import type { ChatEvent } from "../../../src/shared/chat";
 import { decideAction, type ActionClass } from "../../../src/domain/policy/action-policy";
-import { isCwfWorkspace, loadWorkspace } from "../../../src/domain/workspace/fs-loader";
+import { loadWorkspace } from "../../../src/domain/workspace/fs-loader";
 import type { CwfWorkspace } from "../../../src/domain/workspace/types";
 import { getCredential } from "../../credentials/store";
 import { ensureOrgKnowledge, orgKnowledgePrompt } from "../../knowledge/org-store";
@@ -178,9 +178,12 @@ function buildSystemPrompt(cwd: string, initialText: string, mcpServers: string[
     "The workspace is a set of markdown files (commands, agents, skills, templates) — they are your instructions. Use the file tools to read anything you need; write outputs into the workspace with write_file.",
     "Cite sources for factual claims; never invent numbers. If you can't do something (no integration available), say so plainly.",
   ];
+  // Load CWF content even without a workspace.md — a classic repo may still
+  // carry provider-neutral commands/agents/skills (loadWorkspace tolerates a
+  // missing entry file; the dirs just come back empty when absent).
   let ws: CwfWorkspace | null = null;
   try {
-    if (isCwfWorkspace(cwd)) ws = loadWorkspace(cwd);
+    ws = loadWorkspace(cwd);
   } catch (e) {
     log.warn("[direct] workspace load failed", e);
   }

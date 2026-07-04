@@ -74,40 +74,18 @@ inputs, steps, output format, how often). Then create the workflow: a command
 in \`commands/\`, any needed agents in \`agents/\`, skills in \`skills/\`, and an
 output template in \`templates/\`. Frontmatter for the command: \`description\`,
 \`examples\`, \`custom: true\`, \`owns:\` listing created agents/skills. Keep every
-file plain markdown with YAML frontmatter.
-`;
-
-// Same interview flow for classic repos (a \`.claude/\` folder, no workspace.md):
-// generated files land in the Claude-native layout the engine reads directly.
-const LEGACY_CREATE_WORKFLOW = `---
-description: Build a reusable workflow for this project by answering a few questions.
-custom: false
----
-
-# Create a workflow
-
-Interview the user about the repetitive task they want to automate (goal,
-inputs, steps, output format, how often). Then create the workflow: a command
-in \`.claude/commands/\`, any needed agents in \`.claude/agents/\`, skills in
-\`.claude/skills/\`, and an output template in \`.claude/templates/\`. Frontmatter
-for the command: \`description\`, \`examples\`, \`custom: true\`, \`owns:\` listing
-created agents/skills. Keep every file plain markdown with YAML frontmatter.
-Study the project first (README, existing commands, code layout) so the
-workflow fits how this repo actually works.
+file plain markdown with YAML frontmatter. Study the project first (README,
+existing commands and code layout) so the workflow fits how it actually works.
 `;
 
 /**
  * Make sure the workflow-builder command exists for a project before the chat
  * fires \`/create-workflow\` at the engine. Additive only — never overwrites.
- * CWF workspaces get the canonical \`commands/\` source (the caller projects it
- * to \`.claude/\`); classic repos get \`.claude/commands/\` directly.
+ * The file is always the provider-neutral CWF source \`commands/create-workflow.md\`;
+ * the projector fans it out to every engine convention (the caller projects).
  */
 export function ensureWorkflowBuilderCommand(dir: string): void {
-  if (fs.existsSync(path.join(dir, "workspace.md"))) {
-    writeIfMissing(STARTER_CREATE_WORKFLOW, path.join(dir, "commands/create-workflow.md"));
-    return;
-  }
-  writeIfMissing(LEGACY_CREATE_WORKFLOW, path.join(dir, ".claude/commands/create-workflow.md"));
+  writeIfMissing(STARTER_CREATE_WORKFLOW, path.join(dir, "commands/create-workflow.md"));
 }
 
 const STARTER_KNOWLEDGE_FIRST = `---

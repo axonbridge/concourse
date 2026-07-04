@@ -499,12 +499,16 @@ export function listProjectCommands(id: string): ProjectCommand[] {
   const project = findProjectById(id);
   if (!project) return [];
 
+  // Fan CWF sources out to the vendor conventions first (no-op when there is
+  // nothing to project) so classic repos see neutral root commands merged into
+  // their .claude/commands listing below.
+  try {
+    projectClaudeWorkspace(project.path);
+  } catch {
+    /* projection is best-effort here; chat start projects again */
+  }
+
   if (isCwfWorkspace(project.path)) {
-    try {
-      projectClaudeWorkspace(project.path);
-    } catch {
-      /* projection is best-effort here; chat start projects again */
-    }
     return loadWorkspace(project.path).commands.map((c) => ({
       name: c.slug,
       title: c.title,
@@ -561,17 +565,27 @@ function safeSlug(name: string): string | null {
   return s;
 }
 
-// Where a workspace's commands/agents/skills/templates live: CWF workspaces at
-// the root (provider-neutral source; .claude/ is a generated projection),
-// legacy projects inside .claude/.
+// Where a workspace's commands/agents/skills/templates live. The root is the
+// provider-neutral source (.claude/ is a generated projection) — for CWF
+// workspaces always, and for classic repos as soon as a root commands/ dir
+// exists (the workflow builder seeds one). Only a classic repo with no CWF
+// content falls back to its own .claude/.
 function contentRoot(projectPath: string): string {
-  return isCwfWorkspace(projectPath) ? projectPath : path.join(projectPath, ".claude");
+  if (isCwfWorkspace(projectPath)) return projectPath;
+  try {
+    if (fs.readdirSync(path.join(projectPath, "commands")).some((f) => f.endsWith(".md"))) {
+      return projectPath;
+    }
+  } catch {
+    /* no root commands dir */
+  }
+  return path.join(projectPath, ".claude");
 }
 
 // The path a command body should reference its output template by — relative to
 // the workspace root (the engine's cwd at runtime).
 function templateRefPath(projectPath: string, slug: string): string {
-  return isCwfWorkspace(projectPath)
+  return contentRoot(projectPath) === projectPath
     ? `templates/${slug}.md`
     : `.claude/templates/${slug}.md`;
 }
