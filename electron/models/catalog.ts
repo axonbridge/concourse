@@ -151,6 +151,34 @@ async function listAnthropic(): Promise<ModelListResult> {
   }
 }
 
+/** Live Codex model list: newest codex-tuned + flagship GPT models from the
+ *  OpenAI API when a key is present (`codex -m` accepts these ids); static
+ *  fallback covers ChatGPT-login users with no API key. */
+async function listCodex(): Promise<ModelListResult> {
+  const key = getCredential("openai");
+  if (!key) {
+    return {
+      models: aiProviderInfo("codex").models,
+      source: "static",
+      error: "Using the built-in list — add an OpenAI API key for live model discovery.",
+    };
+  }
+  const data = await getJson("https://api.openai.com/v1/models", {
+    Authorization: `Bearer ${key}`,
+  });
+  const entries = (data?.data ?? [])
+    .map((m: any) => ({ id: String(m?.id ?? ""), created: Number(m?.created ?? 0) }))
+    .filter((m: { id: string }) => /^gpt-[0-9]/.test(m.id) && !/mini-audio|realtime|audio|transcribe|image|search/i.test(m.id))
+    .filter((m: { id: string }) => /codex/i.test(m.id) || !/-\d{4}-\d{2}-\d{2}$/.test(m.id))
+    .sort((a: { created: number }, b: { created: number }) => b.created - a.created)
+    .slice(0, 8);
+  if (entries.length === 0) return { models: aiProviderInfo("codex").models, source: "static" };
+  return {
+    models: entries.map((m: { id: string }) => ({ id: m.id, label: m.id })),
+    source: "live",
+  };
+}
+
 export async function listModels(provider: EngineId): Promise<ModelListResult> {
   const cached = cache.get(provider);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.result;
@@ -169,6 +197,9 @@ export async function listModels(provider: EngineId): Promise<ModelListResult> {
         break;
       case "claude-code":
         result = await listAnthropic();
+        break;
+      case "codex":
+        result = await listCodex();
         break;
       case "opencode": {
         const models = await listOpencodeModels();
