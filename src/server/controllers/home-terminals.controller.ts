@@ -34,6 +34,7 @@ export async function create(request: Request): Promise<Response> {
       name: parsed.data.name,
       cwd: parsed.data.cwd ?? null,
       scopeId: parsed.data.scopeId,
+      startCommand: parsed.data.startCommand ?? null,
     });
     return json({ terminal }, { status: HTTP_CREATED });
   } catch (e) {
