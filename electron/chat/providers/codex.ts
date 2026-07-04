@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import log from "electron-log/main";
 import type { ChatEvent } from "../../../src/shared/chat";
 import { projectClaudeWorkspace } from "../../../src/domain/workspace/projectors/claude";
+import { inlineSlashCommand } from "../../../src/domain/workspace/inline-command";
 import { runJsonlTurn, type JsonlTurn } from "./jsonl-cli";
 import type { ChatProvider, ChatSessionHandle, ChatStartOptions } from "../provider";
 
@@ -10,6 +11,8 @@ import type { ChatProvider, ChatSessionHandle, ChatStartOptions } from "../provi
 // design — headless Codex runs inside its workspace sandbox with no per-tool
 // ask, so we say so up front (honest labeling) instead of pretending cards
 // exist. Reads AGENTS.md (projected from workspace.md for CWF workspaces).
+// Codex has no slash-command mechanism, so /commands are resolved by the app
+// from the CWF source and inlined into the turn (inlineSlashCommand).
 
 export const codexChatProvider: ChatProvider = {
   id: "codex",
@@ -68,9 +71,10 @@ export const codexChatProvider: ChatProvider = {
       }
     };
 
-    const runTurn = (text: string) => {
+    const runTurn = (rawText: string) => {
       busy = true;
       emit({ kind: "status", sessionId: sid, status: "running" });
+      const text = inlineSlashCommand(opts.cwd, rawText);
       const args = ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write"];
       if (opts.model) args.push("-m", opts.model);
       if (threadId) args.splice(1, 0, "resume", threadId);

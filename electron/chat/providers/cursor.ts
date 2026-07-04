@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import log from "electron-log/main";
 import type { ChatEvent } from "../../../src/shared/chat";
 import { projectClaudeWorkspace } from "../../../src/domain/workspace/projectors/claude";
+import { inlineSlashCommand } from "../../../src/domain/workspace/inline-command";
 import { runJsonlTurn, type JsonlTurn } from "./jsonl-cli";
 import type { ChatProvider, ChatSessionHandle, ChatStartOptions } from "../provider";
 
@@ -9,6 +10,8 @@ import type { ChatProvider, ChatSessionHandle, ChatStartOptions } from "../provi
 // stream-json` per turn; multi-turn via `--resume <chatId>` (chat id from the
 // init event). Approvals are COARSE like Codex — headless cursor-agent applies
 // its own permission config with no per-tool ask, stated up front honestly.
+// cursor-agent has no slash-command mechanism, so /commands are resolved by
+// the app from the CWF source and inlined into the turn (inlineSlashCommand).
 
 export const cursorChatProvider: ChatProvider = {
   id: "cursor-cli",
@@ -51,9 +54,10 @@ export const cursorChatProvider: ChatProvider = {
       }
     };
 
-    const runTurn = (text: string) => {
+    const runTurn = (rawText: string) => {
       busy = true;
       emit({ kind: "status", sessionId: sid, status: "running" });
+      const text = inlineSlashCommand(opts.cwd, rawText);
       const args = ["-p", text, "--output-format", "stream-json"];
       if (opts.model) args.push("--model", opts.model);
       if (chatId) args.push("--resume", chatId);
