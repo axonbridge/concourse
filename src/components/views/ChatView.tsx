@@ -952,7 +952,7 @@ function ChatBubble({
     );
   }
   if (item.type === "notice") {
-    return <div style={{ fontSize: 12.5, color: "var(--status-needs)", fontStyle: "italic" }}>{item.text}</div>;
+    return <div style={{ fontSize: 12.5, color: "var(--text-dim)", fontStyle: "italic" }}>{item.text}</div>;
   }
   const isUser = item.type === "user";
   return (

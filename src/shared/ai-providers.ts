@@ -56,7 +56,14 @@ const HARNESS_PROVIDERS: readonly AiProviderInfo[] = TASK_AGENTS.map((id) => ({
   models:
     id === "claude-code"
       ? CLAUDE_MODEL_ALIASES.map((alias) => ({ id: alias, label: CLAUDE_MODEL_LABELS[alias] }))
-      : [],
+      : id === "codex"
+        ? [
+            { id: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
+            { id: "gpt-5.2", label: "GPT-5.2" },
+            { id: "gpt-5.1-codex", label: "GPT-5.1 Codex" },
+            { id: "gpt-5.1-codex-mini", label: "GPT-5.1 Codex Mini" },
+          ]
+        : [],
 }));
 
 const DIRECT_PROVIDER_INFO: readonly AiProviderInfo[] = [

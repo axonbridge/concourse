@@ -44,7 +44,8 @@ export const codexChatProvider: ChatProvider = {
       } else if (ev?.type === "item.completed") {
         const item = ev.item ?? {};
         const t = item.item_type ?? item.type;
-        if (t === "assistant_message" && item.text?.trim()) {
+        // Newer Codex CLIs emit "agent_message"; older ones "assistant_message".
+        if ((t === "assistant_message" || t === "agent_message") && item.text?.trim()) {
           emit({ kind: "item", sessionId: sid, item: { id: item.id ?? randomUUID(), type: "assistant", text: String(item.text) } });
         } else if (t === "command_execution") {
           emit({
