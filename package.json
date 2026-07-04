@@ -188,7 +188,7 @@
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Concourse uses the microphone for push-to-talk voice commands. Audio is transcribed locally on your machine and never leaves your computer."
       },
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
