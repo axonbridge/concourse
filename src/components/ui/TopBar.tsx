@@ -80,8 +80,8 @@ export function TopBar({
           }}
         >
           <img
-            src="/images/hc-logo.png"
-            alt="Healthcare.com"
+            src="/images/concourse-logo.png"
+            alt="Concourse"
             width={26}
             height={26}
             // `-webkit-app-region` does not inherit reliably in Electron, so the
