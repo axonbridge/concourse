@@ -22,7 +22,6 @@ function makeProject(
     iconColor: "#ffffff",
     imagePath: null,
     groupId: null,
-    sandboxId: null,
     pinned: false,
     pinnedOrder: null,
     branch: "main",

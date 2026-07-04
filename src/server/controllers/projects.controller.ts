@@ -57,7 +57,6 @@ const createProjectBody = z.object({
   icon: z.string().optional(),
   iconColor: z.string().optional(),
   groupId: z.string().nullable().optional(),
-  sandboxId: z.string().nullable().optional(),
   /** Journey A: scaffold an empty/missing folder into a CWF workspace. */
   scaffoldWorkspace: z.boolean().optional(),
 });

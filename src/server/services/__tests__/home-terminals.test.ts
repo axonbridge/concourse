@@ -88,31 +88,13 @@ describe("home-terminals service", () => {
     expect(() => createHomeTerminal({ id: "not a domain id" })).toThrow();
   });
 
-  it("scopes terminals per sandbox", () => {
+  it("coerces every scope id to local", () => {
     createHomeTerminal({ scopeId: "sb-a" });
-    createHomeTerminal({ scopeId: "sb-a" });
-    createHomeTerminal({ scopeId: "sb-b" });
+    createHomeTerminal({ scopeId: "local" });
+    expect(listHomeTerminals("local")).toHaveLength(2);
     expect(listHomeTerminals("sb-a")).toHaveLength(2);
-    expect(listHomeTerminals("sb-b")).toHaveLength(1);
-    expect(listHomeTerminals("local")).toHaveLength(0);
     // Unscoped list defaults to the local scope.
-    expect(listHomeTerminals()).toHaveLength(0);
-  });
-
-  it("numbers default names independently per scope", () => {
-    const a = createHomeTerminal({ scopeId: "sb-a" });
-    const b = createHomeTerminal({ scopeId: "sb-b" });
-    // Each scope starts its own Terminal 1 rather than continuing a global count.
-    expect(a.name).toBe("Terminal 1");
-    expect(b.name).toBe("Terminal 1");
-  });
-
-  it("deleting a terminal in one scope leaves other scopes untouched", () => {
-    const a = createHomeTerminal({ scopeId: "sb-a" });
-    createHomeTerminal({ scopeId: "sb-b" });
-    expect(deleteHomeTerminal(a.id)).toBe(true);
-    expect(listHomeTerminals("sb-a")).toHaveLength(0);
-    expect(listHomeTerminals("sb-b")).toHaveLength(1);
+    expect(listHomeTerminals()).toHaveLength(2);
   });
 
   it("orders by position before createdAt", () => {

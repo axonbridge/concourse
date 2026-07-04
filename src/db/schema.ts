@@ -17,42 +17,13 @@ import {
   type TaskStatus,
 } from "~/shared/domain";
 import { type DiagramFormat } from "~/shared/diagram";
-import { LOCAL_SCOPE_ID, type SandboxKind, type SandboxGitAuthMode } from "~/shared/sandbox";
+import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
 
 export const groups = sqliteTable("groups", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   color: text("color").notNull(),
   createdAt: integer("created_at").notNull(),
-});
-
-// An isolated execution environment (its own container today; remote VM later).
-// Projects are scoped to exactly one sandbox, or to Local (sandboxId = null).
-// JSON-shaped columns (buildArgs/declaredPorts/env/portMap/remoteConfig) are
-// stored as TEXT and parsed at the service boundary. See docs/multi-sandbox-plan.md.
-export const sandboxes = sqliteTable("sandboxes", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  kind: text("kind").$type<SandboxKind>().notNull().default("remote-vm"),
-  color: text("color"),
-  // --- fully-independent runtime config (user-set) ---
-  imageTag: text("image_tag"),
-  dockerfilePath: text("dockerfile_path"),
-  buildArgs: text("build_args"), // JSON: Record<string,string>
-  gitAuthMode: text("git_auth_mode").$type<SandboxGitAuthMode>().notNull().default("none"),
-  // When true, the host's AI-CLI logins (Claude/Codex/Cursor/OpenCode) are pushed
-  // to the VM over the agent WS on connect — mirrors gitAuthMode's copy-host.
-  copyAgentCreds: integer("copy_agent_creds", { mode: "boolean" }).notNull().default(false),
-  declaredPorts: text("declared_ports"), // JSON: number[] (container ports)
-  env: text("env"), // JSON: Record<string,string>
-  // --- managed (MC-derived) ---
-  hostAgentPort: integer("host_agent_port"),
-  portMap: text("port_map"), // JSON: Record<containerPort, hostPort>
-  pairingToken: text("pairing_token"),
-  // --- remote-vm config ---
-  remoteConfig: text("remote_config"), // JSON
-  createdAt: integer("created_at").notNull(),
-  updatedAt: integer("updated_at").notNull(),
 });
 
 export const projects = sqliteTable(
@@ -65,11 +36,6 @@ export const projects = sqliteTable(
     iconColor: text("icon_color").notNull(),
     imagePath: text("image_path"),
     groupId: text("group_id").references(() => groups.id, { onDelete: "set null" }),
-    // Scope: null = Local (host). Otherwise the owning sandbox. Deleting a sandbox
-    // cascades its projects (and their tasks/worktrees) away — the "destroy
-    // everything" delete semantics. `path` is host-absolute for Local projects and
-    // an in-container workspace path for sandboxed projects.
-    sandboxId: text("sandbox_id").references(() => sandboxes.id, { onDelete: "cascade" }),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
     pinnedOrder: integer("pinned_order"),
     branch: text("branch").notNull().default(DEFAULT_BRANCH),
@@ -97,7 +63,6 @@ export const projects = sqliteTable(
   (t) => ({
     groupIdx: index("projects_group_idx").on(t.groupId),
     pinnedIdx: index("projects_pinned_idx").on(t.pinned),
-    sandboxIdx: index("projects_sandbox_idx").on(t.sandboxId),
   })
 );
 
@@ -310,13 +275,8 @@ export const groupsRelations = relations(groups, ({ many }) => ({
   projects: many(projects),
 }));
 
-export const sandboxesRelations = relations(sandboxes, ({ many }) => ({
-  projects: many(projects),
-}));
-
 export const projectsRelations = relations(projects, ({ one, many }) => ({
   group: one(groups, { fields: [projects.groupId], references: [groups.id] }),
-  sandbox: one(sandboxes, { fields: [projects.sandboxId], references: [sandboxes.id] }),
   tasks: many(tasks),
   worktrees: many(worktrees),
 }));
@@ -344,8 +304,6 @@ export const taskDiagramsRelations = relations(taskDiagrams, ({ one }) => ({
 
 export type Group = typeof groups.$inferSelect;
 export type NewGroup = typeof groups.$inferInsert;
-export type Sandbox = typeof sandboxes.$inferSelect;
-export type NewSandbox = typeof sandboxes.$inferInsert;
 export type Project = typeof projects.$inferSelect;
 export type NewProject = typeof projects.$inferInsert;
 export type Worktree = typeof worktrees.$inferSelect;

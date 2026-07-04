@@ -26,13 +26,11 @@ export const gitKeys = {
 export const gitStatusQueryOptions = (
   projectId: string,
   worktreeId?: string | null,
-  opts: { enabled?: boolean; sandboxRepoPath?: string } = {},
+  opts: { enabled?: boolean } = {},
 ) =>
   queryOptions({
     queryKey: gitKeys.status(projectId, worktreeId),
-    // Routes to the in-container repo (remoteGit) when sandboxRepoPath is given
-    // AND the Terminal runtime is Docker; host HTTP API otherwise.
-    queryFn: () => fetchGitStatus(projectId, worktreeId, opts.sandboxRepoPath),
+    queryFn: () => fetchGitStatus(projectId, worktreeId),
     enabled: opts.enabled ?? true,
     placeholderData: keepPreviousData,
     refetchInterval: GIT_STATUS_REFETCH_INTERVAL_MS,
@@ -57,20 +55,20 @@ export const gitDiffQueryOptions = (
   worktreeId: string | null | undefined,
   file: string | null,
   staged: boolean,
-  opts: { enabled?: boolean; sandboxRepoPath?: string } = {},
+  opts: { enabled?: boolean } = {},
 ) =>
   queryOptions({
     queryKey: file
       ? gitKeys.diff(projectId, worktreeId, file, staged)
       : (["projects", projectId, "worktrees", worktreeId || MAIN_WORKTREE_ID, "git", "diff", "__none__"] as const),
-    queryFn: () => fetchGitDiff(projectId, file!, staged, worktreeId, opts.sandboxRepoPath),
+    queryFn: () => fetchGitDiff(projectId, file!, staged, worktreeId),
     enabled: !!file && (opts.enabled ?? true),
   });
 
 export const useGitStatus = (
   projectId: string,
   worktreeId?: string | null,
-  opts: { enabled?: boolean; sandboxRepoPath?: string } = {},
+  opts: { enabled?: boolean } = {},
 ) => useQuery(gitStatusQueryOptions(projectId, worktreeId, opts));
 
 export const useGitBranches = (
@@ -84,7 +82,7 @@ export const useGitDiff = (
   worktreeId: string | null | undefined,
   file: string | null,
   staged: boolean,
-  opts: { enabled?: boolean; sandboxRepoPath?: string } = {},
+  opts: { enabled?: boolean } = {},
 ) => useQuery(gitDiffQueryOptions(projectId, worktreeId, file, staged, opts));
 
 function useInvalidateGit(projectId: string, worktreeId?: string | null) {

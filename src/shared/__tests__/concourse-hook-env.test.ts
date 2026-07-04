@@ -2,24 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   buildConcourseApiUrl,
   buildLocalConcourseApiUrl,
-  buildSandboxConcourseApiUrl,
   buildAgentLocalHookApiUrl,
-  buildSandboxHookRelayUrl,
   buildSyntheticHookUrl,
   hookEndpointSlug,
-  SANDBOX_HOOK_API_HOST,
   LOCAL_HOOK_API_HOST,
 } from "../concourse-hook-env";
 
 describe("buildConcourseApiUrl — host parameterization", () => {
   it("builds a loopback URL for the Electron host", () => {
     expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, 8080)).toBe("http://127.0.0.1:8080");
-  });
-
-  it("builds a host.docker.internal URL for the sandbox container", () => {
-    expect(buildConcourseApiUrl(SANDBOX_HOOK_API_HOST, 9333)).toBe(
-      "http://host.docker.internal:9333",
-    );
   });
 
   it("rejects hosts outside the allow-list", () => {
@@ -43,20 +34,10 @@ describe("host-specific convenience builders", () => {
     expect(buildLocalConcourseApiUrl(0)).toBeNull();
   });
 
-  it("buildSandboxConcourseApiUrl targets host.docker.internal", () => {
-    expect(buildSandboxConcourseApiUrl(9333)).toBe("http://host.docker.internal:9333");
-    expect(buildSandboxConcourseApiUrl(0)).toBeNull();
-  });
-
   it("buildAgentLocalHookApiUrl targets loopback agent HTTP", () => {
     expect(buildAgentLocalHookApiUrl(9333)).toBe("http://127.0.0.1:9333");
   });
 
-  it("buildSandboxHookRelayUrl targets host MC hook API", () => {
-    expect(buildSandboxHookRelayUrl(8080, "claude", "task-1", "Stop")).toBe(
-      "http://127.0.0.1:8080/api/hooks/claude?taskId=task-1&hookEvent=Stop",
-    );
-  });
 });
 
 describe("buildSyntheticHookUrl — accepts both hosts", () => {
@@ -67,15 +48,6 @@ describe("buildSyntheticHookUrl — accepts both hosts", () => {
       "task-1",
     );
     expect(url).toBe("http://127.0.0.1:8080/api/hooks/claude?taskId=task-1");
-  });
-
-  it("accepts a host.docker.internal base (sandbox)", () => {
-    const url = buildSyntheticHookUrl(
-      { apiUrl: "http://host.docker.internal:9333", token: "t" },
-      "codex",
-      "task-2",
-    );
-    expect(url).toBe("http://host.docker.internal:9333/api/hooks/codex?taskId=task-2");
   });
 
   it("rejects non-http, port-less, and off-allow-list hosts", () => {

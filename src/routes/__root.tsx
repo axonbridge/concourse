@@ -29,9 +29,7 @@ import { ProjectPicker } from "~/components/views/ProjectPicker";
 import { ProjectBar } from "~/components/views/ProjectBar";
 import { AddProjectProvider } from "~/lib/add-project-store";
 import { HeaderActionsProvider, HeaderActionsSlot } from "~/components/ui/HeaderActionsSlot";
-import { apiTokenQueryOptions, useSettings, useScopedProjects, useSandboxes } from "~/queries";
-import { SandboxResumingOverlay } from "~/components/views/SandboxResumingOverlay";
-import { ScopeDropdown } from "~/components/views/ScopeDropdown";
+import { apiTokenQueryOptions, useSettings, useProjects } from "~/queries";
 import { UpdateAvailableButton } from "~/components/ui/UpdateAvailableButton";
 import {
   ACCENT_CACHE_KEY,
@@ -254,15 +252,7 @@ function Shell() {
   }, [router]);
   const { theme } = useTheme();
   const { data: settings } = useSettings();
-  const { data: projects } = useScopedProjects();
-  // While the active sandbox's remote VM is resuming, the workspace isn't usable
-  // yet: cover the route with a spinner and disable project navigation.
-  const { data: sandboxState } = useSandboxes();
-  const activeSandbox =
-    sandboxState?.enabled
-      ? sandboxState.sandboxes.find((s) => s.id === sandboxState.activeScopeId) ?? null
-      : null;
-  const activeResuming = activeSandbox?.remoteStatus === "resuming";
+  const { data: projects } = useProjects();
   const { activeFor, close, deselect, setPtyId } = useTerminals();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const userTerminals = useUserTerminals();
@@ -352,10 +342,10 @@ function Shell() {
   const crumbs: Crumb[] = settingsOpen
     ? [{ label: "Settings" }]
     : projectMatch
-    ? [{ label: "Project", node: <ProjectPicker projectId={projectMatch[1]} disabled={activeResuming} /> }]
+    ? [{ label: "Project", node: <ProjectPicker projectId={projectMatch[1]} /> }]
       : activePanel === "usage"
         ? [{ label: "Usage" }]
-      : [{ label: "Project", node: <ProjectPicker disabled={activeResuming} /> }];
+      : [{ label: "Project", node: <ProjectPicker /> }];
 
   const closePanel = () => setActivePanel(null);
 
@@ -479,8 +469,6 @@ function Shell() {
         return;
       }
       if (!e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
-        // Pinned-project nav is disabled while the active sandbox resumes.
-        if (activeResuming) return;
         const pinned = getPinnedProjects(projects ?? []);
         const idx = Number(e.key) - 1;
         const target = pinned[idx];
@@ -494,7 +482,7 @@ function Shell() {
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [activeResuming, createTerminal, cycleNext, cyclePrev, projects, router]);
+  }, [createTerminal, cycleNext, cyclePrev, projects, router]);
 
   // Cmd/Ctrl+W is intercepted in the Electron main process (otherwise the
   // default app menu's "Close Window" item closes the BrowserWindow before any
@@ -529,13 +517,7 @@ function Shell() {
         <TopBar
           crumbs={crumbs}
           onHome={goHome}
-          centerActions={
-            <>
-              {/* Sandbox switcher sits to the right of the selected project. */}
-              <ScopeDropdown />
-              <HeaderActionsSlot />
-            </>
-          }
+          centerActions={<HeaderActionsSlot />}
           leadingInset={topBarLeadingInset}
           right={
             <>
@@ -569,7 +551,7 @@ function Shell() {
           }}
         >
           <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
-            <ProjectBar disabled={activeResuming} />
+            <ProjectBar />
             <div
               style={{
                 position: "relative",
@@ -585,7 +567,6 @@ function Shell() {
               }}
             >
               <Outlet />
-              {activeResuming && activeSandbox && <SandboxResumingOverlay name={activeSandbox.name} />}
             </div>
             {projectMatch && (
               <TerminalPanel

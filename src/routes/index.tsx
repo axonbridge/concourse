@@ -29,7 +29,7 @@ import { useUserTerminals } from "~/lib/user-terminal-store";
 import {
   queryKeys,
   useGroups,
-  useScopedProjects,
+  useProjects,
   useSettings,
 } from "~/queries";
 import type { ProjectWithCounts } from "~/shared/projects";
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/")({
 function ConcoursePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const projectsQuery = useScopedProjects();
+  const projectsQuery = useProjects();
   const groupsQuery = useGroups();
   const projects = projectsQuery.data ?? [];
   const groups = groupsQuery.data ?? [];

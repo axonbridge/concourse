@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FitAddon as XFitAddon } from "@xterm/addon-fit";
 import { useQueryClient } from "@tanstack/react-query";
 import { Btn } from "~/components/ui/Btn";
@@ -15,9 +15,7 @@ import {
   type VoicePasteToFocusedSessionDetail,
 } from "~/lib/voice-events";
 import { consumeIntentionalSessionClose } from "~/lib/intentional-session-close";
-import { isRemotePtyId } from "~/lib/pty-id";
 import { resolveTerminalAgent } from "~/shared/ai-providers";
-import { isDockerSandboxRuntime } from "~/lib/sandbox-runtime";
 import {
   attachTerminalKeyHandler,
   terminalExitTaskStatus,
@@ -32,9 +30,8 @@ import {
   watchTerminalColorScheme,
 } from "~/lib/terminal-options";
 import { useTerminalZoom, useTerminalPaneZoomShortcuts } from "~/lib/use-terminal-zoom";
-import { SandboxCloneOfferBanner } from "~/components/views/SandboxCloneOfferBanner";
 import { TerminalZoomControls } from "~/components/views/TerminalZoomControls";
-import { ApiError, api, resolveApiToken } from "~/lib/api";
+import { api, resolveApiToken } from "~/lib/api";
 import {
   agentUsesPersistedSession,
   buildFreshAgentLaunchCommand,
@@ -62,7 +59,6 @@ import {
 import { queryKeys, useTasks } from "~/queries";
 import type { Project, Task } from "~/db/schema";
 import { normalizePtySize } from "~/shared/pty-size";
-import { sandboxWorkspacePath, workspaceSlug } from "~/shared/sandbox-workspace";
 import { AGENT_REGISTRY } from "~/shared/agents";
 import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
 import { MAIN_WORKTREE_ID } from "~/shared/worktrees";
@@ -89,11 +85,7 @@ export type TerminalDescriptor = {
   awaitingCreate?: boolean;
 };
 
-/** The session pane's cached xterm surface; carries the sandbox flag so the
- *  "sandbox" badge can be restored on reattach without re-detecting the runtime. */
-interface SessionTerminalSurface extends PaneTerminalSurface {
-  useSandbox: boolean;
-}
+type SessionTerminalSurface = PaneTerminalSurface;
 
 export function TerminalPane({
   project,
@@ -122,11 +114,6 @@ export function TerminalPane({
   const [liveStatus, setLiveStatus] = useState("");
   const [startError, setStartError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
-  const [isSandboxTerminal, setIsSandboxTerminal] = useState(false);
-  // When a sandbox project's repo isn't cloned into the container yet, offer to
-  // clone it (remote detected from the host project) instead of opening empty.
-  const [cloneOffer, setCloneOffer] = useState<{ remote: string; slug: string } | null>(null);
-  const [cloning, setCloning] = useState(false);
   const {
     level: zoomLevel,
     fontSize: terminalFontSize,
@@ -178,7 +165,6 @@ export function TerminalPane({
     // scrollback replay.
     const bindMount = (surface: SessionTerminalSurface) => {
       termSurfaceRef.current = surface.controls;
-      setIsSandboxTerminal(surface.useSandbox);
       surface.controls.setFontSize(terminalFontSize);
       const ro = new ResizeObserver(() => surface.fit());
       ro.observe(container);
@@ -206,15 +192,7 @@ export function TerminalPane({
       const { Terminal, FitAddon } = await prefetchTerminalModules();
       if (cancelled || !containerRef.current) return;
 
-      // Sandbox terminals talk to the remote agent via `remotePty`; host
-      // terminals use the local PTY.
-      // `remotePty` mirrors `pty`'s method shape, so only spawn differs below.
-      // Read the runtime setting fresh at terminal start; default to host.
-      const useSandbox = !!electron && (await isDockerSandboxRuntime(electron));
-      if (cancelled || !containerRef.current) return;
-      const ptyApi = electron ? (useSandbox ? electron.remotePty : electron.pty) : null;
-      const sandboxPathName = project.path.split("/").filter(Boolean).pop() ?? project.name;
-      const sandboxCwd = sandboxWorkspacePath(sandboxPathName);
+      const ptyApi = electron ? electron.pty : null;
 
       const cursorColor = meta?.color;
       // xterm renders into a surface-owned element so it survives unmounts and is
@@ -240,7 +218,6 @@ export function TerminalPane({
         id: surfaceId,
         el,
         buildKey,
-        useSandbox,
         ptyId: null,
         destroyed: false,
         controls: {
@@ -275,29 +252,6 @@ export function TerminalPane({
       let fallbackRunningPosted = false;
       let promptCaptureBuffer = "";
       let promptTitlePosted = false;
-      // Sandbox spawns are fire-and-forget over the WS; if the agent never acks
-      // (spawned/output/exit), the terminal would otherwise sit blank forever.
-      // Arm a watchdog on spawn and clear it on the first sign of life.
-      const SANDBOX_SPAWN_ACK_MS = 12_000;
-      let spawnAckTimer: ReturnType<typeof setTimeout> | null = null;
-      const clearSpawnAck = () => {
-        if (spawnAckTimer) {
-          clearTimeout(spawnAckTimer);
-          spawnAckTimer = null;
-        }
-      };
-      const armSpawnAck = (ptyId: string) => {
-        clearSpawnAck();
-        spawnAckTimer = setTimeout(() => {
-          spawnAckTimer = null;
-          if (surface.destroyed || activePtyId !== ptyId) return;
-          const hint =
-            "sandbox isn't responding — the agent never acknowledged the terminal. Check the sandbox is connected, then retry.";
-          setStartError(hint);
-          setLiveStatus(hint);
-          term.writeln(`\x1b[33m[${hint}]\x1b[0m`);
-        }, SANDBOX_SPAWN_ACK_MS);
-      };
       const stopWatchingColorScheme = watchTerminalColorScheme((colorScheme) => {
         term.options.theme = createTerminalTheme({ cursorColor, colorScheme });
       });
@@ -373,7 +327,7 @@ export function TerminalPane({
             try {
               await spawnAndWire(cmd, false);
             } catch (err) {
-              const message = remoteStartErrorMessage(err);
+              const message = startErrorMessage(err);
               clearActivePty();
               setStartError(message);
               setLiveStatus(message);
@@ -429,7 +383,6 @@ export function TerminalPane({
         subscriptions.push(
           ptyApi.onData((msg) => {
             if (activePtyId === msg.ptyId) {
-              clearSpawnAck(); // the agent is alive
               if (electronReplayPtyId === msg.ptyId) {
                 appendBoundedSequencedData(
                   electronReplayData,
@@ -451,7 +404,6 @@ export function TerminalPane({
           }),
           ptyApi.onExit((msg) => {
             if (activePtyId === msg.ptyId) {
-              clearSpawnAck();
               if (electronReplayPtyId === msg.ptyId) {
                 electronReplayExit = msg;
                 return;
@@ -460,23 +412,6 @@ export function TerminalPane({
               return;
             }
             pendingElectronExit.set(msg.ptyId, msg);
-          })
-        );
-      }
-
-      // Remote spawns fail asynchronously via spawnError (the agent rejected the
-      // spawn — e.g. the agent binary isn't installed in the image). Surface it so
-      // the terminal doesn't just sit blank.
-      if (electron && useSandbox) {
-        subscriptions.push(
-          electron.remotePty.onSpawnError((msg) => {
-            if (activePtyId !== msg.ptyId) return;
-            clearSpawnAck();
-            const hint = `sandbox spawn failed (${msg.code})${msg.message ? `: ${msg.message}` : ""}`;
-            clearActivePty();
-            setStartError(hint);
-            setLiveStatus(hint);
-            term.writeln(`\x1b[31m[${hint}]\x1b[0m`);
           })
         );
       }
@@ -609,22 +544,10 @@ export function TerminalPane({
       const spawnAndWire = async (command: string, isResume: boolean) => {
         if (!electron) return;
         const ptySize = normalizePtySize({ cols: term.cols, rows: term.rows });
-        const initialInput = !useSandbox && shouldInjectInitialInput(cliAgent, isResume)
+        const initialInput = shouldInjectInitialInput(cliAgent, isResume)
           ? takePendingInitialInput(descriptor.taskId)
           : undefined;
-        const { ptyId } = useSandbox
-          ? await electron.remotePty.spawn({
-              taskId: descriptor.taskId,
-              cwd: sandboxCwd, // in-container clone path (/workspace/<slug>)
-              command,
-              cols: ptySize.cols,
-              rows: ptySize.rows,
-              agent: cliAgent,
-              dangerouslySkipPermissions: descriptor.dangerouslySkipPermissions,
-              concourseTheme: getTerminalColorScheme(),
-              // mcEnv is injected by the main process for sandbox spawns.
-            })
-          : await electron.pty.spawn({
+        const { ptyId } = await electron.pty.spawn({
               taskId: descriptor.taskId,
               cwd: descriptor.cwd,
               command,
@@ -644,7 +567,6 @@ export function TerminalPane({
           if (ptyApi) await ptyApi.kill(ptyId).catch(() => undefined);
           return;
         }
-        if (useSandbox) armSpawnAck(ptyId); // surfaces a stuck/never-acked sandbox spawn
         if (wireNewElectronPty(ptyId)) onPtyReady(ptyId);
       };
 
@@ -652,68 +574,23 @@ export function TerminalPane({
         if (surface.destroyed) return;
         if (descriptor.awaitingCreate) return;
         setStartError(null);
-        setCloneOffer(null);
         try {
           fitTerminalSurface(term, fit);
 
           if (descriptor.ptyId) {
-            if (useSandbox && electron && !isRemotePtyId(descriptor.ptyId)) {
-              await electron.pty.kill(descriptor.ptyId).catch(() => undefined);
-            } else {
-              // Re-attach to a live PTY: subscribe BEFORE replay so any chunk
-              // emitted between the calls is queued, not lost.
-              let attached = false;
-              if (electron) {
-                attached = await wireExistingElectronPty(descriptor.ptyId);
-              }
-              if (attached) return;
+            // Re-attach to a live PTY: subscribe BEFORE replay so any chunk
+            // emitted between the calls is queued, not lost.
+            let attached = false;
+            if (electron) {
+              attached = await wireExistingElectronPty(descriptor.ptyId);
             }
-          }
-
-          // Clone-on-open: a sandbox project whose repo isn't cloned into the
-          // container yet gets a clone offer (remote detected from the host repo)
-          // instead of an empty terminal. No remote → fall through (empty dir).
-          if (useSandbox && electron) {
-            let repoPresent = true;
-            try {
-              await electron.remoteGit.status(sandboxCwd);
-            } catch {
-              repoPresent = false;
-            }
-            if (surface.destroyed) return;
-            if (!repoPresent) {
-              const remote = await electron.sandbox.detectRemote(project.path).catch(() => null);
-              if (surface.destroyed) return;
-              if (remote) {
-                // Auto-clone on launch: the repo isn't in the sandbox yet, so pull
-                // it in before spawning the agent. The manager provisions git auth
-                // (copy-host SSH keys) first, so private repos work. On failure we
-                // fall back to the manual banner so the user can retry/see why.
-                const slug = workspaceSlug(sandboxPathName);
-                setCloneOffer({ remote, slug });
-                setCloning(true);
-                setLiveStatus("Cloning the project into the sandbox…");
-                try {
-                  await electron.remoteGit.clone(remote, slug);
-                  if (surface.destroyed) return;
-                  setCloneOffer(null);
-                  setCloning(false);
-                  // Repo is present now — fall through to spawn the agent.
-                } catch (cloneErr) {
-                  if (surface.destroyed) return;
-                  setCloning(false);
-                  setStartError(cloneErr instanceof Error ? cloneErr.message : String(cloneErr));
-                  setLiveStatus("Couldn't clone automatically — use the banner to retry.");
-                  return;
-                }
-              }
-            }
+            if (attached) return;
           }
 
           const isResume = isAgentResumeCommand(cliAgent, descriptor.startCommand);
           await spawnAndWire(descriptor.startCommand, isResume);
         } catch (err: any) {
-          const message = remoteStartErrorMessage(err);
+          const message = startErrorMessage(err);
           clearActivePty();
           setStartError(message);
           setLiveStatus(message);
@@ -723,7 +600,6 @@ export function TerminalPane({
 
       surface.teardown = () => {
         cancelAnimationFrame(rafHandle);
-        clearSpawnAck();
         for (const off of subscriptions) off();
         stopWatchingColorScheme();
         detachLinks();
@@ -743,22 +619,6 @@ export function TerminalPane({
       detachMount?.();
     };
   }, [descriptor.taskId, descriptor.awaitingCreate, retryNonce]);
-
-  const confirmClone = useCallback(async () => {
-    const electron = getElectron();
-    if (!electron || !cloneOffer) return;
-    setCloning(true);
-    setStartError(null);
-    try {
-      await electron.remoteGit.clone(cloneOffer.remote, cloneOffer.slug);
-      setCloneOffer(null);
-      setRetryNonce((n) => n + 1); // re-run: repo now present → the agent spawns
-    } catch (e) {
-      setStartError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCloning(false);
-    }
-  }, [cloneOffer]);
 
   return (
     <div
@@ -818,13 +678,6 @@ export function TerminalPane({
           </Btn>
         </div>
       )}
-      {cloneOffer && (
-        <SandboxCloneOfferBanner
-          remote={cloneOffer.remote}
-          cloning={cloning}
-          onConfirm={() => void confirmClone()}
-        />
-      )}
       <div
         style={{
           display: "flex",
@@ -863,25 +716,6 @@ export function TerminalPane({
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {isSandboxTerminal && (
-            <span
-              title="This terminal runs inside the selected sandbox"
-              style={{
-                padding: "1px 7px",
-                borderRadius: 999,
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                color: "var(--accent)",
-                background: "var(--accent-faint, var(--accent-dim))",
-                border: "1px solid var(--accent-border)",
-                whiteSpace: "nowrap",
-                opacity: 0.85,
-                marginRight: 6,
-              }}
-            >
-              sandbox
-            </span>
-          )}
           <TerminalZoomControls
             level={zoomLevel}
             canZoomIn={canZoomIn}
@@ -942,20 +776,6 @@ export function TerminalPane({
   );
 }
 
-function remoteStartErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 401) {
-      return "Academy entitlement is required before hosted runtime can start.";
-    }
-    if (error.status === 402) {
-      return error.message || "Hosted compute limit reached. Open Academy billing to upgrade or wait for the usage window to reset.";
-    }
-    if (error.status === 503) {
-      return error.message || "Hosted remote runtime is temporarily disabled. Try again later or contact support.";
-    }
-    if (error.status === 429) {
-      return "Too many remote runtime starts. Wait a minute, then retry.";
-    }
-  }
+function startErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error || "unknown error");
 }

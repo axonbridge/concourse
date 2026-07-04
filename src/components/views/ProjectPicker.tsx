@@ -14,7 +14,7 @@ import type { TaskStatus } from "~/shared/domain";
 import { useServerEvents } from "~/lib/use-events";
 import { isEditableTarget, useHotkey } from "~/lib/use-hotkey";
 import { useUserTerminals } from "~/lib/user-terminal-store";
-import { queryKeys, useGroups, useProjects, useScopedProjects } from "~/queries";
+import { queryKeys, useGroups, useProjects } from "~/queries";
 import { getProjectActivity, isProjectActive, type ProjectWithCounts } from "~/shared/projects";
 
 function DotCount({ status, count, size }: { status: TaskStatus; count: number; size: number }) {
@@ -63,7 +63,7 @@ export function ProjectPicker({ projectId, disabled = false }: { projectId?: str
   const { hasRunningLaunchForProject } = useUserTerminals();
   const [open, setOpen] = useState(false);
   const { data: allProjects } = useProjects();
-  const { data: projects } = useScopedProjects();
+  const projects = allProjects;
   const { data: groups = [] } = useGroups();
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -127,7 +127,7 @@ export function ProjectPicker({ projectId, disabled = false }: { projectId?: str
     { preventDefault: false },
   );
 
-  // Force-close if the picker becomes disabled (e.g. the active sandbox starts resuming).
+  // Force-close if the picker becomes disabled.
   useEffect(() => {
     if (disabled) setOpen(false);
   }, [disabled]);

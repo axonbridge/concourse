@@ -186,8 +186,6 @@ export function createProject(input: {
   icon?: string;
   iconColor?: string;
   groupId?: string | null;
-  /** Scope to create the project in: a sandbox id, or null/undefined = Local. */
-  sandboxId?: string | null;
 }): Project {
   const localPath = validateWorkingDirectory(input.path ?? "");
 
@@ -204,8 +202,6 @@ export function createProject(input: {
     iconColor: input.iconColor || "#ff5a1f",
     imagePath: null,
     groupId: input.groupId ?? null,
-    // Inherits the scope the project was created in (Local when null/undefined).
-    sandboxId: input.sandboxId ?? null,
     pinned: false,
     pinnedOrder: null,
     branch,

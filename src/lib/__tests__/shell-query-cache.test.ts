@@ -40,7 +40,6 @@ function makeProject(overrides: Partial<ProjectWithCounts> = {}): ProjectWithCou
     iconColor: "#ffffff",
     imagePath: null,
     groupId: null,
-    sandboxId: null,
     pinned: true,
     pinnedOrder: 0,
     branch: "main",

@@ -25,7 +25,6 @@ import type {
   SelectedWorktreeByProject,
 } from "~/shared/ui-preferences";
 import type { TerminalZoomLevel } from "~/shared/terminal-zoom";
-import type { SandboxPublicView } from "~/shared/sandbox";
 import type { VoiceCommandAliases } from "~/shared/voice-command-aliases";
 import { pruneStoredSessionFinishNotifications } from "~/lib/session-notification-store";
 
@@ -226,7 +225,6 @@ export const api = {
     icon?: string;
     iconColor?: string;
     groupId?: string | null;
-    sandboxId?: string | null;
     /** Journey A: set up an empty folder as a Concourse workspace. */
     scaffoldWorkspace?: boolean;
   }) =>
@@ -258,31 +256,6 @@ export const api = {
     await req<void>(`/api/projects/${id}`, { method: "DELETE" });
     pruneStoredSessionFinishNotifications({ type: "project", projectId: id });
   },
-
-  // Sandboxes (isolated execution scopes). Desktop-only; on web this returns a
-  // disabled, empty state.
-  listSandboxes: () =>
-    req<{ sandboxes: SandboxPublicView[]; enabled: boolean; activeScopeId: string }>("/api/sandboxes"),
-  updateSandbox: (id: string, body: Record<string, unknown>) =>
-    req<{ sandbox: SandboxPublicView }>(`/api/sandboxes/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-  deleteSandbox: async (id: string) => {
-    await req<void>(`/api/sandboxes/${id}`, { method: "DELETE" });
-  },
-  revealSandboxApiKey: (id: string) =>
-    req<{ apiKey: string }>(`/api/sandboxes/${id}/api-key`),
-  setActiveScope: (scopeId: string) =>
-    req<{ activeScopeId: string }>("/api/sandboxes/active", {
-      method: "PUT",
-      body: JSON.stringify({ scopeId }),
-    }),
-  setSandboxesEnabled: (enabled: boolean) =>
-    req<{ enabled: boolean }>("/api/sandboxes/enabled", {
-      method: "PUT",
-      body: JSON.stringify({ enabled }),
-    }),
 
   listWorktrees: (projectId: string) =>
     req<{ worktrees: WorktreeInfo[] }>(`/api/projects/${projectId}/worktrees`),

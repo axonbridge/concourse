@@ -7,13 +7,12 @@ import {
   readCachedWorktreesEnabled,
   writeCachedWorktreesEnabled,
 } from "~/lib/worktrees-preference";
-import { queryKeys, useSandboxes, useSettings } from "~/queries";
+import { queryKeys, useSettings } from "~/queries";
 import { Field, SettingsSection, ToggleRow } from "./SettingsParts";
 
 export function BetaSettingsPage() {
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
-  const { data: scopes } = useSandboxes();
   const [worktreesEnabled, setWorktreesEnabledState] = useState(() =>
     hasCachedWorktreesPreference()
       ? readCachedWorktreesEnabled()
@@ -86,22 +85,6 @@ export function BetaSettingsPage() {
             description="Hold the push-to-talk hotkey (Settings → Keybindings) and speak to drive Concourse — switch projects, run, ship, open the diff, and start agents. Audio is transcribed locally. See Settings → Voice for the full command list."
             checked={settings?.voiceControlEnabled ?? false}
             onChange={setVoiceControlEnabled}
-            label="Enable"
-          />
-        </Field>
-      )}
-      {isElectron() && (
-        <Field label="Sandboxes">
-          <ToggleRow
-            title="Show sandbox switcher"
-            description="Enable the header scope dropdown so projects can run locally or in a selected sandbox."
-            checked={!!scopes?.enabled}
-            onChange={(enabled) => {
-              void (async () => {
-                await api.setSandboxesEnabled(enabled);
-                void queryClient.invalidateQueries({ queryKey: queryKeys.sandboxes });
-              })();
-            }}
             label="Enable"
           />
         </Field>

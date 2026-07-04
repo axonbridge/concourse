@@ -6,7 +6,6 @@ import { routerWithQueryClient } from "@tanstack/react-router-with-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CSSProperties } from "react";
 import { installShellQueryCache } from "~/lib/shell-query-cache";
-import { sandboxesQueryOptions } from "~/queries";
 import { routeTree } from "./routeTree.gen";
 
 function AppErrorFallback({ reset }: ErrorComponentProps) {
@@ -92,7 +91,6 @@ export function getRouter() {
     },
   });
   installShellQueryCache(queryClient);
-  void queryClient.prefetchQuery(sandboxesQueryOptions());
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,

@@ -13,7 +13,7 @@ import { isClientDomainId } from "~/shared/client-id";
 import { projectExists } from "../repositories/projects.repo";
 import { newId } from "./_ids";
 import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
-import { normalizeProjectScopeId } from "./sandbox-scope";
+import { normalizeScopeId } from "~/shared/sandbox";
 
 const DEFAULT_TERMINAL_NAME_RE = /^Terminal (\d+)$/;
 
@@ -22,7 +22,7 @@ export function nextDefaultTerminalName(
   projectId: string,
   scopeId: string | null = LOCAL_SCOPE_ID,
 ): string {
-  const normalizedScopeId = normalizeProjectScopeId(projectId, scopeId);
+  const normalizedScopeId = normalizeScopeId(scopeId);
   const usedNumbers = new Set<number>();
   for (const terminal of findVisibleUserTerminalsByProject(projectId, normalizedScopeId)) {
     const match = DEFAULT_TERMINAL_NAME_RE.exec(terminal.name);
@@ -37,7 +37,7 @@ export function listUserTerminals(
   projectId: string,
   scopeId: string | null = LOCAL_SCOPE_ID,
 ): UserTerminal[] {
-  const normalizedScopeId = normalizeProjectScopeId(projectId, scopeId);
+  const normalizedScopeId = normalizeScopeId(scopeId);
   // Ephemeral terminals (those with a startCommand) are seeded into the UI
   // by the project's launchCommands and are not meant to persist across reloads.
   deleteEphemeralUserTerminalsByProject(projectId, normalizedScopeId);
@@ -49,7 +49,7 @@ export function listUserTerminalsForWorktree(
   worktreeId: string | null,
   scopeId: string | null = LOCAL_SCOPE_ID,
 ): UserTerminal[] {
-  const normalizedScopeId = normalizeProjectScopeId(projectId, scopeId);
+  const normalizedScopeId = normalizeScopeId(scopeId);
   deleteEphemeralUserTerminalsByProjectAndWorktree(projectId, worktreeId, normalizedScopeId);
   return findVisibleUserTerminalsByProjectAndWorktree(projectId, worktreeId, normalizedScopeId);
 }
@@ -64,7 +64,7 @@ export function createUserTerminal(input: {
   startCommand?: string | null;
 }): UserTerminal {
   if (!projectExists(input.projectId)) throw new Error("Project does not exist");
-  const scopeId = normalizeProjectScopeId(input.projectId, input.scopeId);
+  const scopeId = normalizeScopeId(input.scopeId);
 
   const existing =
     input.worktreeId === undefined

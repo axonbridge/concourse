@@ -41,7 +41,6 @@
     "prepackage": "node scripts/require-node-24.mjs",
     "predist": "node scripts/require-node-24.mjs",
     "prerelease:local": "node scripts/require-node-24.mjs",
-    "preremote-vm": "node scripts/require-node-24.mjs",
     "pregen:theme-images": "node scripts/require-node-24.mjs",
     "dev": "corepack pnpm@11.1.2 dev:electron",
     "dev:electron": "node scripts/dev-local.mjs electron",
@@ -71,7 +70,6 @@
     "native:electron": "pnpm native:electron:sqlite && pnpm native:electron:pty",
     "rebuild": "pnpm native:electron",
     "release:local": "node scripts/release-local.mjs",
-    "remote-vm": "pnpm native:node && node scripts/remote-vm.mjs",
     "gen:theme-images": "node scripts/gen-theme-images.mjs",
     "postinstall": "pnpm native:electron || true"
   },
@@ -166,7 +164,6 @@
       "!dist/win*/**/*",
       "!dist/linux*/**/*",
       "dist-electron/**/*",
-      "scripts/remote-vm.mjs",
       "package.json"
     ],
     "directories": {

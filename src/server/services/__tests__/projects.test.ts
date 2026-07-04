@@ -8,7 +8,6 @@ process.env.MC_USER_DATA_DIR = tmpRoot;
 const {
   listProjects,
   createProject,
-  getProject,
   togglePin,
   reorderPinnedProjects,
   deleteProject,
@@ -16,7 +15,7 @@ const {
   getProjectPathStatus,
 } = await import("../projects");
 const { getDb } = await import("~/db/client");
-const { projects, tasks, groups, appSettings, worktrees, sandboxes } = await import("~/db/schema");
+const { projects, tasks, groups, appSettings, worktrees } = await import("~/db/schema");
 
 describe("projects service", () => {
   beforeEach(() => {
@@ -105,43 +104,6 @@ describe("projects service", () => {
     const repinned = togglePin(b.id);
     expect(repinned?.pinned).toBe(true);
     expect(repinned?.pinnedOrder).toBe(1);
-  });
-
-  it("reorders pinned projects across legacy sandbox-scoped rows", () => {
-    const db = getDb();
-    const sandboxId = "sb-test";
-    const now = Date.now();
-    db.insert(sandboxes)
-      .values({
-        id: sandboxId,
-        name: "Test sandbox",
-        kind: "remote-vm",
-        color: null,
-        imageTag: null,
-        dockerfilePath: null,
-        buildArgs: null,
-        gitAuthMode: "none",
-        declaredPorts: null,
-        env: null,
-        hostAgentPort: null,
-        portMap: null,
-        pairingToken: null,
-        remoteConfig: null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
-    const dirLocal = fs.mkdtempSync(path.join(os.tmpdir(), "mc-proj-local-"));
-    const dirSandbox = fs.mkdtempSync(path.join(os.tmpdir(), "mc-proj-sandbox-"));
-    const local = createProject({ name: "local", path: dirLocal, sandboxId: null });
-    const sandbox = createProject({ name: "sandbox", path: dirSandbox, sandboxId });
-    togglePin(local.id);
-    togglePin(sandbox.id);
-    expect(getProject(local.id)?.pinnedOrder).toBe(0);
-    expect(getProject(sandbox.id)?.pinnedOrder).toBe(1);
-    expect(() => reorderPinnedProjects([sandbox.id, local.id])).not.toThrow();
-    expect(getProject(sandbox.id)?.pinnedOrder).toBe(0);
-    expect(getProject(local.id)?.pinnedOrder).toBe(1);
   });
 
   it("persists pinned reorder across reads", () => {

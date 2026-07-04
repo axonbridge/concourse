@@ -10,7 +10,6 @@ import {
 } from "react";
 import { getElectron } from "./electron";
 import { markIntentionalSessionClose } from "./intentional-session-close";
-import { isRemotePtyId } from "./pty-id";
 import { terminalSurfaceCache } from "./terminal-surface-cache";
 import { AGENT_REGISTRY } from "~/shared/agents";
 import {
@@ -130,78 +129,9 @@ function baseCommandForTask(task: Task): string {
 }
 
 const ACTIVE_BY_PROJECT_KEY = "mc.terminalActiveByProject";
-const REMOTE_PTY_BY_TASK_KEY = "mc.remotePtyByTask";
 
 function terminalSurfaceIdForProject(project: ScopedProject, taskId: string): string {
   return `${taskId}:${project.activeWorktreeId ?? MAIN_WORKTREE_ID}:${project.activeRuntimeScopeId ?? LOCAL_SCOPE_ID}`;
-}
-
-function loadRemotePtyByTask(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(REMOTE_PTY_BY_TASK_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const out: Record<string, string> = {};
-    for (const [taskId, ptyId] of Object.entries(parsed)) {
-      if (typeof ptyId === "string" && isRemotePtyId(ptyId)) out[taskId] = ptyId;
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-function saveRemotePtyByTask(next: Record<string, string>): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(REMOTE_PTY_BY_TASK_KEY, JSON.stringify(next));
-  } catch {
-    /* quota or disabled */
-  }
-}
-
-export function remotePtyIdForTask(taskId: string): string | null {
-  const ptyId = loadRemotePtyByTask()[taskId];
-  return isRemotePtyId(ptyId) ? ptyId : null;
-}
-
-function remotePtyStorageKey(scopeKey: string, taskId: string): string {
-  return `${scopeKey}#${taskId}`;
-}
-
-function remotePtyIdForSession(project: ScopedProject, taskId: string): string | null {
-  const current = loadRemotePtyByTask();
-  const scoped = current[remotePtyStorageKey(scopeKeyForProject(project), taskId)];
-  if (isRemotePtyId(scoped)) return scoped;
-  return remotePtyIdForTask(taskId);
-}
-
-function rememberRemotePtyForTask(storageKey: string, ptyId: string | null): void {
-  const current = loadRemotePtyByTask();
-  if (ptyId && isRemotePtyId(ptyId)) current[storageKey] = ptyId;
-  else delete current[storageKey];
-  saveRemotePtyByTask(current);
-}
-
-function adoptRemotePtyTaskId(fromTaskId: string, toTaskId: string): void {
-  const current = loadRemotePtyByTask();
-  let changed = false;
-  for (const [key, ptyId] of Object.entries(current)) {
-    if (!isRemotePtyId(ptyId)) continue;
-    if (key === fromTaskId) {
-      delete current[key];
-      current[toTaskId] = ptyId;
-      changed = true;
-      continue;
-    }
-    if (key.endsWith(`#${fromTaskId}`)) {
-      delete current[key];
-      current[`${key.slice(0, -fromTaskId.length)}${toTaskId}`] = ptyId;
-      changed = true;
-    }
-  }
-  if (changed) saveRemotePtyByTask(current);
 }
 
 export function nextActiveTaskId(
@@ -293,23 +223,11 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
     }
   }, [activeByProject]);
 
-  useEffect(() => {
-    for (const session of sessions) {
-      if (isRemotePtyId(session.ptyId)) {
-        rememberRemotePtyForTask(
-          remotePtyStorageKey(scopeKeyForProject(session.project), session.taskId),
-          session.ptyId,
-        );
-      }
-    }
-  }, [sessions]);
-
   const killPty = async (id: string | null) => {
     if (!id) return;
     const electron = getElectron();
     if (electron) {
-      const ptyApi = isRemotePtyId(id) ? electron.remotePty : electron.pty;
-      await ptyApi.kill(id).catch(() => undefined);
+      await electron.pty.kill(id).catch(() => undefined);
     }
   };
 
@@ -333,7 +251,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
         }
         const next: OpenTerminal = {
           taskId: task.id,
-          ptyId: remotePtyIdForSession(project, task.id),
+          ptyId: null,
           startCommand: commandForTask(task),
           dangerouslySkipPermissions: !!task.claudeSkipPermissions,
           cwd: project.path,
@@ -365,7 +283,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
               ? {
                   ...p,
                   task,
-                  ptyId: opts?.ptyId ?? p.ptyId ?? remotePtyIdForSession(project, task.id),
+                  ptyId: opts?.ptyId ?? p.ptyId ?? null,
                   startCommand: commandForTask(task),
                   dangerouslySkipPermissions: !!task.claudeSkipPermissions,
                   awaitingCreate: false,
@@ -377,7 +295,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
           ...prev,
           {
             taskId: task.id,
-            ptyId: opts?.ptyId ?? remotePtyIdForSession(project, task.id),
+            ptyId: opts?.ptyId ?? null,
             startCommand: commandForTask(task),
             dangerouslySkipPermissions: !!task.claudeSkipPermissions,
             cwd: project.path,
@@ -403,7 +321,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
         ...prev,
         {
           taskId: task.id,
-          ptyId: remotePtyIdForSession(project, task.id),
+          ptyId: null,
           startCommand: commandForTask(task),
           dangerouslySkipPermissions: !!task.claudeSkipPermissions,
           cwd: project.path,
@@ -441,7 +359,6 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const adoptTaskId = useCallback((fromTaskId: string, task: Task) => {
-    adoptRemotePtyTaskId(fromTaskId, task.id);
     // The pane re-keys to the persisted id and remounts under it; dispose the
     // provisional-id surface so it doesn't leak (the new pane re-attaches to the
     // same PTY via replay).
@@ -481,10 +398,6 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       const target = prev.find((p) => p.taskId === taskId);
       if (target) {
         terminalSurfaceCache.destroy(terminalSurfaceIdForProject(target.project, target.taskId));
-        rememberRemotePtyForTask(
-          remotePtyStorageKey(scopeKeyForProject(target.project), target.taskId),
-          null,
-        );
         void killPty(target.ptyId);
       }
       return prev.filter((p) => p.taskId !== taskId);
@@ -546,10 +459,6 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       for (const t of prev) {
         if (t.project.id === projectId) {
           markIntentionalSessionClose(t.taskId);
-          rememberRemotePtyForTask(
-            remotePtyStorageKey(scopeKeyForProject(t.project), t.taskId),
-            null,
-          );
           terminalSurfaceCache.destroy(terminalSurfaceIdForProject(t.project, t.taskId));
           void killPty(t.ptyId);
         } else remaining.push(t);
@@ -582,7 +491,6 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
         if (p.taskId !== taskId) return p;
         const sessionScopeKey = scopeKeyForProject(p.project);
         if (scopeKey && sessionScopeKey !== scopeKey) return p;
-        rememberRemotePtyForTask(remotePtyStorageKey(sessionScopeKey, taskId), ptyId);
         if (p.ptyId === ptyId) return p;
         changed = true;
         return { ...p, ptyId };
@@ -610,8 +518,7 @@ export function TerminalProvider({ children }: { children: ReactNode }) {
       const target = sessions.find((p) => p.taskId === taskId);
       if (!target?.ptyId) return;
       if (electron) {
-        const ptyApi = isRemotePtyId(target.ptyId) ? electron.remotePty : electron.pty;
-        await ptyApi.write(target.ptyId, command + "\r");
+        await electron.pty.write(target.ptyId, command + "\r");
       }
     },
     [sessions]

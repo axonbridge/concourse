@@ -2,11 +2,6 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { Group } from "~/db/schema";
 import type { AppSettings } from "~/lib/api";
 import type { ProjectWithCounts } from "~/shared/projects";
-import { filterProjectsByScope, type SandboxPublicView, type SandboxScopeState } from "~/shared/sandbox";
-
-export type CachedSandboxListState = SandboxScopeState & {
-  sandboxes: SandboxPublicView[];
-};
 
 export const SHELL_QUERY_CACHE_VERSION = 1;
 
@@ -14,7 +9,6 @@ export const SHELL_QUERY_CACHE_KEYS = {
   projects: "mc:shell-cache:projects:v1",
   groups: "mc:shell-cache:groups:v1",
   settings: "mc:shell-cache:settings:v1",
-  sandboxes: "mc:shell-cache:sandboxes:v1",
 } as const;
 
 type CacheEnvelope<T> = {
@@ -64,15 +58,11 @@ function hasPinnedProjects(projects: ProjectWithCounts[]): boolean {
   return projects.some((project) => project.pinned);
 }
 
-function syncPinnedProjectDocumentState(projects: ProjectWithCounts[], sandboxState?: SandboxScopeState): void {
+function syncPinnedProjectDocumentState(projects: ProjectWithCounts[]): void {
   if (typeof document === "undefined") return;
-  const visible =
-    sandboxState === undefined
-      ? projects
-      : filterProjectsByScope(projects, sandboxState);
   document.documentElement.toggleAttribute(
     "data-has-pinned-projects",
-    hasPinnedProjects(visible),
+    hasPinnedProjects(projects),
   );
 }
 
@@ -91,20 +81,9 @@ export function readCachedSettings(): AppSettings | undefined {
   return isObject(data) ? (data as AppSettings) : undefined;
 }
 
-export function readCachedSandboxes(): CachedSandboxListState | undefined {
-  const data = readCache<unknown>(SHELL_QUERY_CACHE_KEYS.sandboxes);
-  if (!isObject(data)) return undefined;
-  if (typeof data.enabled !== "boolean" || typeof data.activeScopeId !== "string") return undefined;
-  if (!Array.isArray(data.sandboxes)) return undefined;
-  return data as CachedSandboxListState;
-}
-
-export function writeCachedProjects(
-  projects: ProjectWithCounts[],
-  sandboxState?: SandboxScopeState,
-): void {
+export function writeCachedProjects(projects: ProjectWithCounts[]): void {
   writeCache(SHELL_QUERY_CACHE_KEYS.projects, projects);
-  syncPinnedProjectDocumentState(projects, sandboxState);
+  syncPinnedProjectDocumentState(projects);
 }
 
 export function writeCachedGroups(groups: Group[]): void {
@@ -113,10 +92,6 @@ export function writeCachedGroups(groups: Group[]): void {
 
 export function writeCachedSettings(settings: AppSettings): void {
   writeCache(SHELL_QUERY_CACHE_KEYS.settings, settings);
-}
-
-export function writeCachedSandboxes(state: CachedSandboxListState): void {
-  writeCache(SHELL_QUERY_CACHE_KEYS.sandboxes, state);
 }
 
 export function installShellQueryCache(queryClient: QueryClient): void {
@@ -131,22 +106,7 @@ export function installShellQueryCache(queryClient: QueryClient): void {
     const { data } = query.state;
 
     if (isExactQueryKey(queryKey, "projects") && Array.isArray(data)) {
-      const sandboxState = queryClient.getQueryData<SandboxScopeState>(["sandboxes"]);
-      writeCachedProjects(data as ProjectWithCounts[], sandboxState);
-      return;
-    }
-
-    if (isExactQueryKey(queryKey, "sandboxes") && isObject(data)) {
-      const state = data as CachedSandboxListState;
-      if (
-        typeof state.enabled === "boolean" &&
-        typeof state.activeScopeId === "string" &&
-        Array.isArray(state.sandboxes)
-      ) {
-        writeCachedSandboxes(state);
-        const projects = queryClient.getQueryData<ProjectWithCounts[]>(["projects"]);
-        if (Array.isArray(projects)) syncPinnedProjectDocumentState(projects, state);
-      }
+      writeCachedProjects(data as ProjectWithCounts[]);
       return;
     }
 

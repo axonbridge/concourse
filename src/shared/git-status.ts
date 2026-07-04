@@ -1,8 +1,6 @@
-// Runtime-agnostic git status/diff result types + pure parsers, shared by the
-// server git service (src/server/services/git.ts) and the remote sandbox
-// agent's git RPC. Single source of truth for the wire contract the host's
-// GitDiffView consumes, whether it reads from the local HTTP API or from a
-// remote VM over WebSocket RPC.
+// Git status/diff result types + pure parsers for the server git service
+// (src/server/services/git.ts). Single source of truth for the wire contract
+// the host's GitDiffView consumes.
 
 export type GitFileStatus =
   | "added"

@@ -21,8 +21,6 @@ import {
   replenishUserTerminalWarmSlot,
   takeUserTerminalWarmSlot,
 } from "./user-terminal-warm-pool";
-import { isRemotePtyId } from "./pty-id";
-import { isDockerSandboxRuntime } from "./sandbox-runtime";
 import { terminalSurfaceCache } from "./terminal-surface-cache";
 import type { UserTerminal } from "~/db/schema";
 import { HOME_TERMINAL_PROJECT_ID } from "~/shared/home-terminal";
@@ -378,11 +376,7 @@ export function UserTerminalProvider({ children }: { children: ReactNode }) {
       const cwd = opts?.cwd ?? targetProject.path;
       const startCommand = opts?.startCommand ?? null;
       const electron = getElectron();
-      const canUseWarmSlot =
-        !startCommand &&
-        !!cwd &&
-        !!electron &&
-        !(await isDockerSandboxRuntime(electron));
+      const canUseWarmSlot = !startCommand && !!cwd && !!electron;
 
       if (canUseWarmSlot) {
         const warmSlot = takeUserTerminalWarmSlot(
@@ -500,8 +494,7 @@ export function UserTerminalProvider({ children }: { children: ReactNode }) {
       }
 
       if (killedPtyId && electron) {
-        const ptyApi = isRemotePtyId(killedPtyId) ? electron.remotePty : electron.pty;
-        await ptyApi.kill(killedPtyId).catch(() => undefined);
+        await electron.pty.kill(killedPtyId).catch(() => undefined);
       }
       try {
         if (isHomeScopeKey(ownerProjectId)) await api.deleteHomeTerminal(id);

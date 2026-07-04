@@ -5,7 +5,6 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as schema from "./schema";
 import { resolveElectronBetterSqlite3NativeBinding } from "./better-sqlite3-native-binding";
-import { migrateMultiSandbox } from "./migrate-multi-sandbox";
 import { DEFAULT_BRANCH, DEFAULT_TASK_STATUS } from "~/shared/domain";
 import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
 
@@ -50,9 +49,6 @@ export function getDb() {
     runMigrations(_sqlite);
     ensureSchema(_sqlite);
   }
-  // One-time parity migration to the multi-sandbox model (idempotent; reads the
-  // legacy sandbox.* app_settings). Runs after schema is guaranteed present.
-  migrateMultiSandbox(_sqlite);
   // PTYs are owned by the Electron process and are not restored across app
   // restarts. Any task left as running after a restart is stale.
   _sqlite
@@ -284,7 +280,7 @@ function rebuildProjectsWithoutStaleUniques(
   }
 }
 
-export function ensureProjectSandboxIndex(sqlite: Database.Database): void {
+export function ensureProjectIndexes(sqlite: Database.Database): void {
   const uniqueIndexes = uniqueProjectIndexesToRepair(sqlite);
   const uniqueIndexNames = new Set(uniqueIndexes.map((idx) => idx.name));
   if (uniqueIndexes.some((idx) => idx.name.startsWith("sqlite_autoindex_"))) {
@@ -297,7 +293,6 @@ export function ensureProjectSandboxIndex(sqlite: Database.Database): void {
 
   sqlite.exec(`CREATE INDEX IF NOT EXISTS projects_group_idx ON projects(group_id);`);
   sqlite.exec(`CREATE INDEX IF NOT EXISTS projects_pinned_idx ON projects(pinned);`);
-  sqlite.exec(`CREATE INDEX IF NOT EXISTS projects_sandbox_idx ON projects(sandbox_id);`);
 }
 
 export function getSqlite() {
@@ -319,26 +314,6 @@ function ensureSchema(sqlite: Database.Database) {
       created_at INTEGER NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS sandboxes (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      kind TEXT NOT NULL DEFAULT 'remote-vm',
-      color TEXT,
-      image_tag TEXT,
-      dockerfile_path TEXT,
-      build_args TEXT,
-      git_auth_mode TEXT NOT NULL DEFAULT 'none',
-      copy_agent_creds INTEGER NOT NULL DEFAULT 0,
-      declared_ports TEXT,
-      env TEXT,
-      host_agent_port INTEGER,
-      port_map TEXT,
-      pairing_token TEXT,
-      remote_config TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -347,7 +322,6 @@ function ensureSchema(sqlite: Database.Database) {
       icon_color TEXT NOT NULL,
       image_path TEXT,
       group_id TEXT REFERENCES groups(id) ON DELETE SET NULL,
-      sandbox_id TEXT REFERENCES sandboxes(id) ON DELETE CASCADE,
       pinned INTEGER NOT NULL DEFAULT 0,
       pinned_order INTEGER,
       branch TEXT NOT NULL DEFAULT '${DEFAULT_BRANCH}',
@@ -364,8 +338,6 @@ function ensureSchema(sqlite: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS projects_group_idx ON projects(group_id);
     CREATE INDEX IF NOT EXISTS projects_pinned_idx ON projects(pinned);
-    -- projects_sandbox_idx is created after ensureColumn (below), since the
-    -- sandbox_id column may need to be added to a pre-existing projects table.
 
     CREATE TABLE IF NOT EXISTS worktrees (
       id TEXT PRIMARY KEY,
@@ -499,11 +471,7 @@ function ensureSchema(sqlite: Database.Database) {
     );
   `);
 
-  // Multi-sandbox scope column. Idempotent + tolerant of a pre-existing column
-  // (a schema-divergent build may already define `sandbox_id`), so the index is
-  // created only after the column is guaranteed present. See docs/multi-sandbox-plan.md.
-  ensureColumn(sqlite, "projects", "sandbox_id", "TEXT REFERENCES sandboxes(id) ON DELETE CASCADE");
-  ensureProjectSandboxIndex(sqlite);
+  ensureProjectIndexes(sqlite);
 
   // Per-project custom scripts (JSON array of {id,name,command}). Tolerate a
   // pre-existing column: a fresh bootstrap marks migrations applied-only, so
@@ -511,25 +479,6 @@ function ensureSchema(sqlite: Database.Database) {
   // this guard covers any schema-divergent build. See 0014_custom_scripts.sql.
   ensureColumn(sqlite, "projects", "custom_scripts", "TEXT");
   ensureColumn(sqlite, "projects", "git_enabled", "INTEGER NOT NULL DEFAULT 1");
-
-  // Keep pre-release sandbox tables moving forward even if they were created by
-  // an earlier branch before all remote/local config columns existed.
-  ensureColumn(sqlite, "sandboxes", "name", "TEXT NOT NULL DEFAULT 'Sandbox'");
-  ensureColumn(sqlite, "sandboxes", "kind", "TEXT NOT NULL DEFAULT 'remote-vm'");
-  ensureColumn(sqlite, "sandboxes", "color", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "image_tag", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "dockerfile_path", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "build_args", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "git_auth_mode", "TEXT NOT NULL DEFAULT 'none'");
-  ensureColumn(sqlite, "sandboxes", "copy_agent_creds", "INTEGER NOT NULL DEFAULT 0");
-  ensureColumn(sqlite, "sandboxes", "declared_ports", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "env", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "host_agent_port", "INTEGER");
-  ensureColumn(sqlite, "sandboxes", "port_map", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "pairing_token", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "remote_config", "TEXT");
-  ensureColumn(sqlite, "sandboxes", "created_at", "INTEGER NOT NULL DEFAULT 0");
-  ensureColumn(sqlite, "sandboxes", "updated_at", "INTEGER NOT NULL DEFAULT 0");
 
   // Terminal/session rows gained per-runtime scope after their first ship;
   // tolerate pre-existing tables created without it.

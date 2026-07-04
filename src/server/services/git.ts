@@ -30,8 +30,7 @@ const PR_BASE_BRANCH = DEFAULT_BRANCH;
 /** Cap staged-diff payload sent to the AI commit message generator. */
 const COMMIT_MESSAGE_DIFF_BUDGET = 200_000;
 
-// Git result types + diff caps now live in src/shared/git-status.ts so the
-// remote sandbox agent shares the exact wire contract. Imported for this
+// Git result types + diff caps live in src/shared/git-status.ts. Imported for this
 // module's own signatures and re-exported for existing importers (GitDiffView,
 // ~/queries/git, git.test.ts).
 import type { GitFileStatus, GitChangedFile, GitStatus, GitDiff } from "~/shared/git-status";

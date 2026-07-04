@@ -32,7 +32,6 @@ export type SettingsPanelId = (typeof SETTINGS_PANEL_IDS)[number];
 type NavItem = { id: SettingsPanelId; label: string; icon: IconName };
 
 function normalizeStoredPanel(stored: string | null, fallback: SettingsPanelId): SettingsPanelId {
-  if (stored === "sandbox") return "beta";
   if (stored && SETTINGS_PANEL_IDS.includes(stored as SettingsPanelId)) {
     return stored as SettingsPanelId;
   }

@@ -10,7 +10,6 @@ import { buildOptimisticTask } from "~/lib/optimistic-task";
 import { commandForTask } from "~/lib/terminal-store";
 import { getElectron } from "~/lib/electron";
 import { api, resolveApiToken } from "~/lib/api";
-import { isDockerSandboxRuntime } from "~/lib/sandbox-runtime";
 import { getTerminalColorScheme } from "~/lib/terminal-options";
 import { TITLE_WAITING } from "~/lib/task-sentinels";
 import { DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS } from "~/shared/pty-size";
@@ -141,10 +140,6 @@ export async function prepareSessionWarmSlot(input: {
 }): Promise<SessionWarmSlot | null> {
   const electron = getElectron();
   if (!electron || !input.project.path) return null;
-  if (await isDockerSandboxRuntime(electron)) {
-    await discardSessionWarmSlotQuiet();
-    return null;
-  }
 
   const signature = sessionCreateSignature(input.payload, input.project.path);
   if (warmSlot?.signature === signature) return warmSlot;

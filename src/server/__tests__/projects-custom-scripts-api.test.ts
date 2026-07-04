@@ -36,7 +36,6 @@ function makeProject(): string {
     iconColor: "#fff",
     imagePath: null,
     groupId: null,
-    sandboxId: null,
     pinned: false,
     pinnedOrder: null,
     branch: "main",

@@ -5,7 +5,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { useGroups, useSandboxes, useScopedProjects, useSettings, queryKeys } from "~/queries";
+import { useGroups, useProjects, useSettings, queryKeys } from "~/queries";
 import type { ProjectWithCounts } from "~/shared/projects";
 import type { Group } from "~/db/schema";
 import { ProjectIcon } from "~/components/ui/ProjectIcon";
@@ -39,8 +39,7 @@ type PointerReorderState = {
 export function ProjectBar({ disabled = false }: { disabled?: boolean }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: projects } = useScopedProjects();
-  const { data: sandboxState } = useSandboxes();
+  const { data: projects } = useProjects();
   const { data: groups = [] } = useGroups();
   const { data: settings } = useSettings();
   const { hasRunningLaunchForProject } = useUserTerminals();
@@ -95,12 +94,6 @@ export function ProjectBar({ disabled = false }: { disabled?: boolean }) {
   const closeMenu = useCallback(() => setMenu(null), []);
   useDismissableMenu(menu !== null, closeMenu);
 
-  useEffect(() => {
-    setDragOrder(null);
-    dragOrderRef.current = null;
-    setDraggingProjectId(null);
-    setMenu(null);
-  }, [sandboxState?.activeScopeId, sandboxState?.enabled]);
   useServerEvents(
     useCallback(
       (e) => {
@@ -334,8 +327,6 @@ export function ProjectBar({ disabled = false }: { disabled?: boolean }) {
         padding: `${PAD_TOP}px ${PAD_X}px`,
         overflowX: "hidden",
         overflowY: "auto",
-        // Inert + dimmed while the active sandbox resumes — its projects aren't
-        // usable until the agent is back.
         opacity: disabled ? 0.5 : undefined,
         pointerEvents: disabled ? "none" : undefined,
         transition: "opacity 0.15s",

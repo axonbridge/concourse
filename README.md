@@ -38,7 +38,7 @@ OKF-aligned), not any vendor's convention. `.claude/`, `AGENTS.md`, and
   any workspace, collision-safe.
 - Plus: terminals (real PTYs) for engineers, session persistence/resume with a
   Stop button, streaming replies, chat attachments, Word/PDF export of
-  outputs, voice control (experimental), sandboxes/remote VMs (beta).
+  outputs, voice control (experimental).
 
 ## Architecture in one screen
 

@@ -3,7 +3,6 @@ import type { ScopedProject } from "~/lib/scoped-project";
 import { newClientId } from "~/shared/client-id";
 import { getElectron } from "~/lib/electron";
 import { prefetchTerminalModules } from "~/lib/prefetch-terminal-modules";
-import { isDockerSandboxRuntime } from "~/lib/sandbox-runtime";
 import { DEFAULT_PTY_COLS, DEFAULT_PTY_ROWS } from "~/shared/pty-size";
 import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
 
@@ -86,10 +85,6 @@ export async function prepareUserTerminalWarmSlot(input: {
 }): Promise<UserTerminalWarmSlot | null> {
   const electron = getElectron();
   if (!electron || !input.cwd) return null;
-  if (await isDockerSandboxRuntime(electron)) {
-    await discardUserTerminalWarmSlotQuiet();
-    return null;
-  }
 
   const signature = userTerminalWarmSignature(
     input.cwd,

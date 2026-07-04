@@ -21,13 +21,13 @@ import {
 } from "../repositories/terminal-logs.repo";
 import { newId } from "./_ids";
 import { isClientDomainId } from "../../shared/client-id";
-import { normalizeProjectScopeId } from "./sandbox-scope";
+import { normalizeScopeId } from "~/shared/sandbox";
 
 export function listTasksForProject(
   projectId: string,
   scopeId: string | null = LOCAL_SCOPE_ID,
 ): Task[] {
-  return findTasksByProjectId(projectId, normalizeProjectScopeId(projectId, scopeId));
+  return findTasksByProjectId(projectId, normalizeScopeId(scopeId));
 }
 
 export function listTasksForProjectWorktree(
@@ -38,7 +38,7 @@ export function listTasksForProjectWorktree(
   return findTasksByProjectIdAndWorktreeId(
     projectId,
     worktreeId,
-    normalizeProjectScopeId(projectId, scopeId),
+    normalizeScopeId(scopeId),
   );
 }
 
@@ -64,7 +64,7 @@ export function createTask(input: {
   if (!input.projectId) throw new Error("projectId required");
   if (!input.title?.trim()) throw new Error("title required");
   if (!isEngineId(input.agent)) throw new Error("invalid agent");
-  const scopeId = normalizeProjectScopeId(input.projectId, input.scopeId);
+  const scopeId = normalizeScopeId(input.scopeId);
 
   const now = Date.now();
   const requestedId = input.id?.trim();

@@ -67,26 +67,4 @@ describe("session-warm-pool", () => {
     });
   });
 
-  it("does not pre-spawn a host session while Docker sandbox runtime is active", async () => {
-    const spawn = vi.fn();
-    vi.stubGlobal("window", {
-      electronAPI: {
-        sandbox: { getState: vi.fn().mockResolvedValue({ status: "connected" }) },
-        pty: { spawn, kill: vi.fn() },
-      },
-    });
-
-    await expect(
-      prepareSessionWarmSlot({
-        project: { id: "p1", path: "/Users/dev/project", activeWorktreeId: null } as never,
-        payload: {
-          agent: "claude-code",
-          branch: "main",
-          skipPermissions: false,
-          bareSession: false,
-        },
-      }),
-    ).resolves.toBeNull();
-    expect(spawn).not.toHaveBeenCalled();
-  });
 });

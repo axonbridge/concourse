@@ -53,7 +53,6 @@ import { useHotkey } from "~/lib/use-hotkey";
 import { isSettingsOverlayOpen } from "~/lib/settings-navigation";
 import { ApiError, api, type AppSettings } from "~/lib/api";
 import { getElectron } from "~/lib/electron";
-import { isDockerSandboxRuntime } from "~/lib/sandbox-runtime";
 import { newSessionId } from "~/lib/claude-command";
 import { TITLE_WAITING } from "~/lib/task-sentinels";
 import {
@@ -110,7 +109,6 @@ import {
   useApiToken,
   useGroups,
   useProject,
-  useSandboxes,
   useSettings,
   useTasks,
   useWorktrees,
@@ -126,21 +124,11 @@ import {
   useCreatePullRequestAction,
 } from "~/components/views/CreatePullRequestButton";
 import { HeaderActions } from "~/components/ui/HeaderActionsSlot";
-import { SandboxProvisioningState } from "~/components/views/SandboxProvisioningState";
-import {
-  isSandboxProvisioning,
-  useRemoteVmDeployForSandbox,
-} from "~/lib/use-remote-vm-deploy-for-sandbox";
 import {
   availabilityFor,
   type CliAvailability,
   useCliAvailability,
 } from "~/lib/cli-availability";
-import {
-  activateSandboxScope,
-  projectRuntimeScopeId,
-  scopeIdToActivate,
-} from "~/lib/activate-sandbox-scope";
 import {
   SESSION_NOTIFICATION_OPEN_EVENT,
   clearPendingSessionOpen,
@@ -151,7 +139,7 @@ import type { Group, Project, Task, TaskStatus } from "~/db/schema";
 import type { ProjectPathStatus } from "~/shared/projects";
 import type { WorktreeInfo } from "~/shared/worktrees";
 import { MAIN_WORKTREE_ID, worktreeScopeKey } from "~/shared/worktrees";
-import { LOCAL_SCOPE_ID, normalizeScopeId } from "~/shared/sandbox";
+import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
 import {
   readCachedSelectedWorktreeByProject,
   writeCachedSelectedWorktreeByProject,
@@ -331,7 +319,6 @@ function ProjectPage() {
     worktreeSelectionHydrated,
   ]);
   const projectQuery = useProject(id);
-  const { data: sandboxState } = useSandboxes();
   useSyncProjectDiagrams(id);
   const worktreesQuery = useWorktrees(id);
   const groupsQuery = useGroups();
@@ -353,22 +340,7 @@ function ProjectPage() {
   const selectedWorktreePath = worktreesEnabled
     ? selectedWorktree?.path ?? project?.path ?? ""
     : project?.path ?? "";
-  const activeRuntimeSandbox =
-    sandboxState?.activeScopeId && sandboxState.activeScopeId !== LOCAL_SCOPE_ID
-      ? sandboxState.sandboxes.find((sandbox) => sandbox.id === sandboxState.activeScopeId) ?? null
-      : null;
-  const activeRuntimeScopeId =
-    sandboxState?.enabled &&
-    activeRuntimeSandbox?.kind === "remote-vm" &&
-    activeRuntimeSandbox.remoteProvider === "aws" &&
-    activeRuntimeSandbox.projectId === project?.id
-      ? sandboxState.activeScopeId
-      : LOCAL_SCOPE_ID;
-  const deploySandboxId = activeRuntimeSandbox?.id ?? null;
-  const { deployJob, deployLogText } = useRemoteVmDeployForSandbox(deploySandboxId);
-  const sandboxProvisioning =
-    activeRuntimeSandbox != null &&
-    isSandboxProvisioning(activeRuntimeSandbox, deployJob);
+  const activeRuntimeScopeId = LOCAL_SCOPE_ID;
   const selectedScopeKey = `${worktreeScopeKey(id, selectedWorktreeId)}:${activeRuntimeScopeId}`;
   const scopedProject = useMemo(
     () =>
@@ -477,13 +449,6 @@ function ProjectPage() {
   }, [id, selectedWorktreeKey, worktreesQuery.data]);
   const tasksQuery = useTasks(id, selectedWorktreeId, activeRuntimeScopeId);
   const tasks = tasksQuery.data ?? [];
-  const wasSandboxProvisioningRef = useRef(false);
-  useEffect(() => {
-    if (wasSandboxProvisioningRef.current && !sandboxProvisioning) {
-      void tasksQuery.refetch();
-    }
-    wasSandboxProvisioningRef.current = sandboxProvisioning;
-  }, [sandboxProvisioning, tasksQuery]);
   const hasArchivedTasks = tasks.some((t) => t.archived);
   const groups = groupsQuery.data ?? [];
   // Non-code "business" workspaces hide all version-control UI (Ship, branch
@@ -883,14 +848,12 @@ function ProjectPage() {
           return;
         }
 
-        let resolvedScopeId = normalizeScopeId(request.scopeId);
         let resolvedWorktreeId = request.worktreeId;
         let task = tasks.find((entry) => entry.id === request.taskId && !entry.archived) ?? null;
 
         if (task) {
-          resolvedScopeId = normalizeScopeId(task.scopeId);
           resolvedWorktreeId = task.worktreeId ?? null;
-        } else if (tasksQuery.isLoading || sandboxProvisioning) {
+        } else if (tasksQuery.isLoading) {
           return;
         } else {
           try {
@@ -900,7 +863,6 @@ function ProjectPage() {
               return;
             }
             task = remoteTask;
-            resolvedScopeId = normalizeScopeId(remoteTask.scopeId);
             resolvedWorktreeId = remoteTask.worktreeId ?? null;
           } catch {
             clearPendingSessionOpen(request);
@@ -927,18 +889,6 @@ function ProjectPage() {
           return;
         }
 
-        const targetRuntimeScopeId = projectRuntimeScopeId(sandboxState, id, resolvedScopeId);
-        const activateTo = scopeIdToActivate(sandboxState, id, resolvedScopeId);
-        const globalActiveScopeId = normalizeScopeId(sandboxState?.activeScopeId ?? LOCAL_SCOPE_ID);
-
-        if (globalActiveScopeId !== activateTo) {
-          const switched = await activateSandboxScope(queryClient, activateTo);
-          if (!switched) clearPendingSessionOpen(request);
-          return;
-        }
-
-        if (activeRuntimeScopeId !== targetRuntimeScopeId) return;
-
         const requestedWorktreeKey = resolvedWorktreeId ?? MAIN_WORKTREE_ID;
         const requestedWorktreeExists =
           requestedWorktreeKey === MAIN_WORKTREE_ID ||
@@ -961,7 +911,7 @@ function ProjectPage() {
           task = tasks.find((entry) => entry.id === request.taskId && !entry.archived) ?? null;
         }
         if (!task) {
-          if (tasksQuery.isLoading || sandboxProvisioning) return;
+          if (tasksQuery.isLoading) return;
           clearPendingSessionOpen(request);
           return;
         }
@@ -980,11 +930,8 @@ function ProjectPage() {
       terminalProject,
       selectedScopeKey,
       selectedWorktreeKey,
-      activeRuntimeScopeId,
-      sandboxState,
       tasks,
       tasksQuery.isLoading,
-      sandboxProvisioning,
       terminals,
       worktreesEnabled,
       worktreesQuery.data,
@@ -1266,7 +1213,7 @@ function ProjectPage() {
 
       // A voice-seeded prompt can't ride a pre-spawned warm slot (it was launched
       // before we knew the prompt), so fall back to the cold path when set.
-      const warmSlot = (await isDockerSandboxRuntime()) || opts?.initialInput
+      const warmSlot = opts?.initialInput
         ? null
         : takeSessionWarmSlot(payload, terminalProject.path);
       if (warmSlot) {
@@ -1742,19 +1689,13 @@ function ProjectPage() {
   const startVoiceAgent = useCallback(
     (prompt: string, agent?: TaskAgent) => {
       if (!project || !projectPathReady) return;
-      // Voice-seeded prompts only flow through the local cold-spawn path; remote
-      // sandbox sessions spawn via remotePty (no initialInput) and would drop it.
-      if (activeRuntimeScopeId !== LOCAL_SCOPE_ID) {
-        toast.error("Voice agents aren't supported in sandbox sessions yet.");
-        return;
-      }
       const payload = defaultSessionPayload(project);
       void createSession(
         { ...payload, agent: agent ?? payload.agent, bareSession: false },
         { initialInput: prompt },
       );
     },
-    [project, projectPathReady, activeRuntimeScopeId, createSession],
+    [project, projectPathReady, createSession],
   );
 
   // Command bus: VoiceController (mounted at root) dispatches these for the
@@ -2961,13 +2902,6 @@ function ProjectPage() {
               projectPath={selectedWorktreePath || project.path}
               enabled={projectPathReady}
               onBack={closeDiffView}
-            />
-          ) : sandboxProvisioning && activeRuntimeSandbox ? (
-            <SandboxProvisioningState
-              name={activeRuntimeSandbox.name}
-              deployJob={deployJob}
-              deployLogText={deployLogText}
-              remoteStatus={activeRuntimeSandbox.remoteStatus}
             />
           ) : tasksQuery.isLoading ? (
             <EmptyState

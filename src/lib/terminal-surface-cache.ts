@@ -2,12 +2,12 @@
 // component that displays it.
 //
 // THE PROBLEM IT SOLVES
-// Switching sandboxes (or navigating away and back) unmounts the terminal panes.
+// Navigating away and back unmounts the terminal panes.
 // Historically each pane created its own `Terminal`, painted scrollback, and on
 // unmount called `term.dispose()`. Coming back rebuilt the xterm from scratch and
 // replayed the entire scrollback over the agent socket — the visible "reconnect
 // and restore" lag. The underlying PTYs and agent WebSockets were never actually
-// torn down (the sandbox registry keeps them all live), so the only thing being
+// torn down, so the only thing being
 // thrown away was the *view*.
 //
 // THE FIX

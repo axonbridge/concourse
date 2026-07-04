@@ -10,7 +10,6 @@ import {
   HTTP_NOT_FOUND,
 } from "~/shared/http-status";
 import * as projectsController from "./controllers/projects.controller";
-import * as sandboxesController from "./controllers/sandboxes.controller";
 import * as worktreesController from "./controllers/worktrees.controller";
 import * as tasksController from "./controllers/tasks.controller";
 import * as groupsController from "./controllers/groups.controller";
@@ -41,8 +40,6 @@ const PROJECT_COMMAND_ONE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+)$/
 const PROJECT_FILE_PATH = /^\/api\/projects\/([^/]+)\/file$/;
 const PROJECT_GIT_PATH = /^\/api\/projects\/([^/]+)\/git\/([a-z-]+)$/;
 const PROJECT_USER_TERMINALS_PATH = /^\/api\/projects\/([^/]+)\/user-terminals$/;
-const SANDBOX_PATH = /^\/api\/sandboxes\/([^/]+)$/;
-const SANDBOX_API_KEY_PATH = /^\/api\/sandboxes\/([^/]+)\/api-key$/;
 const GROUP_PATH = /^\/api\/groups\/([^/]+)$/;
 const TASK_PATH = /^\/api\/tasks\/([^/]+)$/;
 const TASK_STATUS_PATH = /^\/api\/tasks\/([^/]+)\/status$/;
@@ -239,28 +236,6 @@ async function dispatch(
     if (method === "GET") return projectsController.pathStatus(id, request);
   }
 
-  // Sandboxes (scopes). Literal subpaths are matched before the :id regex so
-  // "active"/"enabled" aren't treated as sandbox ids.
-  if (pathname === "/api/sandboxes") {
-    if (method === "GET") return sandboxesController.list(request);
-  }
-  if (pathname === "/api/sandboxes/active" && method === "PUT") {
-    return sandboxesController.setActive(request);
-  }
-  if (pathname === "/api/sandboxes/enabled" && method === "PUT") {
-    return sandboxesController.setEnabled(request);
-  }
-  m = pathname.match(SANDBOX_API_KEY_PATH);
-  if (m) {
-    const id = decode(m[1]);
-    if (method === "GET") return sandboxesController.revealApiKey(id, request);
-  }
-  m = pathname.match(SANDBOX_PATH);
-  if (m) {
-    const id = decode(m[1]);
-    if (method === "PATCH") return sandboxesController.update(id, request);
-    if (method === "DELETE") return sandboxesController.remove(id, request);
-  }
   m = pathname.match(PROJECT_TASKS_PATH);
   if (m) {
     const id = decode(m[1]);
