@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
 import { CWF_DIRS, CWF_ENTRY_FILE } from "../types";
+import { legacyClaudeSources } from "../fs-loader";
 import { parseFrontmatter } from "../parse";
 
 // Claude projector: materializes a CWF workspace into the `.claude/` convention
@@ -50,6 +51,11 @@ function sourceHash(dir: string): string {
     }
     for (const f of files) add(path.join(abs, f));
   }
+  // User-authored legacy .claude commands feed .opencode/command too — edits
+  // and deletions there must invalidate the projection.
+  for (const f of legacyClaudeSources(dir, CWF_DIRS.command)) {
+    add(path.join(dir, ".claude", CWF_DIRS.command, f));
+  }
   return h.digest("hex");
 }
 
@@ -71,7 +77,7 @@ function hasCwfContent(dir: string): boolean {
       /* dir absent */
     }
   }
-  return false;
+  return legacyClaudeSources(dir, CWF_DIRS.command).length > 0;
 }
 
 /** Project CWF sources into the vendor conventions. Full workspaces (with
@@ -105,20 +111,46 @@ export function projectClaudeWorkspace(dir: string): boolean {
     owned.push("AGENTS.md");
   }
 
-  // OpenCode slash commands: .opencode/command/*.md ← commands/*.md (verbatim;
-  // OpenCode tolerates unknown frontmatter keys the same way Claude does).
+  // OpenCode slash commands: .opencode/command/*.md ← commands/*.md plus
+  // user-authored legacy .claude/commands (root wins on name collisions), so a
+  // classic repo's commands work on OpenCode too. Verbatim copies — OpenCode
+  // tolerates unknown frontmatter keys the same way Claude does.
+  let rootCmdFiles: string[] = [];
   try {
-    const cmdFiles = fs.readdirSync(path.join(dir, "commands")).filter((f) => f.endsWith(".md"));
-    if (cmdFiles.length) {
-      const ocDir = path.join(dir, ".opencode", "command");
-      fs.mkdirSync(ocDir, { recursive: true });
-      for (const f of cmdFiles) {
-        fs.copyFileSync(path.join(dir, "commands", f), path.join(ocDir, f));
-        owned.push(path.join(".opencode", "command", f));
-      }
-    }
+    rootCmdFiles = fs.readdirSync(path.join(dir, "commands")).filter((f) => f.endsWith(".md"));
   } catch {
     /* commands dir absent */
+  }
+  const rootCmdSet = new Set(rootCmdFiles);
+  const legacyCmdFiles = legacyClaudeSources(dir, CWF_DIRS.command).filter(
+    (f) => !rootCmdSet.has(f),
+  );
+  if (rootCmdFiles.length + legacyCmdFiles.length > 0) {
+    const ocDir = path.join(dir, ".opencode", "command");
+    fs.mkdirSync(ocDir, { recursive: true });
+    for (const f of rootCmdFiles) {
+      fs.copyFileSync(path.join(dir, "commands", f), path.join(ocDir, f));
+      owned.push(path.join(".opencode", "command", f));
+    }
+    for (const f of legacyCmdFiles) {
+      fs.copyFileSync(path.join(dir, ".claude", CWF_DIRS.command, f), path.join(ocDir, f));
+      owned.push(path.join(".opencode", "command", f));
+    }
+  }
+  // Remove previously-projected .opencode copies whose source is gone.
+  {
+    const currentSet = new Set(
+      [...rootCmdFiles, ...legacyCmdFiles].map((f) => path.join(".opencode", "command", f)),
+    );
+    for (const prev of previous?.ownedFiles ?? []) {
+      if (prev.startsWith(path.join(".opencode", "command") + path.sep) && !currentSet.has(prev)) {
+        try {
+          fs.rmSync(path.join(dir, prev), { force: true });
+        } catch {
+          /* best-effort */
+        }
+      }
+    }
   }
 
   for (const sub of PROJECTED_DIRS) {
