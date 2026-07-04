@@ -1,23 +1,30 @@
 import type { TaskAgent } from "./domain";
 
 // One-click CLI setup, run inside an app home terminal: install (when missing)
-// chained with the vendor's interactive sign-in. Install commands mirror
-// AGENT_CLI_CONFIG.updateCommands (macOS/default variants).
+// chained with the vendor's interactive sign-in.
+
+// npm-distributed CLIs need a working node toolchain. Cascade: Volta (installs
+// a shimmed binary; bare `npm i -g` under Volta silently lands nowhere) → npm →
+// brew-installed node → bootstrap Volta itself on a machine with nothing.
+function npmCliInstall(pkg: string): string {
+  return [
+    `if command -v volta >/dev/null 2>&1; then volta install node ${pkg};`,
+    `elif command -v npm >/dev/null 2>&1; then npm install -g ${pkg}@latest;`,
+    `elif command -v brew >/dev/null 2>&1; then brew install node && npm install -g ${pkg}@latest;`,
+    `else curl -fsSL https://get.volta.sh | bash && export PATH="$HOME/.volta/bin:$PATH" && volta install node ${pkg}; fi`,
+  ].join(" ");
+}
 export const AGENT_SETUP: Partial<
   Record<TaskAgent, { install: string; auth: string; label: string }>
 > = {
-  // npm-distributed CLIs: Volta intercepts bare `npm i -g` without creating a
-  // runnable shim, so prefer `volta install` when Volta manages this machine.
   "claude-code": {
     label: "Claude Code",
-    install:
-      "(command -v volta >/dev/null 2>&1 && volta install @anthropic-ai/claude-code) || npm install -g @anthropic-ai/claude-code@latest",
+    install: npmCliInstall("@anthropic-ai/claude-code"),
     auth: "claude",
   },
   codex: {
     label: "Codex",
-    install:
-      "(command -v volta >/dev/null 2>&1 && volta install @openai/codex) || npm install -g @openai/codex@latest",
+    install: npmCliInstall("@openai/codex"),
     auth: "codex login",
   },
   "cursor-cli": {
