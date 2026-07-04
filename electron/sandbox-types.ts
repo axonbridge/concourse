@@ -1,0 +1,57 @@
+// Shared sandbox runtime types used by the legacy single-sandbox manager and the
+// Phase 2 per-sandbox registry. Keeping the state union here avoids a duplicate
+// definition / import cycle between the two.
+
+// State machine surfaced to the renderer. `running` = remote VM up but the WS
+// isn't paired yet; `connected` = remote agent `ready` received.
+export type SandboxState =
+  | { status: "disabled" }
+  | { status: "stopped"; dockerAvailable: boolean }
+  | { status: "starting"; step: string; since?: number }
+  | { status: "running"; since?: number }
+  | { status: "connected"; version: string; agents: Record<string, string | null> }
+  | {
+      status: "update-required";
+      version: string;
+      expectedVersion: string;
+      agents: Record<string, string | null>;
+    }
+  | { status: "error"; message: string };
+
+/** A sandbox state tagged with the sandbox it belongs to (for registry fan-out). */
+export type ScopedSandboxState = { sandboxId: string; state: SandboxState };
+
+/** The subset of a `sandboxes` DB row the runtime needs to start a sandbox. */
+export type SandboxConfig = {
+  id: string;
+  kind: "remote-vm";
+  imageTag: string | null;
+  dockerfilePath: string | null;
+  buildArgs: Record<string, string>;
+  env: Record<string, string>;
+  gitAuthMode: "none" | "copy-host" | "generate";
+  /** When true, push the host's AI-CLI logins to the VM over the agent WS on connect. */
+  copyAgentCreds: boolean;
+  declaredPorts: number[];
+  hostAgentPort: number | null;
+  portMap: Record<number, number> | null;
+  remoteAgentUrl: string | null;
+  pairingToken: string | null;
+  /** PEM of the VM's self-signed cert to pin for `wss://` connections, if any. */
+  remoteAgentCa: string | null;
+  /** Managed remote VM lifecycle status from `remote_config.status`, if present. */
+  remoteStatus: string | null;
+  /** Managed provider id from `remote_config.provider` (currently only `aws`). */
+  remoteProvider: string | null;
+};
+
+export type OpResult = { ok: true } | { ok: false; error: string };
+
+import { AGENT_VERSION } from "@agentsystemlabs/mission-control-agent";
+
+// Must match the published sandbox agent; a mismatch surfaces as `update-required`.
+export const EXPECTED_SANDBOX_AGENT_VERSION = AGENT_VERSION;
+
+export function isSandboxAgentVersionCurrent(version: string): boolean {
+  return version === EXPECTED_SANDBOX_AGENT_VERSION;
+}

@@ -1,0 +1,101 @@
+import {
+  normalizeGitDiffChangedFilesView,
+  normalizeProjectsDashboardView,
+  normalizeSelectedWorktreeByProject,
+  type GitDiffChangedFilesView,
+  type ProjectsDashboardView,
+  type SelectedWorktreeByProject,
+} from "~/shared/ui-preferences";
+
+export const GIT_DIFF_CHANGED_FILES_VIEW_STORAGE_KEY = "mc:gitDiffChangedFilesView";
+export const GIT_DIFF_CHANGED_FILES_WIDTH_STORAGE_KEY = "mc:gitDiffChangedFilesWidth";
+export const PROJECTS_DASHBOARD_VIEW_STORAGE_KEY = "mc:projectsDashboardView";
+export const SELECTED_WORKTREE_BY_PROJECT_STORAGE_KEY = "mc.selectedWorktreeByProject";
+
+export function readCachedGitDiffChangedFilesView(): GitDiffChangedFilesView | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return normalizeGitDiffChangedFilesView(
+      window.localStorage.getItem(GIT_DIFF_CHANGED_FILES_VIEW_STORAGE_KEY),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedGitDiffChangedFilesView(view: GitDiffChangedFilesView): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GIT_DIFF_CHANGED_FILES_VIEW_STORAGE_KEY, view);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+export function readCachedProjectsDashboardView(): ProjectsDashboardView | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return normalizeProjectsDashboardView(
+      window.localStorage.getItem(PROJECTS_DASHBOARD_VIEW_STORAGE_KEY),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedProjectsDashboardView(view: ProjectsDashboardView): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PROJECTS_DASHBOARD_VIEW_STORAGE_KEY, view);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+// Sessions list layout (cards | table) inside a project — reuses the same
+// "cards"/"table" union as the projects dashboard. Local-only preference.
+export const SESSIONS_VIEW_STORAGE_KEY = "mc:sessionsView";
+
+export function readCachedSessionsView(): ProjectsDashboardView | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return normalizeProjectsDashboardView(
+      window.localStorage.getItem(SESSIONS_VIEW_STORAGE_KEY),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedSessionsView(view: ProjectsDashboardView): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SESSIONS_VIEW_STORAGE_KEY, view);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+export function readCachedSelectedWorktreeByProject(): SelectedWorktreeByProject | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SELECTED_WORKTREE_BY_PROJECT_STORAGE_KEY);
+    return raw ? normalizeSelectedWorktreeByProject(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedSelectedWorktreeByProject(
+  selectedWorktreeByProject: SelectedWorktreeByProject,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      SELECTED_WORKTREE_BY_PROJECT_STORAGE_KEY,
+      JSON.stringify(selectedWorktreeByProject),
+    );
+  } catch {
+    /* localStorage unavailable */
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "ignoreDeprecations": "6.0",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "outDir": "../dist-electron",
+    "rootDir": "..",
+    "sourceMap": true,
+    "declaration": false,
+    "noEmit": false,
+    "types": ["node"]
+  },
+  "include": [
+    "**/*.ts",
+    "../src/shared/agent-cli-config.ts",
+    "../src/shared/domain.ts",
+    "../src/shared/diagram-skill-install.ts",
+    "../src/shared/file-read-limits.ts",
+    "../src/shared/opencode-mission-control-plugin.ts",
+    "../src/lib/keybindings/types.ts",
+    "../src/lib/keybindings/defaults.ts"
+  ],
+  "exclude": ["../node_modules", "../dist", "../dist-electron"]
+}

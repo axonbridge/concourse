@@ -1,0 +1,43 @@
+node_modules
+.codex
+.claude
+.cursor
+dist
+dist-electron
+dist-server
+.output
+.pnpm-store
+.vinxi
+.vite
+.DS_Store
+*.sw?
+.certs
+*.log
+.env
+.env.local
+src/routeTree.gen.ts
+release
+.env.release
+dist-electron-out/
+artifacts/
+
+.openai-key
+.license-key
+
+# Local dev SQLite store + app state (isolated from the installed app's DB)
+.dev-userdata/
+
+# Bundled whisper.cpp voice-control artifacts (fetched via `pnpm setup:whisper`).
+# Large binaries/model are not committed; the directory scaffold + docs are.
+resources/whisper/*
+!resources/whisper/.gitkeep
+!resources/whisper/README.md
+
+# --- Concourse runtime/generated artifacts (added pre-git-init cleanup) ---
+.tanstack/
+test-results/
+.agents/
+.agentsystem/
+.concourse/
+CLAUDE.local.md
+.opencode/

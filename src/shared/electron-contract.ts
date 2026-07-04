@@ -1,0 +1,569 @@
+import type { GitStatus, GitDiff } from "~/shared/git-status";
+import type { ChatEvent } from "~/shared/chat";
+
+export const FILE_READ_ERRORS = ["invalid-path", "not-found", "binary", "too-large"] as const;
+export const FILE_WRITE_ERRORS = [
+  "invalid-path",
+  "invalid-content",
+  "stale",
+  // Hit when the renderer tried the generic `files:write` for an auto-executing
+  // config path (Claude/Codex hooks, .git/hooks, package.json, etc). The
+  // renderer is expected to retry via `files:writeSensitive`, which surfaces a
+  // native confirm in the main process.
+  "protected-path",
+  // Returned by `files:writeSensitive` when the user clicked Cancel in the
+  // native confirm dialog. Not an error condition — just a no-op result.
+  "user-declined",
+] as const;
+
+export type FileReadError = (typeof FILE_READ_ERRORS)[number];
+export type FileWriteError = (typeof FILE_WRITE_ERRORS)[number];
+
+export type FileListResult = { ok: true; files: string[] } | { ok: false; error: string };
+
+export type ImagePreviewMime =
+  | "image/png"
+  | "image/jpeg"
+  | "image/gif"
+  | "image/webp"
+  | "image/bmp"
+  | "image/x-icon"
+  | "image/avif";
+
+export type FileReadResult =
+  | { ok: true; kind: "text"; content: string; mtimeMs: number; lineCount: number }
+  | {
+      ok: true;
+      kind: "image";
+      dataUrl: string;
+      mimeType: ImagePreviewMime;
+      size: number;
+      mtimeMs: number;
+    }
+  | { ok: false; error: FileReadError | string; lineCount?: number };
+
+export type FileWriteResult =
+  | { ok: true; mtimeMs: number }
+  | { ok: false; error: FileWriteError | string; currentMtimeMs?: number };
+
+export type InstallDiagramSkillResult = import("~/shared/diagram-skill-install").DiagramSkillInstallResult;
+export type InstallShipSkillsResult = import("~/shared/ship-skill-install").ShipSkillInstallResult;
+
+export type LaunchProcessKillResult = {
+  ptyCount: number;
+  ports: Array<{
+    port: number;
+    pids: number[];
+    killed: number[];
+    errors: string[];
+  }>;
+};
+
+export type PtySpawnAgent = "claude-code" | "codex" | "cursor-cli" | "opencode";
+
+export type CliCheckResult =
+  | {
+      ok: true;
+      path: string;
+      version?: string;
+      label?: string;
+      requiredVersion?: string;
+      packageUrl?: string;
+      updateCommands?: readonly string[];
+    }
+  | {
+      ok: false;
+      reason: string;
+      path?: string;
+      label?: string;
+      version?: string;
+      requiredVersion?: string;
+      packageUrl?: string;
+      updateCommands?: readonly string[];
+    };
+
+export type BasePtySpawnOptions = {
+  taskId: string;
+  cwd: string;
+  command: string;
+  args?: string[];
+  cols?: number;
+  rows?: number;
+  mcEnv?: { apiUrl?: string; token?: string };
+  missionControlTheme?: "dark" | "light";
+};
+
+export type AgentPtySpawnOptions = BasePtySpawnOptions & {
+  agent: PtySpawnAgent;
+  dangerouslySkipPermissions?: boolean;
+  shell?: never;
+  /** Starting prompt written to the agent's stdin once its TUI is ready (voice control). */
+  initialInput?: string;
+};
+
+export type ShellPtySpawnOptions = BasePtySpawnOptions & {
+  shell: true;
+  agent?: never;
+  dangerouslySkipPermissions?: never;
+  /**
+   * Project-less "home" terminal (dashboard). The main process replaces cwd with
+   * its own os.homedir() and whitelists it; the renderer may pass cwd: "".
+   */
+  home?: boolean;
+};
+
+export type PtySpawnOptions = AgentPtySpawnOptions | ShellPtySpawnOptions;
+
+export type RemotePtySpawnOptions = {
+  taskId: string;
+  /** Absolute in-container path (e.g. /workspace/<slug>). */
+  cwd: string;
+  command: string;
+  agent?: string;
+  shell?: boolean;
+  /** Project-less "home" shell terminal: open at the remote agent's home dir. */
+  home?: boolean;
+  args?: string[];
+  cols?: number;
+  rows?: number;
+  dangerouslySkipPermissions?: boolean;
+  missionControlTheme?: "dark" | "light";
+};
+
+export type SandboxRuntimeMode = "host" | "docker";
+export type SandboxGitAuthMode = "none" | "copy-host" | "generate";
+// Mirror of SandboxImageStrategy in ~/shared/sandbox. Drift caught by reviewer-contracts.
+export type SandboxImageStrategy = "golden" | "full-install";
+
+// Mirror of SandboxState in electron/sandbox-manager.ts. Drift caught by reviewer-contracts.
+export type SandboxState =
+  | { status: "disabled" }
+  | { status: "stopped"; dockerAvailable: boolean }
+  | { status: "starting"; step: string; since?: number }
+  | { status: "running"; since?: number }
+  | { status: "connected"; version: string; agents: Record<string, string | null> }
+  | {
+      status: "update-required";
+      version: string;
+      expectedVersion: string;
+      agents: Record<string, string | null>;
+    }
+  | { status: "error"; message: string };
+
+export type SandboxSettingsView = {
+  enabled: boolean;
+  runtimeMode: SandboxRuntimeMode;
+  dockerfilePath: string | null;
+  buildArgKeys: string[];
+  hasBuildArgs: boolean;
+  imageTag: string | null;
+  publishedPorts: number[];
+  workspaceVolume: string;
+  projectPaths: Record<string, string>;
+  agentPort: number;
+  gitAuthMode: SandboxGitAuthMode;
+  /** The pairing token itself is never sent to the renderer. */
+  hasPairingToken: boolean;
+};
+
+export type SandboxSettingsPatch = Partial<{
+  enabled: boolean;
+  runtimeMode: SandboxRuntimeMode;
+  dockerfilePath: string | null;
+  buildArgs: Record<string, string>;
+  imageTag: string | null;
+  publishedPorts: string | number[];
+  workspaceVolume: string;
+  projectPaths: Record<string, string>;
+  agentPort: number;
+  gitAuthMode: SandboxGitAuthMode;
+}>;
+
+export type RemoteVmDeployInput = {
+  provider: "aws";
+  sandboxId?: string;
+  name: string;
+  region: string;
+  size?: string;
+  keyName?: string;
+  identityFile?: string;
+  accessCidr?: string;
+  sshCidr?: string;
+  localPort?: number;
+  profile?: string;
+  imageId?: string;
+  subnetId?: string;
+  securityGroupId?: string;
+  noWait?: boolean;
+  activate?: boolean;
+  /** Optional bootstrap script run on the VM after the agent is healthy (user_data.sh style). */
+  setupScript?: string;
+  /** When "copy-host", the user's ~/.ssh keys are pushed to the VM over the agent WS on connect. */
+  gitAuthMode?: SandboxGitAuthMode;
+  /** When true, the host's AI-CLI logins are pushed to the VM over the agent WS on connect. */
+  copyAgentCreds?: boolean;
+  /** Stop the EC2 instance after this many minutes with no agent activity. 0 disables. Default 30. */
+  idleTimeoutMinutes?: number;
+  /** Launch from the maintained golden AMI (default) or run the full setup script. */
+  imageStrategy?: SandboxImageStrategy;
+  /** Owning project when created from the project sandbox flow. */
+  projectId?: string;
+};
+
+export type RemoteVmDeployResult =
+  | {
+      ok: true;
+      sandboxId: string;
+      name: string;
+      provider: string;
+      publicIp: string;
+      agentUrl: string;
+      localPort: number | null;
+      output: string;
+    }
+  | { ok: false; error: string; output?: string };
+
+/**
+ * Result of reconciling a managed remote VM's saved status against the cloud
+ * provider's real instance state. `status` is the (possibly updated) lifecycle
+ * status persisted on the sandbox; `instanceState` is the raw provider state.
+ */
+export type RemoteVmReconcileResult =
+  | {
+      ok: true;
+      sandboxId: string;
+      instanceState: string | null;
+      status: string | null;
+      /** True when this call transitioned the saved status (e.g. ready → paused). */
+      changed: boolean;
+    }
+  | { ok: false; error: string };
+
+export type RemoteVmDeployJobStatus = "queued" | "running" | "succeeded" | "failed" | "canceled";
+
+export type RemoteVmDeployJobResult = {
+  sandboxId: string;
+  name: string;
+  provider: string;
+  publicIp: string;
+  agentUrl: string;
+  localPort: number | null;
+};
+
+export type RemoteVmDeployLogEntry = {
+  jobId: string;
+  seq: number;
+  ts: number;
+  stream: "stdout" | "stderr" | "system";
+  data: string;
+};
+
+export type RemoteVmDeployJobSnapshot = {
+  id: string;
+  input: RemoteVmDeployInput;
+  status: RemoteVmDeployJobStatus;
+  createdAt: number;
+  startedAt: number | null;
+  updatedAt: number;
+  finishedAt: number | null;
+  nextSeq: number;
+  result?: RemoteVmDeployJobResult;
+  error?: string;
+  exitCode?: number | null;
+  signal?: string | null;
+};
+
+export type TerminalImageSaveInput = {
+  name?: string;
+  mimeType: string;
+  data: ArrayBuffer;
+};
+
+export type TerminalImageSaveResult = { path: string } | { error: string };
+
+export type VoiceTranscribeResult =
+  | { ok: true; text: string }
+  | { ok: false; error: string; code?: "unavailable" };
+
+export type ElectronBridge = {
+  settings: {
+    getToken: () => Promise<string>;
+    regenerateToken: () => Promise<string>;
+  };
+  mcp: {
+    list: () => Promise<{ servers: Array<{ name: string; url: string; status: string }>; error?: string }>;
+    login: (name: string) => Promise<{ ok: boolean; error?: string }>;
+    logout: (name: string) => Promise<{ ok: boolean; error?: string }>;
+  };
+  mcpWorkspace: {
+    /** Server statuses for a workspace's .mcp.json (in-app client, own OAuth). */
+    status: (cwd: string) => Promise<
+      Array<{
+        name: string;
+        url: string;
+        status: "connected" | "needs-auth" | "error" | "unsupported";
+        toolCount?: number;
+        error?: string;
+      }>
+    >;
+    authenticate: (name: string, url: string) => Promise<{ ok: boolean; error?: string }>;
+    logout: (url: string) => Promise<{ ok: true }>;
+    removeServer: (cwd: string, name: string) => Promise<{ ok: boolean }>;
+  };
+  mcpGlobal: {
+    list: () => Promise<Array<{ name: string; url?: string; command?: string; type?: string }>>;
+    add: (name: string, cfg: { url?: string; command?: string }) => Promise<{ ok: boolean; error?: string }>;
+    remove: (name: string) => Promise<{ ok: true }>;
+  };
+  credentials: {
+    /** provider id → true when an API key is stored. Key material never reaches the renderer. */
+    status: () => Promise<Record<string, boolean>>;
+    set: (provider: string, apiKey: string) => Promise<{ ok: boolean; error?: string }>;
+    delete: (provider: string) => Promise<{ ok: boolean }>;
+  };
+  models: {
+    /** Live model discovery for a provider (cached; static fallback when offline/keyless). */
+    list: (provider: string) => Promise<{
+      models: Array<{ id: string; label: string }>;
+      source: "live" | "static";
+      error?: string;
+    }>;
+  };
+  chat: {
+    start: (opts: {
+      sessionId: string;
+      cwd: string;
+      initialText: string;
+      /** Which AI provider powers the session (TaskAgent id; default claude-code). */
+      agent?: string;
+      /** Model id from the provider's models list (src/shared/ai-providers.ts). */
+      model?: string;
+      /** Provider-side conversation id for durable resume. */
+      providerSessionId?: string;
+      resume?: boolean;
+      autoApproveWrites?: boolean;
+      /** OpenAI-compatible endpoint for the "custom" direct engine. */
+      baseUrl?: string;
+    }) => Promise<{ ok: boolean }>;
+    send: (sessionId: string, text: string) => Promise<{ ok: boolean }>;
+    /** Mid-session model switch — only direct engines honor it (ok: false otherwise). */
+    setModel: (sessionId: string, model?: string) => Promise<{ ok: boolean }>;
+    respondPermission: (sessionId: string, requestId: string, allow: boolean) => Promise<{ ok: boolean }>;
+    stop: (sessionId: string) => Promise<{ ok: boolean }>;
+    onEvent: (cb: (event: ChatEvent) => void) => () => void;
+  };
+  voice: {
+    available: () => Promise<boolean>;
+    prewarm: () => Promise<boolean>;
+    /** `prompt` biases the decoder toward expected words (e.g. project names). */
+    transcribe: (wav: ArrayBuffer, prompt?: string) => Promise<VoiceTranscribeResult>;
+  };
+  getPathForFile: (file: File) => string;
+  browseFolder: () => Promise<string | null>;
+  saveWorkflowFile: (
+    defaultName: string,
+    content: string,
+  ) => Promise<{ ok: true; path: string } | { ok: false; error?: string }>;
+  importWorkflowFile: () => Promise<{ name: string; content: string } | null>;
+  pickTemplateFile: () => Promise<{ name: string; content: string } | null>;
+  attachments: {
+    pick: () => Promise<Array<{ path: string; name: string; dataUrl?: string }>>;
+    stage: (cwd: string, paths: string[]) => Promise<Array<{ rel: string; name: string }>>;
+  };
+  saveTextFile: (
+    defaultName: string,
+    content: string,
+    filters: { name: string; extensions: string[] }[],
+  ) => Promise<{ ok: true; path: string } | { ok: false; error?: string }>;
+  exportPdf: (
+    defaultName: string,
+    html: string,
+  ) => Promise<{ ok: true; path: string } | { ok: false; error?: string }>;
+  openPath: (path: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  openFile: (path: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  openExternal: (url: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  clipboard: {
+    readText: () => Promise<string>;
+    writeText: (text: string) => Promise<{ ok: true }>;
+  };
+  terminalImages: {
+    saveDropped: (input: TerminalImageSaveInput) => Promise<TerminalImageSaveResult>;
+    saveClipboard: () => Promise<TerminalImageSaveResult | null>;
+  };
+  pickImage: () => Promise<
+    { sourcePath: string; extension: string } | { error: string } | null
+  >;
+  saveProjectImage: (opts: {
+    projectId: string;
+    sourcePath: string;
+    extension: string;
+  }) => Promise<{ filename: string } | { error: string }>;
+  getRuntimePort: () => Promise<number | null>;
+  getUserDataDir: () => Promise<string>;
+  getUserName: () => Promise<{ source: "git" | "os"; fullName: string; firstName: string }>;
+  reload: () => Promise<{ ok: true } | { ok: false; error: string }>;
+  notifications: {
+    getPermission: () => Promise<"granted" | "unsupported">;
+    showSessionFinished: (payload: {
+      tag: string;
+      title: string;
+      body: string;
+      projectId: string;
+      taskId: string;
+      worktreeId: string | null;
+    }) => Promise<{ ok: true } | { ok: false; error: string }>;
+    onSessionFinishedClick: (
+      cb: (payload: {
+        projectId: string;
+        taskId: string;
+        worktreeId: string | null;
+      }) => void,
+    ) => () => void;
+  };
+  cliCheck: (command: string, opts?: { verifyVersion?: boolean }) => Promise<CliCheckResult>;
+  pty: {
+    spawn: (opts: PtySpawnOptions) => Promise<{ ptyId: string }>;
+    write: (ptyId: string, data: string) => Promise<boolean>;
+    resize: (ptyId: string, cols: number, rows: number) => Promise<boolean>;
+    kill: (ptyId: string) => Promise<boolean>;
+    killLaunchProcesses: (opts: {
+      cwd: string;
+      commands: string[];
+      ports?: number[];
+    }) => Promise<LaunchProcessKillResult>;
+    /** Kill every PTY whose cwd is inside `cwd` (e.g. before deleting a worktree). */
+    killUnderPath: (cwd: string) => Promise<{ ptyCount: number }>;
+    onData: (cb: (msg: { ptyId: string; data: string; seq: number }) => void) => () => void;
+    onExit: (cb: (msg: { ptyId: string; exitCode: number; signal?: number }) => void) => () => void;
+    replay: (ptyId: string) => Promise<{ data: string; nextSeq: number }>;
+  };
+  onSwipe: (cb: (direction: "left" | "right" | "up" | "down") => void) => () => void;
+  onCloseIntent: (cb: () => void) => () => void;
+  files: {
+    list: (projectRoot: string) => Promise<FileListResult>;
+    read: (projectRoot: string, relPath: string) => Promise<FileReadResult>;
+    write: (
+      projectRoot: string,
+      relPath: string,
+      content: string,
+      expectedMtimeMs: number | null
+    ) => Promise<FileWriteResult>;
+    writeSensitive: (
+      projectRoot: string,
+      relPath: string,
+      content: string,
+      expectedMtimeMs: number | null
+    ) => Promise<FileWriteResult>;
+    watch: (
+      projectRoot: string,
+      relPath: string
+    ) => Promise<{ ok: true; watchId: string } | { ok: false; error: string }>;
+    unwatch: (watchId: string) => Promise<{ ok: true }>;
+    onChanged: (cb: (msg: { watchId: string; mtimeMs: number }) => void) => () => void;
+  };
+  sandbox: {
+    // Phase 2: lifecycle is per-sandbox (sandboxId; omitted = the active scope).
+    getState: (sandboxId?: string) => Promise<SandboxState>;
+    getSettings: () => Promise<SandboxSettingsView>;
+    updateSettings: (patch: SandboxSettingsPatch) => Promise<SandboxSettingsView>;
+    up: (sandboxId?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /** Tear down and restart with a forced default-image rebuild (update flow). */
+    rebuild: (sandboxId?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    down: (sandboxId?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /** Destroy a sandbox's container + volumes. Call before deleting the DB row. */
+    destroy: (sandboxId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /** Set the scope the renderer shows; routes remote PTY/fs/git. null = Local (host). */
+    setActive: (sandboxId: string | null) => Promise<{ ok: true }>;
+    connect: (sandboxId?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    disconnect: (sandboxId?: string) => Promise<{ ok: true }>;
+    status: () => Promise<{
+      dockerAvailable: boolean;
+      states: Array<{ sandboxId: string; state: SandboxState }>;
+    }>;
+    validateDockerfile: (
+      path: string,
+    ) => Promise<{ ok: true; exists: boolean; isDirectory: boolean }>;
+    diagnostics: () => Promise<string>;
+    /** Provision git/SSH auth in a sandbox; returns the generated public key (generate mode). */
+    setupGitAuth: (sandboxId?: string) => Promise<{ publicKey?: string }>;
+    /** npm install -g @agentsystemlabs/mission-control-agent@latest + systemctl restart on a remote VM. */
+    upgradeAgent: (sandboxId?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /** Read the saved remote VM bearer token (desktop-only). */
+    revealApiKey: (
+      sandboxId: string,
+    ) => Promise<{ ok: true; apiKey: string } | { ok: false; error: string }>;
+    /** Read a host project's origin remote URL (for prefilling a sandbox clone). */
+    detectRemote: (projectPath: string) => Promise<string | null>;
+    onStateChange: (cb: (e: { sandboxId: string; state: SandboxState }) => void) => () => void;
+    onLog: (cb: (line: string) => void) => () => void;
+  };
+  remoteVm: {
+    deploy: (input: RemoteVmDeployInput) => Promise<RemoteVmDeployResult>;
+    startDeploy: (input: RemoteVmDeployInput) => Promise<{ jobId: string }>;
+    listDeployJobs: () => Promise<RemoteVmDeployJobSnapshot[]>;
+    getDeployLogs: (
+      jobId: string,
+      afterSeq?: number,
+    ) => Promise<{ entries: RemoteVmDeployLogEntry[]; nextSeq: number }>;
+    cancelDeploy: (jobId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /** Stop managed provider compute while preserving the remote workspace disk/volume. */
+    pause: (sandboxId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /** Start managed provider compute and refresh the saved agent endpoint. */
+    resume: (sandboxId: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+    /**
+     * Sync a managed remote VM's saved status with the cloud provider's real
+     * instance state (e.g. detect an idle-auto-stopped EC2 instance and mark it
+     * paused). Safe to call on demand before switching to / resuming a sandbox.
+     */
+    reconcile: (sandboxId: string) => Promise<RemoteVmReconcileResult>;
+    /**
+     * Terminate the cloud VM for a sandbox. By default also removes the sandbox
+     * row; pass `{ keepRow: true }` to terminate-only and let the server's delete
+     * path handle row + project cleanup.
+     */
+    destroy: (
+      sandboxId: string,
+      opts?: { keepRow?: boolean },
+    ) => Promise<{ ok: true } | { ok: false; error: string }>;
+    onDeployUpdate: (cb: (job: RemoteVmDeployJobSnapshot) => void) => () => void;
+    onDeployLog: (cb: (entry: RemoteVmDeployLogEntry) => void) => () => void;
+  };
+  remotePty: {
+    spawn: (opts: RemotePtySpawnOptions) => Promise<{ ptyId: string }>;
+    write: (ptyId: string, data: string) => Promise<boolean>;
+    resize: (ptyId: string, cols: number, rows: number) => Promise<boolean>;
+    kill: (ptyId: string) => Promise<boolean>;
+    replay: (ptyId: string) => Promise<{ data: string; nextSeq: number }>;
+    onData: (cb: (msg: { ptyId: string; data: string; seq: number }) => void) => () => void;
+    // exitCode shape matches the local pty.onExit so components can treat the two
+    // PTY APIs as one type (the manager coerces undefined → 0).
+    onExit: (
+      cb: (msg: { ptyId: string; exitCode: number; signal?: number }) => void,
+    ) => () => void;
+    onSpawned: (cb: (msg: { ptyId: string }) => void) => () => void;
+    onSpawnError: (
+      cb: (msg: { ptyId: string; code: string; message: string }) => void,
+    ) => () => void;
+  };
+  remoteFs: {
+    list: (path: string) => Promise<FileListResult>;
+    read: (path: string) => Promise<FileReadResult>;
+    write: (
+      path: string,
+      content: string,
+      expectedMtimeMs: number | null,
+    ) => Promise<FileWriteResult>;
+    watch: (path: string) => Promise<{ ok: true; watchId: string } | { ok: false; error: string }>;
+    unwatch: (watchId: string) => Promise<{ ok: true }>;
+    onChange: (cb: (msg: { watchId: string; path: string; mtimeMs: number }) => void) => () => void;
+  };
+  remoteGit: {
+    status: (repo: string) => Promise<GitStatus>;
+    diff: (repo: string, file: string, staged: boolean) => Promise<GitDiff>;
+    clone: (
+      remote: string,
+      slug: string,
+      branch?: string,
+    ) => Promise<{ slug: string; path: string }>;
+  };
+};
