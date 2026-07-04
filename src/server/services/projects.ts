@@ -29,6 +29,7 @@ import { MAIN_WORKTREE_ID } from "~/shared/worktrees";
 import { getPinnedProjects, nextPinnedOrder, validatePinnedReorder } from "~/lib/pinned-project-order";
 import { isCwfWorkspace, loadWorkspace } from "~/domain/workspace/fs-loader";
 import { projectClaudeWorkspace } from "~/domain/workspace/projectors/claude";
+import { ensureWorkflowBuilderCommand } from "./workspace-scaffold";
 
 export type { ProjectWithCounts } from "~/shared/projects";
 
@@ -478,6 +479,22 @@ function parseCommandOwns(content: string): { agents: string[]; skills: string[]
  * generated .claude/ projection so terminals stay in sync. Legacy projects
  * (e.g. code repos with only a .claude/) keep the old read path.
  */
+/**
+ * Materialize the workflow-builder command for a project so the chat's
+ * `/create-workflow` resolves on every engine. Returns false for unknown ids.
+ */
+export function ensureWorkflowCommand(id: string): boolean {
+  const project = findProjectById(id);
+  if (!project) return false;
+  ensureWorkflowBuilderCommand(project.path);
+  try {
+    projectClaudeWorkspace(project.path);
+  } catch {
+    /* best-effort; chat start projects again */
+  }
+  return true;
+}
+
 export function listProjectCommands(id: string): ProjectCommand[] {
   const project = findProjectById(id);
   if (!project) return [];

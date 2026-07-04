@@ -1541,6 +1541,9 @@ function ProjectPage() {
     setShowCommandPicker(false);
     if (!project || !getElectron()) return;
     try {
+      // Materialize /create-workflow for this project (CWF commands/ or classic
+      // .claude/commands/) so the engine can resolve it on the first message.
+      await api.ensureWorkflowBuilder(project.id).catch(() => undefined);
       const providerSessionId = crypto.randomUUID();
       const chatAgent = resolveChatAgent(settings?.aiProvider);
       const { task } = await api.createTaskInternal(project.id, {

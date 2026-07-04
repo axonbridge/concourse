@@ -15,6 +15,7 @@ import {
   togglePin,
   updateProject,
   reorderPinnedProjects,
+  ensureWorkflowCommand,
 } from "../services/projects";
 import {
   handleDomainError,
@@ -194,6 +195,17 @@ export async function listCommands(rawId: string): Promise<Response> {
   const parsed = idParam.safeParse(rawId);
   if (!parsed.success) return notFound();
   return json({ commands: listProjectCommands(parsed.data) });
+}
+
+/** Materialize /create-workflow for this project before the builder chat opens. */
+export async function ensureWorkflowBuilder(rawId: string): Promise<Response> {
+  const parsed = idParam.safeParse(rawId);
+  if (!parsed.success) return notFound();
+  try {
+    return ensureWorkflowCommand(parsed.data) ? json({ ok: true }) : notFound();
+  } catch (e) {
+    return jsonError(HTTP_BAD_REQUEST, e instanceof Error ? e.message : "ensure failed");
+  }
 }
 
 export async function deleteCommand(rawId: string, name: string): Promise<Response> {

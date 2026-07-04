@@ -191,6 +191,8 @@ export const api = {
     ),
   projectCommands: (id: string) =>
     req<{ commands: ProjectCommand[] }>(`/api/projects/${id}/commands`),
+  ensureWorkflowBuilder: (id: string) =>
+    req<{ ok: true }>(`/api/projects/${id}/workflow-builder`, { method: "POST" }),
   deleteCommand: (id: string, name: string) =>
     req<{ deleted: { commands: number; agents: number; skills: number } }>(
       `/api/projects/${id}/commands/${encodeURIComponent(name)}`,

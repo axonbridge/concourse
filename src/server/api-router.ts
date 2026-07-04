@@ -33,6 +33,7 @@ const PROJECT_WORKTREES_PATH = /^\/api\/projects\/([^/]+)\/worktrees$/;
 const PROJECT_WORKTREE_PATH = /^\/api\/projects\/([^/]+)\/worktrees\/([^/]+)$/;
 const PROJECT_TASKS_PATH = /^\/api\/projects\/([^/]+)\/tasks$/;
 const PROJECT_COMMANDS_PATH = /^\/api\/projects\/([^/]+)\/commands$/;
+const PROJECT_WORKFLOW_BUILDER_PATH = /^\/api\/projects\/([^/]+)\/workflow-builder$/;
 const PROJECT_COMMANDS_IMPORT_PATH = /^\/api\/projects\/([^/]+)\/commands\/import$/;
 const PROJECT_COMMAND_BUNDLE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+)\/bundle$/;
 const PROJECT_COMMAND_ONE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+)$/;
@@ -209,6 +210,11 @@ async function dispatch(
   if (m) {
     const id = decode(m[1]);
     if (method === "GET") return projectsController.listCommands(id);
+  }
+  m = pathname.match(PROJECT_WORKFLOW_BUILDER_PATH);
+  if (m) {
+    const id = decode(m[1]);
+    if (method === "POST") return projectsController.ensureWorkflowBuilder(id);
   }
   // More specific command paths — checked before the generic :name matcher.
   m = pathname.match(PROJECT_COMMANDS_IMPORT_PATH);
