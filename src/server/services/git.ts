@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import {
   CommitMessageGenerationError,
@@ -277,6 +278,55 @@ function readUntrackedAsDiff(cwd: string, file: string): GitDiff {
   } catch (e: any) {
     throw new GitError("could not read untracked file", e?.message || String(e));
   }
+}
+
+const CLONE_TIMEOUT_MS = 5 * 60_000;
+const CLONE_URL_RE = /^(https:\/\/|git@|ssh:\/\/)[^\s]+$/;
+
+/** Whether a usable git binary is on PATH (macOS: CLT installed). */
+export async function isGitAvailable(): Promise<{ available: boolean; version?: string }> {
+  try {
+    const r = await runGit(os.homedir(), ["--version"], { timeoutMs: 5_000 });
+    if (r.code === 0) return { available: true, version: r.stdout.trim() };
+    return { available: false };
+  } catch {
+    return { available: false };
+  }
+}
+
+/** Derive a folder name from a clone URL: "…/my-repo.git" → "my-repo". */
+export function repoFolderName(url: string): string {
+  const tail = url.replace(/\/+$/, "").split(/[/:]/).pop() ?? "";
+  return tail.replace(/\.git$/i, "").trim() || "repo";
+}
+
+/**
+ * Clone a repository into `<parentDir>/<folderName>`. The destination must not
+ * already exist. Returns the absolute path of the new clone.
+ */
+export async function cloneRepository(input: {
+  url: string;
+  parentDir: string;
+  folderName?: string;
+}): Promise<{ path: string }> {
+  const url = input.url.trim();
+  if (!CLONE_URL_RE.test(url)) {
+    throw new GitError("Enter an https:// or git@ repository URL");
+  }
+  const parent = path.resolve(input.parentDir.trim());
+  if (!fs.existsSync(parent) || !fs.statSync(parent).isDirectory()) {
+    throw new GitError("Destination folder does not exist");
+  }
+  const folder = (input.folderName?.trim() || repoFolderName(url)).replace(/[/\\]/g, "");
+  const dest = path.join(parent, folder);
+  if (fs.existsSync(dest)) {
+    throw new GitError(`${dest} already exists`);
+  }
+  const r = await runGit(parent, ["clone", "--", url, dest], { timeoutMs: CLONE_TIMEOUT_MS });
+  if (r.code !== 0) {
+    throw new GitError("git clone failed", r.stderr.trim().slice(0, 500));
+  }
+  return { path: dest };
 }
 
 export async function stageFiles(

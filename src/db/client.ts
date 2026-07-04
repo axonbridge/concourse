@@ -420,6 +420,7 @@ function ensureSchema(sqlite: Database.Database) {
       scope_id TEXT NOT NULL DEFAULT '${LOCAL_SCOPE_ID}',
       name TEXT NOT NULL,
       cwd TEXT,
+      start_command TEXT,
       position INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -490,6 +491,7 @@ function ensureSchema(sqlite: Database.Database) {
   sqlite.exec("CREATE INDEX IF NOT EXISTS user_terminals_project_worktree_scope_idx ON user_terminals(project_id, worktree_id, scope_id);");
   sqlite.exec("CREATE INDEX IF NOT EXISTS user_terminals_scope_idx ON user_terminals(scope_id);");
   ensureColumn(sqlite, "home_terminals", "scope_id", `TEXT NOT NULL DEFAULT '${LOCAL_SCOPE_ID}'`);
+  ensureColumn(sqlite, "home_terminals", "start_command", "TEXT");
   sqlite.exec("CREATE INDEX IF NOT EXISTS home_terminals_scope_idx ON home_terminals(scope_id);");
 
   // Legacy builds briefly modeled "shell" as a task agent even though shell

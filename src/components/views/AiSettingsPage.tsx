@@ -6,7 +6,11 @@ import { Field, SettingsSection } from "~/components/views/SettingsParts";
 import { api, type AppSettings } from "~/lib/api";
 import { getElectron } from "~/lib/electron";
 import { queryKeys, useSettings } from "~/queries";
+import { useRouter } from "@tanstack/react-router";
 import { AI_PROVIDERS, aiProviderInfo, type AiProviderInfo, type EngineId } from "~/shared/ai-providers";
+import { agentSetupCommand, AGENT_SETUP } from "~/shared/agent-setup-commands";
+import { useUserTerminals } from "~/lib/user-terminal-store";
+import { requestCloseSettings } from "~/lib/settings-navigation";
 import type { TaskAgent } from "~/shared/domain";
 import type { CommitCli, CommitCliDetection } from "~/shared/commit-cli";
 
@@ -154,6 +158,20 @@ export function AiSettingsPage() {
     void update({ aiModelByProvider: next });
   };
 
+  const { createHomeSetupTerminal } = useUserTerminals();
+  const router = useRouter();
+
+  // One-click CLI setup: open a home terminal on the dashboard running the
+  // vendor's install (when missing) chained with its interactive sign-in.
+  const runCliSetup = async (agent: TaskAgent, installed: boolean) => {
+    const command = agentSetupCommand(agent, installed);
+    const setup = AGENT_SETUP[agent];
+    if (!command || !setup) return;
+    await createHomeSetupTerminal(`${setup.label} setup`, command);
+    requestCloseSettings();
+    void router.navigate({ to: "/" });
+  };
+
   // The setup area rendered inside the SELECTED card: auth status + key
   // controls (+ endpoint URL for the custom engine). Everything an engine
   // needs lives on its card.
@@ -191,6 +209,23 @@ export function AiSettingsPage() {
           <div style={{ flex: 1, fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
             {authLine}
           </div>
+          {p.kind === "harness" && electron && AGENT_SETUP[p.id as TaskAgent] && (
+            <div style={{ flexShrink: 0 }}>
+              <Btn
+                variant="ghost"
+                icon="terminal"
+                onClick={() => {
+                  const isInstalled =
+                    detection?.[DETECT_KEY[p.id as TaskAgent]] === true;
+                  void runCliSetup(p.id as TaskAgent, isInstalled);
+                }}
+              >
+                {detection?.[DETECT_KEY[p.id as TaskAgent]]
+                  ? "Sign in via CLI"
+                  : "Install & sign in"}
+              </Btn>
+            </div>
+          )}
           {envVar && electron && !editing && (
             <div style={{ flexShrink: 0 }}>
               {hasKey ? (

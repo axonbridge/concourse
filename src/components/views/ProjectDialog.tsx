@@ -8,6 +8,7 @@ import { useHotkey } from "~/lib/use-hotkey";
 import { ICON_COLORS } from "~/lib/design-meta";
 import { getElectron } from "~/lib/electron";
 import { api } from "~/lib/api";
+import { useUserTerminals } from "~/lib/user-terminal-store";
 import { ToggleRow } from "~/components/views/SettingsParts";
 import type { Group, Project } from "~/db/schema";
 
@@ -51,6 +52,12 @@ export function ProjectDialog({
 }) {
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
+  // Create mode: where the project comes from — an existing folder or a fresh clone.
+  const [sourceMode, setSourceMode] = useState<"folder" | "clone">("folder");
+  const [cloneUrl, setCloneUrl] = useState("");
+  const [cloneParent, setCloneParent] = useState("");
+  const [cloning, setCloning] = useState(false);
+  const [gitAvailable, setGitAvailable] = useState<boolean | null>(null);
   const [groupId, setGroupId] = useState<string>("");
   const [groupQuery, setGroupQuery] = useState("");
   const [groupTypeaheadOpen, setGroupTypeaheadOpen] = useState(false);
@@ -184,6 +191,36 @@ export function ProjectDialog({
     }
   };
 
+  useEffect(() => {
+    if (project || sourceMode !== "clone" || gitAvailable !== null) return;
+    api
+      .gitAvailable()
+      .then((r) => setGitAvailable(r.available))
+      .catch(() => setGitAvailable(null));
+  }, [project, sourceMode, gitAvailable]);
+
+  const browseCloneParent = async () => {
+    const electron = getElectron();
+    if (!electron) return;
+    const result = await electron.browseFolder();
+    if (result) setCloneParent(result);
+  };
+
+  const { createHomeSetupTerminal } = useUserTerminals();
+  const installGit = async () => {
+    // macOS: opens Apple's Command Line Tools installer (GUI). The terminal
+    // records the attempt; cloning works once the install finishes.
+    await createHomeSetupTerminal("Install Git", "xcode-select --install || true");
+    setGitAvailable(null); // re-check next time clone mode is opened
+  };
+
+  const cloneRepoName = cloneUrl
+    .replace(/\/+$/, "")
+    .split(/[/:]/)
+    .pop()
+    ?.replace(/\.git$/i, "")
+    .trim() || "";
+
   const selectGroup = (group: Group) => {
     setGroupId(group.id);
     setGroupQuery(group.name);
@@ -238,21 +275,41 @@ export function ProjectDialog({
   const submit = async () => {
     setError(null);
     try {
+      // Clone mode: clone first, then continue the normal add flow with the
+      // fresh clone's path (classified so scaffold/prepare behave the same).
+      let effectivePath = path;
+      let effectiveKind = folderKind;
+      if (!project && sourceMode === "clone") {
+        if (!cloneUrl.trim()) throw new Error("Enter a repository URL");
+        if (!cloneParent.trim()) throw new Error("Choose a destination folder");
+        setCloning(true);
+        try {
+          const cloned = await api.cloneRepository({
+            url: cloneUrl.trim(),
+            parentDir: cloneParent.trim(),
+            folderName: name.trim() || undefined,
+          });
+          effectivePath = cloned.path;
+          effectiveKind = (await api.classifyFolder(cloned.path).catch(() => null))?.kind ?? null;
+        } finally {
+          setCloning(false);
+        }
+      }
       const effectiveGroupId = await resolveGroupIdForSave();
       const effectiveName =
-        name.trim() || (path.trim().split(/[\\/]/).filter(Boolean).pop() ?? "");
+        name.trim() || (effectivePath.trim().split(/[\\/]/).filter(Boolean).pop() ?? "");
       await onSave({
         name: name.trim() || undefined,
-        path,
+        path: effectivePath,
         icon: icon || effectiveName.slice(0, 2).toUpperCase(),
         iconColor,
         groupId: effectiveGroupId,
         ...(project ? { imagePath } : { pendingImage }),
         ...(!project &&
-        (folderKind === "empty" || folderKind === "missing" || folderKind === "plain")
+        (effectiveKind === "empty" || effectiveKind === "missing" || effectiveKind === "plain")
           ? { scaffoldWorkspace: true }
           : {}),
-        ...(!project && folderKind === "legacy-claude" ? { prepareWorkspace: true } : {}),
+        ...(!project && effectiveKind === "legacy-claude" ? { prepareWorkspace: true } : {}),
         ...(project ? { worktreeSetupCommand: worktreeSetupCommand.trim() || null } : {}),
         ...(project ? { gitEnabled } : {}),
       });
@@ -288,7 +345,7 @@ export function ProjectDialog({
                 minWidth: 80,
               }}
             >
-              {project ? "Save" : "Add project"}
+              {project ? "Save" : cloning ? "Cloning…" : "Add project"}
             </Btn>
           </HotkeyTooltip>
         </>
@@ -303,6 +360,112 @@ export function ProjectDialog({
           placeholder={path.trim().split(/[\\/]/).filter(Boolean).pop() || "my-project"}
         />
 
+        {!project && (
+          <div>
+            <label
+              style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10.5,
+              fontWeight: 500,
+              color: "var(--text-dim)",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              display: "block",
+              marginBottom: 6,
+            }}
+            >
+              Source
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn
+                variant={sourceMode === "folder" ? "solid" : "ghost"}
+                icon="folder"
+                onClick={() => setSourceMode("folder")}
+                aria-pressed={sourceMode === "folder"}
+              >
+                Open a folder
+              </Btn>
+              <Btn
+                variant={sourceMode === "clone" ? "solid" : "ghost"}
+                icon="git-branch"
+                onClick={() => setSourceMode("clone")}
+                aria-pressed={sourceMode === "clone"}
+              >
+                Clone a repository
+              </Btn>
+            </div>
+          </div>
+        )}
+
+        {!project && sourceMode === "clone" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <TextField
+              mono
+              label="Repository URL"
+              value={cloneUrl}
+              onChange={setCloneUrl}
+              placeholder="https://github.com/you/your-repo.git"
+            />
+            <div>
+              <label
+                style={{
+              fontFamily: "var(--mono)",
+              fontSize: 10.5,
+              fontWeight: 500,
+              color: "var(--text-dim)",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              display: "block",
+              marginBottom: 6,
+            }}
+              >
+                Clone into
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <TextField
+                    mono
+                    value={cloneParent}
+                    onChange={setCloneParent}
+                    placeholder="/Users/me/repos"
+                  />
+                </div>
+                <Btn variant="solid" icon="folder" onClick={browseCloneParent}>
+                  Browse…
+                </Btn>
+              </div>
+              {cloneRepoName && cloneParent.trim() && (
+                <div style={{ marginTop: 6, fontSize: 11, fontFamily: "var(--mono)", color: "var(--text-faint)" }}>
+                  → {cloneParent.replace(/\/+$/, "")}/{name.trim() || cloneRepoName}
+                </div>
+              )}
+              {gitAvailable === false && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "8px 12px",
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                    color: "var(--text-dim)",
+                    background: "var(--accent-faint)",
+                    border: "1px solid var(--accent-border, var(--border))",
+                    borderRadius: 6,
+                  }}
+                >
+                  Git isn&apos;t installed yet — it ships with Apple&apos;s Command
+                  Line Tools.
+                  <div style={{ marginTop: 8 }}>
+                    <Btn variant="solid" icon="terminal" onClick={() => void installGit()}>
+                      Install Git
+                    </Btn>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(project || sourceMode === "folder") && (
         <div>
           <label
             style={{
@@ -390,6 +553,7 @@ export function ProjectDialog({
             </div>
           )}
         </div>
+        )}
 
         <div>
           <label

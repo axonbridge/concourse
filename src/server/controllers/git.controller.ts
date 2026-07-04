@@ -1,12 +1,14 @@
 import { z } from "zod";
 import {
   checkoutGitBranch,
+  cloneRepository,
   commit as gitCommit,
   createPullRequest as gitCreatePullRequest,
   discardFileChanges,
   getGitDiff,
   getGitStatus,
   gitErrorPayload,
+  isGitAvailable,
   listGitBranches,
   push as gitPush,
   stageFiles,
@@ -18,6 +20,11 @@ import { HTTP_BAD_REQUEST } from "~/shared/http-status";
 const stageBody = z.object({
   files: z.array(z.string()).optional().default([]),
   worktreeId: z.string().nullable().optional(),
+});
+const cloneBody = z.object({
+  url: z.string().trim().min(1),
+  parentDir: z.string().trim().min(1),
+  folderName: z.string().trim().max(255).optional(),
 });
 const discardBody = z.object({
   file: z.string().trim().min(1),
@@ -109,6 +116,23 @@ export async function unstage(rawId: string, request: Request): Promise<Response
   try {
     await unstageFiles(idParsed.data, parsed.data.files, parsed.data.worktreeId ?? null);
     return json({ ok: true });
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+/** Whether git is on PATH (macOS: whether the Command Line Tools are installed). */
+export async function available(): Promise<Response> {
+  return json(await isGitAvailable());
+}
+
+/** Clone a repository so it can be added as a project. Not project-scoped. */
+export async function clone(request: Request): Promise<Response> {
+  const parsed = await parseJsonBody(request, cloneBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    const result = await cloneRepository(parsed.data);
+    return json(result);
   } catch (e) {
     return handleDomainError(e) ?? asGitErrorResponse(e);
   }

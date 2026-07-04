@@ -83,6 +83,8 @@ type Ctx = {
     project?: ScopedProject;
     cwd?: string | null;
   }) => Promise<UserTerminal | null>;
+  /** Home terminal that runs a setup command on spawn (CLI install/sign-in). */
+  createHomeSetupTerminal: (name: string, startCommand: string) => Promise<UserTerminal>;
   killTerminalsByStartCommand: (
     commands: string[],
     opts?: { ports?: number[] }
@@ -352,6 +354,25 @@ export function UserTerminalProvider({ children }: { children: ReactNode }) {
     setFocusedByProject((prev) => (prev[projectId] === id ? prev : { ...prev, [projectId]: id }));
   }, []);
 
+  // App-driven setup flows (CLI install + sign-in, git install): create a HOME
+  // terminal that runs the command on spawn, regardless of which view is
+  // active. Callers navigate to the dashboard so the panel is visible.
+  const createHomeSetupTerminal = useCallback(
+    async (name: string, startCommand: string) => {
+      const key = homeScopeKeyFor(homeScopeId);
+      const { terminal } = await api.createHomeTerminal({
+        name,
+        scopeId: homeScopeId,
+        startCommand,
+      });
+      updateSessions(key, (prev) => [...prev, { terminal, ptyId: null }]);
+      setFocusFor(key, terminal.id);
+      setPanelOpenByProject((prev) => ({ ...prev, [key]: true }));
+      return terminal;
+    },
+    [homeScopeId, updateSessions, setFocusFor],
+  );
+
   const createTerminal = useCallback(
     async (opts?: { name?: string; startCommand?: string | null; project?: ScopedProject; cwd?: string | null }) => {
       const targetProject = opts?.project ?? project;
@@ -364,6 +385,7 @@ export function UserTerminalProvider({ children }: { children: ReactNode }) {
         const { terminal } = await api.createHomeTerminal({
           name: opts?.name,
           scopeId: homeScopeId,
+          startCommand: opts?.startCommand ?? null,
         });
         updateSessions(key, (prev) => [...prev, { terminal, ptyId: null }]);
         setFocusFor(key, terminal.id);
@@ -684,6 +706,7 @@ export function UserTerminalProvider({ children }: { children: ReactNode }) {
       focusedId,
       focusTerminal,
       createTerminal,
+      createHomeSetupTerminal,
       closeForProject,
       closeHomeForScope,
       killTerminal,
@@ -713,6 +736,7 @@ export function UserTerminalProvider({ children }: { children: ReactNode }) {
       focusedId,
       focusTerminal,
       createTerminal,
+      createHomeSetupTerminal,
       closeForProject,
       closeHomeForScope,
       killTerminal,

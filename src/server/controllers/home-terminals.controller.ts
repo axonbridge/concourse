@@ -13,6 +13,7 @@ const createHomeTerminalBody = z.object({
   name: z.string().optional(),
   cwd: z.string().nullable().optional(),
   scopeId: z.string().optional(),
+  startCommand: z.string().max(2_000).nullable().optional(),
 });
 
 const renameHomeTerminalBody = z.object({

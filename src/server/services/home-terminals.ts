@@ -34,6 +34,7 @@ export function createHomeTerminal(input: {
   name?: string;
   cwd?: string | null;
   scopeId?: string | null;
+  startCommand?: string | null;
 }): UserTerminal {
   const scopeId = normalizeScopeId(input.scopeId);
   const existing = findHomeTerminalsByScope(scopeId);
@@ -46,6 +47,7 @@ export function createHomeTerminal(input: {
     scopeId,
     name: input.name?.trim() || nextDefaultHomeTerminalName(existing),
     cwd: input.cwd ?? null,
+    startCommand: input.startCommand?.trim() || null,
     position: existing.length,
     createdAt: now,
     updatedAt: now,

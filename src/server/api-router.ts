@@ -263,6 +263,9 @@ async function dispatch(
   if (m && method === "DELETE") {
     return projectFileController.remove(decode(m[1]), url);
   }
+  if (pathname === "/api/git/available" && method === "GET") return gitController.available();
+  if (pathname === "/api/git/clone" && method === "POST") return gitController.clone(request);
+
   m = pathname.match(PROJECT_GIT_PATH);
   if (m) {
     const id = decode(m[1]);

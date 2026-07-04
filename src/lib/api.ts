@@ -396,6 +396,7 @@ export const api = {
     name?: string;
     cwd?: string | null;
     scopeId: string;
+    startCommand?: string | null;
   }) =>
     req<{ terminal: UserTerminal }>("/api/home/user-terminals", {
       method: "POST",
@@ -494,6 +495,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ files, worktreeId: worktreeId ?? null }),
     }),
+  gitAvailable: () => req<{ available: boolean; version?: string }>("/api/git/available"),
+  cloneRepository: (body: { url: string; parentDir: string; folderName?: string }) =>
+    req<{ path: string }>("/api/git/clone", { method: "POST", body: JSON.stringify(body) }),
   discardGitFile: (projectId: string, file: string, worktreeId?: string | null) =>
     req<{ ok: true }>(`/api/projects/${projectId}/git/discard`, {
       method: "POST",

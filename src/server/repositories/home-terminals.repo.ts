@@ -17,7 +17,7 @@ export function toUserTerminal(row: HomeTerminal): UserTerminal {
     scopeId: row.scopeId,
     name: row.name,
     cwd: row.cwd,
-    startCommand: null,
+    startCommand: row.startCommand ?? null,
     position: row.position,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

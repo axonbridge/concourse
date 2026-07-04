@@ -216,6 +216,9 @@ export const homeTerminals = sqliteTable(
     scopeId: text("scope_id").notNull().default(LOCAL_SCOPE_ID),
     name: text("name").notNull(),
     cwd: text("cwd"),
+    // One-shot command run when the terminal spawns (e.g. an app-driven CLI
+    // install + sign-in flow). Null for plain shells.
+    startCommand: text("start_command"),
     position: integer("position").notNull().default(0),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
