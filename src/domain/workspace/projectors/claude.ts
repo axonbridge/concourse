@@ -11,7 +11,7 @@ import { parseFrontmatter } from "../parse";
 //
 // Ownership rules: the projector manages CLAUDE.md and *.md files inside
 // .claude/{commands,agents,skills,templates} ONLY. It never touches
-// settings.local.json (Mission Control hook config) or anything else.
+// settings.local.json (Concourse hook config) or anything else.
 //
 // Note on layering: this maps files to a vendor CONVENTION but imports no vendor
 // SDK — it's pure file mapping, kept beside the domain loader so both the server

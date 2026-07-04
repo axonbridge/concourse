@@ -483,7 +483,7 @@ export function registerPtyHandlers(
       if (mcEnv) {
         env.MC_API_URL = mcEnv.apiUrl;
         env.MC_API_TOKEN = mcEnv.token;
-        env.MC_THEME = opts.missionControlTheme === "light" ? "light" : "dark";
+        env.MC_THEME = opts.concourseTheme === "light" ? "light" : "dark";
       }
       applyAgentPtyEnv(env, opts.agent);
 
@@ -644,7 +644,7 @@ export function registerPtyHandlers(
                 port: target.port,
                 pids: [],
                 killed: [],
-                errors: ["skipped protected Mission Control runtime port"],
+                errors: ["skipped protected Concourse runtime port"],
               }
             : killPidsListeningOnPort(target.port)
         )

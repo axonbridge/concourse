@@ -8,13 +8,13 @@ import { normalizeRemoteAgentUrl, type SandboxRemoteConfig } from "../src/shared
 // Electron-main read access to the `sandboxes` table (owned by the server via
 // Drizzle, but the container lifecycle lives in the main process). Mirrors how
 // project-roots.ts reads `projects` directly. Port assignments are written back
-// here so they stay stable across restarts. Same missioncontrol.db file.
+// here so they stay stable across restarts. Same concourse.db file.
 
 let _db: Database.Database | null = null;
 
 function db(userDataDir: string): Database.Database {
   if (_db) return _db;
-  const d = new Database(path.join(userDataDir, "missioncontrol.db"), {
+  const d = new Database(path.join(userDataDir, "concourse.db"), {
     nativeBinding: resolveElectronBetterSqlite3NativeBinding(),
   });
   d.pragma("journal_mode = WAL");

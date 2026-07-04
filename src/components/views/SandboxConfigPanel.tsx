@@ -1264,7 +1264,7 @@ export function SandboxConfigPanel({
               ariaLabel="Custom image tag"
               value={imageTagInput}
               onChange={setImageTagInput}
-              placeholder="mission-control/sandbox-base:latest"
+              placeholder="concourse/sandbox-base:latest"
               mono
             />
             <TextField

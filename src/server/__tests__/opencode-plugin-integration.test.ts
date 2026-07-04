@@ -4,9 +4,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  opencodeMissionControlPluginPath,
-  writeOpencodeMissionControlPlugin,
-} from "~/shared/opencode-mission-control-plugin";
+  opencodeConcoursePluginPath,
+  writeOpencodeConcoursePlugin,
+} from "~/shared/opencode-concourse-plugin";
 import { TITLE_GENERATING, TITLE_WAITING } from "~/lib/task-sentinels";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "mc-opencode-plugin-integration-"));
@@ -35,14 +35,14 @@ type OpenCodePluginHooks = {
   ) => Promise<void>;
 };
 
-async function loadMissionControlPluginHooks(
+async function loadConcoursePluginHooks(
   pluginDir: string,
 ): Promise<OpenCodePluginHooks> {
-  const file = opencodeMissionControlPluginPath(pluginDir);
+  const file = opencodeConcoursePluginPath(pluginDir);
   const mod = (await import(pathToFileURL(file).href)) as {
-    MissionControlStatus: () => Promise<OpenCodePluginHooks>;
+    ConcourseStatus: () => Promise<OpenCodePluginHooks>;
   };
-  return mod.MissionControlStatus();
+  return mod.ConcourseStatus();
 }
 
 describe("OpenCode plugin runtime integration", () => {
@@ -95,9 +95,9 @@ describe("OpenCode plugin runtime integration", () => {
 
   it("installs the plugin and drives card status through the real hook API", async () => {
     installAgentHooks("opencode", projectDir);
-    expect(fs.existsSync(opencodeMissionControlPluginPath(projectDir))).toBe(true);
+    expect(fs.existsSync(opencodeConcoursePluginPath(projectDir))).toBe(true);
 
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
     const sessionId = "ses_3cf7dd8d4ffeUPfENpVxfFojZ2";
 
     await hooks.event({
@@ -133,8 +133,8 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("marks finished on deprecated session.idle events", async () => {
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
     const sessionId = "ses_idle_fallback";
 
     await hooks.event({
@@ -157,8 +157,8 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("generates a title from chat.message user prompts", async () => {
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
     const sessionId = "ses_title_test_session";
 
     await hooks.event({
@@ -189,8 +189,8 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("does not let non-awaited busy events race the idle finish event", async () => {
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
     const sessionId = "ses_non_awaited_status_race";
     const delayedBusyRequests: Array<() => void> = [];
 
@@ -246,8 +246,8 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("marks needs-input on permission.asked", async () => {
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
 
     await hooks.event({
       event: {
@@ -260,8 +260,8 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("marks needs-input when OpenCode asks a built-in question", async () => {
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
     const sessionId = "ses_question_test";
 
     await hooks.event({
@@ -275,8 +275,8 @@ describe("OpenCode plugin runtime integration", () => {
   });
 
   it("marks needs-input before the question tool waits for answers", async () => {
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
     const sessionId = "ses_question_tool_test";
 
     await hooks["tool.execute.before"]?.({ tool: "question", sessionID: sessionId });
@@ -285,13 +285,13 @@ describe("OpenCode plugin runtime integration", () => {
     });
   });
 
-  it("no-ops when Mission Control env vars are missing", async () => {
+  it("no-ops when Concourse env vars are missing", async () => {
     delete process.env.MC_TASK_ID;
     delete process.env.MC_API_URL;
     delete process.env.MC_API_TOKEN;
 
-    writeOpencodeMissionControlPlugin(projectDir);
-    const hooks = await loadMissionControlPluginHooks(projectDir);
+    writeOpencodeConcoursePlugin(projectDir);
+    const hooks = await loadConcoursePluginHooks(projectDir);
 
     await hooks.event({
       event: { type: "session.idle", properties: { sessionID: "ses_ignored" } },

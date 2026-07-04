@@ -8,8 +8,8 @@ import { api, type AppSettings } from "~/lib/api";
 import { queryKeys, useSettings } from "~/queries";
 import {
   CURRENT_MC_VERSION,
-  useLatestMissionControlVersion,
-} from "~/queries/mission-control-version";
+  useLatestConcourseVersion,
+} from "~/queries/concourse-version";
 import {
   canTriggerUpdateCheck,
   triggerUpdateDownload,
@@ -342,7 +342,7 @@ export function GeneralSettingsPage() {
 
 function AboutSection() {
   const { data: academy, isLoading: academyLoading, isError: academyError } =
-    useLatestMissionControlVersion();
+    useLatestConcourseVersion();
   const updater = useAutoUpdaterState();
   const statusId = useId();
   const latest = academy?.latestVersion;

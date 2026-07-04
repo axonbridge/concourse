@@ -313,7 +313,7 @@ export const VOICE_COMMANDS: VoiceCommandDoc[] = [
     id: "switch-project",
     title: "Switch project",
     description: "Jump to another project by name (matched by sound and spelling).",
-    examples: ["open agentic jumpstart", "switch to mission control", "go to owl tales"],
+    examples: ["open agentic jumpstart", "switch to concourse", "go to owl tales"],
   },
   {
     id: "run-project",

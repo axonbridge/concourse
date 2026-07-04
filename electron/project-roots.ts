@@ -13,7 +13,7 @@ let lastReadErrorAt = 0;
 const READ_ERROR_THROTTLE_MS = 60_000;
 
 export function configureProjectRootsDb(userDataDir: string): void {
-  dbPath = path.join(userDataDir, "missioncontrol.db");
+  dbPath = path.join(userDataDir, "concourse.db");
 }
 
 function ensureConnection(): Database.Database | null {

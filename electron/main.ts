@@ -52,7 +52,7 @@ import { shortId } from "../src/shared/short-id";
 import { errMsg } from "../src/shared/err-msg";
 import { configureProjectRootsDb, disposeProjectRootsDb, loadProjectRoots } from "./project-roots";
 import { resolveSafeOpenPath } from "./open-path-policy";
-import { buildLocalMissionControlApiUrl } from "./pty-hook-env";
+import { buildLocalConcourseApiUrl } from "./pty-hook-env";
 import { checkAgentCliVersion } from "./agent-cli-version";
 import { AGENT_CLI_CONFIG_BY_COMMAND } from "./agent-cli-version-requirements";
 import { disposeAppSettingsStore } from "./app-settings-store";
@@ -74,7 +74,7 @@ import {
   productionRuntimePortStart,
 } from "./runtime-port";
 
-const APP_NAME = "MissionControl";
+const APP_NAME = "Concourse";
 
 function defaultUserDataDir(): string {
   const home = os.homedir();
@@ -90,11 +90,11 @@ function defaultUserDataDir(): string {
 function configureUserDataDir(): string {
   // Keep Electron-side IPC stores aligned with src/db/client.ts. In dev the
   // generated dist-electron/package.json only declares CommonJS, so Electron's
-  // package-name-derived default can become "Electron" or "mission-control",
+  // package-name-derived default can become "Electron" or "concourse",
   // splitting API tokens and project roots across separate SQLite files.
   const dir = (process.env.MC_USER_DATA_DIR || defaultUserDataDir()).trim();
   fs.mkdirSync(dir, { recursive: true });
-  // Display name (menu bar) is "Concourse"; APP_NAME stays "MissionControl" for
+  // Display name (menu bar) is "Concourse"; APP_NAME stays "Concourse" for
   // the user-data dir so existing data isn't orphaned. setPath below pins the dir
   // explicitly regardless of the display name.
   app.setName("Concourse");
@@ -103,14 +103,14 @@ function configureUserDataDir(): string {
   return dir;
 }
 
-const missionControlUserDataDir = configureUserDataDir();
+const concourseUserDataDir = configureUserDataDir();
 
 /** Env for spawning the bundled remote-vm CLI as a plain Node process. */
 function remoteVmSpawnEnv(): NodeJS.ProcessEnv {
   return {
     ...sanitizedProcessEnv(),
     ELECTRON_RUN_AS_NODE: "1",
-    MC_USER_DATA_DIR: missionControlUserDataDir,
+    MC_USER_DATA_DIR: concourseUserDataDir,
   };
 }
 
@@ -544,7 +544,7 @@ function startRemoteVmDeployJob(input: RemoteVmDeployInput): RemoteVmDeployJob {
   let args: string[];
   try {
     if (!script) {
-      throw new Error("Remote VM deploy script is missing from this Mission Control build.");
+      throw new Error("Remote VM deploy script is missing from this Concourse build.");
     }
     args = buildRemoteVmDeployArgs(job.input);
     log.info("sandbox.agent-creds.deploy", {
@@ -669,7 +669,7 @@ function destroyRemoteVm(
   if (!script) {
     return Promise.resolve({
       ok: false,
-      error: "Remote VM script is missing from this Mission Control build.",
+      error: "Remote VM script is missing from this Concourse build.",
     });
   }
   const args = [script, "destroy", id, "--yes"];
@@ -713,7 +713,7 @@ function runRemoteVmLifecycle(
   if (!script) {
     return Promise.resolve({
       ok: false,
-      error: "Remote VM script is missing from this Mission Control build.",
+      error: "Remote VM script is missing from this Concourse build.",
     });
   }
   const args = [script, command, id];
@@ -751,7 +751,7 @@ function runRemoteVmReconcile(sandboxId: string): Promise<RemoteVmReconcileResul
   if (!script) {
     return Promise.resolve({
       ok: false,
-      error: "Remote VM script is missing from this Mission Control build.",
+      error: "Remote VM script is missing from this Concourse build.",
     });
   }
   return new Promise((resolve) => {
@@ -854,7 +854,7 @@ function configurePermissionHandlers(): void {
 }
 
 async function startProductionServer(): Promise<string> {
-  const portFile = path.join(missionControlUserDataDir, ".port");
+  const portFile = path.join(concourseUserDataDir, ".port");
   // Dev mode writes the fixed Vite port to the shared .port file for hook
   // wiring. A packaged app must not reuse that port or it blocks `pnpm dev`.
   const startPort = productionRuntimePortStart(readPreviousRuntimePort(portFile), {
@@ -888,7 +888,7 @@ async function startProductionServer(): Promise<string> {
       MC_DEV_URL: origin,
       MC_DEV_PORT: String(port),
       ELECTRON_RUN_AS_NODE: "1",
-      MC_USER_DATA_DIR: missionControlUserDataDir,
+      MC_USER_DATA_DIR: concourseUserDataDir,
     },
     stdio: ["ignore", "inherit", "inherit"],
   });
@@ -908,7 +908,7 @@ async function bootDevServer(): Promise<string> {
   // Vite dev server is launched by `pnpm dev:server`; just wait for it.
   await waitForHttp(devUrl);
   runtimePort = Number(new URL(devUrl).port);
-  const portFile = path.join(missionControlUserDataDir, ".port");
+  const portFile = path.join(concourseUserDataDir, ".port");
   fs.mkdirSync(path.dirname(portFile), { recursive: true });
   fs.writeFileSync(portFile, String(runtimePort), "utf8");
   return devUrl;
@@ -1013,11 +1013,11 @@ const DIRECTORY_GRANTS_FILE = "directory-grants.json";
 const DIRECTORY_GRANT_TTL_MS = 15 * 60_000;
 
 function projectImagesDir(): string {
-  return path.join(missionControlUserDataDir, "project-images");
+  return path.join(concourseUserDataDir, "project-images");
 }
 
 function terminalImagesDir(): string {
-  return path.join(missionControlUserDataDir, "terminal-images");
+  return path.join(concourseUserDataDir, "terminal-images");
 }
 
 function terminalImageExtension(mimeType: string, name: string): string | null {
@@ -1131,7 +1131,7 @@ const ALLOWED_PICKED_PATHS = new Set<string>();
 
 function recordPickedDirectoryGrant(dir: string): void {
   const realDir = fs.realpathSync(dir);
-  const target = path.join(missionControlUserDataDir, DIRECTORY_GRANTS_FILE);
+  const target = path.join(concourseUserDataDir, DIRECTORY_GRANTS_FILE);
   let grants: Array<{ path: string; createdAt: number }> = [];
   try {
     const now = Date.now();
@@ -1153,7 +1153,7 @@ function recordPickedDirectoryGrant(dir: string): void {
   grants = grants.filter((g) => path.resolve(g.path) !== path.resolve(realDir));
   grants.push({ path: realDir, createdAt: Date.now() });
 
-  fs.mkdirSync(missionControlUserDataDir, { recursive: true });
+  fs.mkdirSync(concourseUserDataDir, { recursive: true });
   const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify({ grants }, null, 2), "utf8");
   fs.renameSync(tmp, target);
@@ -1493,7 +1493,7 @@ safeHandle(IPC.voiceTranscribe, async (_event, wav: ArrayBuffer, prompt?: string
 });
 
 safeHandle(IPC.appGetRuntimePort, () => runtimePort);
-safeHandle(IPC.appGetUserDataDir, () => missionControlUserDataDir);
+safeHandle(IPC.appGetUserDataDir, () => concourseUserDataDir);
 
 safeHandle(IPC.appGetUserName, () => {
   try {
@@ -1583,11 +1583,11 @@ registerPtyHandlers(
   ipcMain,
   () => win,
   () => {
-    const apiUrl = buildLocalMissionControlApiUrl(runtimePort);
+    const apiUrl = buildLocalConcourseApiUrl(runtimePort);
     if (!apiUrl) return null;
     return {
       apiUrl,
-      token: getOrCreateApiToken(missionControlUserDataDir),
+      token: getOrCreateApiToken(concourseUserDataDir),
     };
   },
   () => {
@@ -1602,10 +1602,10 @@ registerMcpHandlers(ipcMain);
 // because the loopback server's same-origin gate doesn't protect against a
 // compromised renderer or any other process that can reach the local port.
 safeHandle(IPC.settingsGetToken, () => {
-  return getOrCreateApiToken(missionControlUserDataDir);
+  return getOrCreateApiToken(concourseUserDataDir);
 });
 safeHandle(IPC.settingsRegenerateToken, () => {
-  return regenerateApiToken(missionControlUserDataDir);
+  return regenerateApiToken(concourseUserDataDir);
 });
 
 // Provider API keys live keychain-encrypted in userData/credentials.json.
@@ -1745,13 +1745,13 @@ app.on("before-quit", () => {
 app.whenReady().then(() => {
   // pty:spawn validates `cwd` against this DB before letting any binary run,
   // so it must be configured before any window can issue an IPC call.
-  configureProjectRootsDb(missionControlUserDataDir);
+  configureProjectRootsDb(concourseUserDataDir);
   configurePermissionHandlers();
   registerProjectImageProtocol();
-  registerUpdateManager(ipcMain, () => win, missionControlUserDataDir);
-  registerSandboxManager(ipcMain, () => win, missionControlUserDataDir, app.getAppPath(), () =>
+  registerUpdateManager(ipcMain, () => win, concourseUserDataDir);
+  registerSandboxManager(ipcMain, () => win, concourseUserDataDir, app.getAppPath(), () =>
     runtimePort
-      ? { port: runtimePort, token: getOrCreateApiToken(missionControlUserDataDir) }
+      ? { port: runtimePort, token: getOrCreateApiToken(concourseUserDataDir) }
       : null,
   );
   return createWindow();

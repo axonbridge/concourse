@@ -20,7 +20,7 @@ const DEFAULT_LOCAL_TUNNEL_PORT = 19333;
 const DEFAULT_AWS_SIZE = "t3.medium";
 const DEFAULT_AWS_IMAGE =
   "resolve:ssm:/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id";
-const DEFAULT_AWS_SECURITY_GROUP = "mission-control-remote-vm-agent";
+const DEFAULT_AWS_SECURITY_GROUP = "concourse-remote-vm-agent";
 
 // --- Golden AMI ---------------------------------------------------------------
 // AgentSystemLabs publishes a pre-baked public AMI (one per region) with every
@@ -130,9 +130,9 @@ function randomSecret() {
 
 function resolveUserDataDir(env = process.env, platform = process.platform, home = os.homedir()) {
   if (env.MC_USER_DATA_DIR?.trim()) return env.MC_USER_DATA_DIR.trim();
-  if (platform === "darwin") return path.join(home, "Library/Application Support/MissionControl");
-  if (platform === "win32") return path.join(home, "AppData/Roaming/MissionControl");
-  return path.join(home, ".config/MissionControl");
+  if (platform === "darwin") return path.join(home, "Library/Application Support/Concourse");
+  if (platform === "win32") return path.join(home, "AppData/Roaming/Concourse");
+  return path.join(home, ".config/Concourse");
 }
 
 function expandHome(file) {
@@ -412,7 +412,7 @@ const WORKSPACE_USER = "workspace";
 const WORKSPACE_ROOT = "/workspace";
 // The agent stamps this file on every PTY/RPC; the idle watchdog reads its mtime.
 // /run is tmpfs, so a fresh boot/resume starts the idle clock from agent startup.
-const AGENT_ACTIVITY_FILE = "/run/mission-control-agent/activity";
+const AGENT_ACTIVITY_FILE = "/run/concourse-agent/activity";
 
 /**
  * Heavy, secret-free install steps: OS packages, Node, pnpm, the agent + AI CLIs,
@@ -445,18 +445,18 @@ install -d -o ${workspaceUser} -g ${workspaceUser} -m 0755 ${home}/.config
 
 corepack enable
 corepack prepare pnpm@11.1.2 --activate
-npm install -g @openai/codex@latest @anthropic-ai/claude-code@latest opencode-ai@latest @agentsystemlabs/mission-control-agent@latest
+npm install -g @openai/codex@latest @anthropic-ai/claude-code@latest opencode-ai@latest @agentsystemlabs/concourse-agent@latest
 
 # Fail fast if the agent binary is not on PATH after install (e.g. a bad publish).
 # npm's global prefix on the NodeSource deb is /usr, so the bin lands in /usr/bin —
 # do NOT assume /usr/local/bin. The systemd unit below resolves it via PATH.
-if ! command -v mission-control-agent >/dev/null 2>&1; then
-  echo "[mission-control] FATAL: mission-control-agent not found on PATH after 'npm install -g'."
-  echo "[mission-control] PATH=$PATH"
+if ! command -v concourse-agent >/dev/null 2>&1; then
+  echo "[concourse] FATAL: concourse-agent not found on PATH after 'npm install -g'."
+  echo "[concourse] PATH=$PATH"
   npm ls -g --depth=0 || true
   exit 1
 fi
-echo "[mission-control] agent binary resolved to: $(command -v mission-control-agent)"
+echo "[concourse] agent binary resolved to: $(command -v concourse-agent)"
 
 sudo -H -u ${workspaceUser} env HOME=${home} PATH=${home}/.local/bin:/usr/local/bin:/usr/bin:/bin bash -lc \\
   'for i in 1 2 3; do curl https://cursor.com/install -fsS | bash && break; echo "cursor-agent install attempt $i failed; retrying in 5s..."; sleep 5; done || echo "WARNING: cursor-agent install failed; continuing without it"'
@@ -488,7 +488,7 @@ function renderBootBody({
   const idleSeconds = Math.max(0, Math.floor(Number(idleTimeoutMinutes) || 0)) * 60;
   const idleFragment = idleSeconds > 0 ? renderIdleWatchdog({ idleSeconds, activityFile }) : "";
   const setupFragment = setupScript && setupScript.trim() ? renderUserSetup({ setupScript }) : "";
-  return `cat >/etc/mission-control-agent.env <<'MC_AGENT_ENV'
+  return `cat >/etc/concourse-agent.env <<'MC_AGENT_ENV'
 MC_AGENT_API_KEY=${apiKey}
 MC_AGENT_PORT=${agentPort}
 MC_AGENT_BIND_HOST=${effectiveBindHost}
@@ -498,11 +498,11 @@ HOME=${home}
 PATH=${home}/.local/bin:/usr/local/bin:/usr/bin:/bin
 CLAUDE_CONFIG_DIR=${home}/.claude
 MC_AGENT_ENV
-chmod 0600 /etc/mission-control-agent.env
+chmod 0600 /etc/concourse-agent.env
 
-cat >/etc/systemd/system/mission-control-agent.service <<'MC_AGENT_SERVICE'
+cat >/etc/systemd/system/concourse-agent.service <<'MC_AGENT_SERVICE'
 [Unit]
-Description=Mission Control Agent
+Description=Concourse Agent
 After=network-online.target
 Wants=network-online.target
 
@@ -511,15 +511,15 @@ Type=simple
 User=${workspaceUser}
 Group=${workspaceUser}
 WorkingDirectory=${workspaceRoot}
-# systemd creates /run/mission-control-agent (owned by the agent user) on every
+# systemd creates /run/concourse-agent (owned by the agent user) on every
 # start; the agent writes its activity heartbeat there for the idle watchdog.
-RuntimeDirectory=mission-control-agent
+RuntimeDirectory=concourse-agent
 RuntimeDirectoryMode=0755
-EnvironmentFile=/etc/mission-control-agent.env
+EnvironmentFile=/etc/concourse-agent.env
 # Resolve the agent via PATH (set in the EnvironmentFile) instead of hardcoding a
 # path — 'npm install -g' on the NodeSource deb installs the bin under /usr/bin,
 # not /usr/local/bin.
-ExecStart=/usr/bin/env mission-control-agent
+ExecStart=/usr/bin/env concourse-agent
 Restart=always
 RestartSec=3
 LimitNOFILE=65535
@@ -529,7 +529,7 @@ WantedBy=multi-user.target
 MC_AGENT_SERVICE
 
 systemctl daemon-reload
-systemctl enable --now mission-control-agent
+systemctl enable --now concourse-agent
 ${tls ? renderTlsSidecar({ tlsPort, agentPort }) : ""}
 
 ready=0
@@ -542,8 +542,8 @@ for i in $(seq 1 90); do
 done
 
 if [ "$ready" != "1" ]; then
-  echo "[mission-control] FATAL: agent did not become healthy on http://127.0.0.1:${agentPort}/health"
-  journalctl -u mission-control-agent --no-pager -n 120 || true
+  echo "[concourse] FATAL: agent did not become healthy on http://127.0.0.1:${agentPort}/health"
+  journalctl -u concourse-agent --no-pager -n 120 || true
   exit 1
 fi
 ${
@@ -559,15 +559,15 @@ for i in $(seq 1 30); do
 done
 
 if [ "$tls_ready" != "1" ]; then
-  echo "[mission-control] FATAL: TLS sidecar did not become healthy on https://127.0.0.1:${tlsPort}/health"
-  journalctl -u mission-control-tls --no-pager -n 120 || true
+  echo "[concourse] FATAL: TLS sidecar did not become healthy on https://127.0.0.1:${tlsPort}/health"
+  journalctl -u concourse-tls --no-pager -n 120 || true
   exit 1
 fi
 `
       : ""
   }
-install -d -m 0755 /opt/mission-control-agent
-${setupFragment}${idleFragment}touch /opt/mission-control-agent/bootstrap-complete`;
+install -d -m 0755 /opt/concourse-agent
+${setupFragment}${idleFragment}touch /opt/concourse-agent/bootstrap-complete`;
 }
 
 /**
@@ -579,12 +579,12 @@ export function renderInstallScript({ workspaceUser = WORKSPACE_USER, workspaceR
   return `#!/usr/bin/env bash
 set -Eeuo pipefail
 
-exec > >(tee -a /var/log/mission-control-agent-install.log) 2>&1
+exec > >(tee -a /var/log/concourse-agent-install.log) 2>&1
 export DEBIAN_FRONTEND=noninteractive
 
-echo "[mission-control] golden image install started at $(date -Is)"
+echo "[concourse] golden image install started at $(date -Is)"
 ${renderInstallBody({ workspaceUser, workspaceRoot })}
-echo "[mission-control] golden image install complete at $(date -Is)"
+echo "[concourse] golden image install complete at $(date -Is)"
 `;
 }
 
@@ -597,11 +597,11 @@ export function renderBootUserData(opts) {
   return `#!/usr/bin/env bash
 set -Eeuo pipefail
 
-exec > >(tee -a /var/log/mission-control-agent-bootstrap.log) 2>&1
+exec > >(tee -a /var/log/concourse-agent-bootstrap.log) 2>&1
 
-echo "[mission-control] boot configuration started at $(date -Is)"
+echo "[concourse] boot configuration started at $(date -Is)"
 ${renderBootBody(opts)}
-echo "[mission-control] bootstrap complete at $(date -Is)"
+echo "[concourse] bootstrap complete at $(date -Is)"
 `;
 }
 
@@ -630,10 +630,10 @@ export function renderUserData({
   return `#!/usr/bin/env bash
 set -Eeuo pipefail
 
-exec > >(tee -a /var/log/mission-control-agent-bootstrap.log) 2>&1
+exec > >(tee -a /var/log/concourse-agent-bootstrap.log) 2>&1
 export DEBIAN_FRONTEND=noninteractive
 
-echo "[mission-control] bootstrap started at $(date -Is)"
+echo "[concourse] bootstrap started at $(date -Is)"
 ${renderInstallBody({ workspaceUser, workspaceRoot })}
 
 ${renderBootBody({
@@ -647,7 +647,7 @@ ${renderBootBody({
     idleTimeoutMinutes,
     setupScript,
   })}
-echo "[mission-control] bootstrap complete at $(date -Is)"
+echo "[concourse] bootstrap complete at $(date -Is)"
 `;
 }
 
@@ -660,17 +660,17 @@ echo "[mission-control] bootstrap complete at $(date -Is)"
 export function renderUserSetup({ setupScript }) {
   const b64 = Buffer.from(String(setupScript), "utf8").toString("base64");
   return `
-echo "[mission-control] running user setup script"
-cat >/opt/mission-control-agent/setup.b64 <<'MC_SETUP_B64'
+echo "[concourse] running user setup script"
+cat >/opt/concourse-agent/setup.b64 <<'MC_SETUP_B64'
 ${b64}
 MC_SETUP_B64
-if base64 -d /opt/mission-control-agent/setup.b64 > /opt/mission-control-agent/setup.sh 2>/dev/null; then
-  chmod 0755 /opt/mission-control-agent/setup.sh || true
-  ( bash /opt/mission-control-agent/setup.sh ) >/var/log/mission-control-setup.log 2>&1 \\
-    && echo "[mission-control] user setup script completed" \\
-    || echo "[mission-control] WARNING: user setup script exited non-zero (see /var/log/mission-control-setup.log)"
+if base64 -d /opt/concourse-agent/setup.b64 > /opt/concourse-agent/setup.sh 2>/dev/null; then
+  chmod 0755 /opt/concourse-agent/setup.sh || true
+  ( bash /opt/concourse-agent/setup.sh ) >/var/log/concourse-setup.log 2>&1 \\
+    && echo "[concourse] user setup script completed" \\
+    || echo "[concourse] WARNING: user setup script exited non-zero (see /var/log/concourse-setup.log)"
 else
-  echo "[mission-control] WARNING: could not decode user setup script; skipping"
+  echo "[concourse] WARNING: could not decode user setup script; skipping"
 fi
 `;
 }
@@ -696,15 +696,15 @@ now=$(date +%s)
 last=$(stat -c %Y "$FILE" 2>/dev/null || echo "$now")
 idle=$(( now - last ))
 if [ "$idle" -ge "$IDLE_SECONDS" ]; then
-  echo "[mission-control] idle \${idle}s >= \${IDLE_SECONDS}s; stopping instance"
-  /sbin/shutdown -h now "mission-control idle auto-stop" || systemctl poweroff
+  echo "[concourse] idle \${idle}s >= \${IDLE_SECONDS}s; stopping instance"
+  /sbin/shutdown -h now "concourse idle auto-stop" || systemctl poweroff
 fi
 MC_IDLE_CHECK
 chmod 0755 /usr/local/lib/mc-idle-check.sh
 
-cat >/etc/systemd/system/mission-control-idle.service <<'MC_IDLE_SERVICE'
+cat >/etc/systemd/system/concourse-idle.service <<'MC_IDLE_SERVICE'
 [Unit]
-Description=Mission Control idle auto-stop check
+Description=Concourse idle auto-stop check
 
 [Service]
 Type=oneshot
@@ -713,9 +713,9 @@ Environment=MC_IDLE_SECONDS=${idleSeconds}
 ExecStart=/usr/bin/env bash /usr/local/lib/mc-idle-check.sh
 MC_IDLE_SERVICE
 
-cat >/etc/systemd/system/mission-control-idle.timer <<'MC_IDLE_TIMER'
+cat >/etc/systemd/system/concourse-idle.timer <<'MC_IDLE_TIMER'
 [Unit]
-Description=Run the Mission Control idle auto-stop check every minute
+Description=Run the Concourse idle auto-stop check every minute
 
 [Timer]
 OnBootSec=2min
@@ -727,7 +727,7 @@ WantedBy=timers.target
 MC_IDLE_TIMER
 
 systemctl daemon-reload
-systemctl enable --now mission-control-idle.timer
+systemctl enable --now concourse-idle.timer
 `;
 }
 
@@ -742,7 +742,7 @@ export function renderTlsSidecar({ tlsPort = AGENT_TLS_PORT, agentPort = AGENT_P
 install -d -m 0750 /etc/mc-tls
 if [ ! -s /etc/mc-tls/tls.crt ] || [ ! -s /etc/mc-tls/tls.key ]; then
   openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \\
-    -subj "/CN=mission-control-agent" \\
+    -subj "/CN=concourse-agent" \\
     -keyout /etc/mc-tls/tls.key -out /etc/mc-tls/tls.crt
 fi
 chmod 0640 /etc/mc-tls/tls.key
@@ -782,10 +782,10 @@ server.listen(tlsPort, "0.0.0.0", () => {
 });
 MC_TLS_PROXY
 
-cat >/etc/systemd/system/mission-control-tls.service <<'MC_TLS_SERVICE'
+cat >/etc/systemd/system/concourse-tls.service <<'MC_TLS_SERVICE'
 [Unit]
-Description=Mission Control TLS sidecar
-After=network-online.target mission-control-agent.service
+Description=Concourse TLS sidecar
+After=network-online.target concourse-agent.service
 Wants=network-online.target
 
 [Service]
@@ -805,7 +805,7 @@ WantedBy=multi-user.target
 MC_TLS_SERVICE
 
 systemctl daemon-reload
-systemctl enable --now mission-control-tls
+systemctl enable --now concourse-tls
 `;
 }
 
@@ -837,14 +837,14 @@ export function buildAwsRunInstancesArgs(opts, { imageId, securityGroupId, userD
       ResourceType: "instance",
       Tags: [
         { Key: "Name", Value: opts.name },
-        { Key: "MissionControl", Value: "remote-vm" },
+        { Key: "Concourse", Value: "remote-vm" },
       ],
     },
     {
       ResourceType: "volume",
       Tags: [
         { Key: "Name", Value: opts.name },
-        { Key: "MissionControl", Value: "remote-vm" },
+        { Key: "Concourse", Value: "remote-vm" },
       ],
     },
   ]);
@@ -1006,13 +1006,13 @@ function electronBetterSqliteNativeBinding() {
   );
   if (fs.existsSync(binding)) return binding;
   throw new CliError(
-    "Electron better-sqlite3 native binding is missing. Restart Mission Control after running pnpm native:electron.",
+    "Electron better-sqlite3 native binding is missing. Restart Concourse after running pnpm native:electron.",
   );
 }
 
-function openMissionControlDb(userDataDir = resolveUserDataDir()) {
+function openConcourseDb(userDataDir = resolveUserDataDir()) {
   fs.mkdirSync(userDataDir, { recursive: true });
-  const dbPath = path.join(userDataDir, "missioncontrol.db");
+  const dbPath = path.join(userDataDir, "concourse.db");
   const nativeBinding = electronBetterSqliteNativeBinding();
   const db = nativeBinding ? new Database(dbPath, { nativeBinding }) : new Database(dbPath);
   ensureRemoteVmSchema(db);
@@ -1180,7 +1180,7 @@ function ensureAwsSecurityGroup(opts, accessCidr, agentPort = AGENT_PORT) {
         "--group-name",
         DEFAULT_AWS_SECURITY_GROUP,
         "--description",
-        "Mission Control remote VM agent access",
+        "Concourse remote VM agent access",
         "--vpc-id",
         vpcId,
       ]);
@@ -1188,9 +1188,9 @@ function ensureAwsSecurityGroup(opts, accessCidr, agentPort = AGENT_PORT) {
     }
   }
 
-  authorizeAwsIngress(opts, securityGroupId, agentPort, accessCidr, "Mission Control agent access");
+  authorizeAwsIngress(opts, securityGroupId, agentPort, accessCidr, "Concourse agent access");
   if (opts.keyName) {
-    authorizeAwsIngress(opts, securityGroupId, 22, accessCidr, "Mission Control optional SSH access");
+    authorizeAwsIngress(opts, securityGroupId, 22, accessCidr, "Concourse optional SSH access");
   }
 
   return { securityGroupId, managed: !opts.securityGroupId, vpcId };
@@ -1348,7 +1348,7 @@ async function deployAws(flags) {
   const idleTimeoutMinutes = intFlag(flags, "idle-timeout", 30);
   const setupScript = decodeSetupScript(strFlag(flags, "setup-script-b64"));
   const projectId = strFlag(flags, "project-id");
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   preflightAws(opts);
   opts.localPort = opts.keyName ? chooseLocalPort(db, opts.localPort) : null;
   const accessCidr = await accessCidrFor(flags);
@@ -1538,7 +1538,7 @@ function printDeployResult({ sandboxId, name, provider, publicIp, localPort = nu
 }
 
 function printList(flags) {
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   try {
     const rows = listRemoteVmSandboxes(db);
     if (boolFlag(flags, "json")) {
@@ -1668,7 +1668,7 @@ export function shouldPersistAwsReconciledStatus(currentStatus, instanceState, m
  */
 async function reconcile(id, flags) {
   const json = boolFlag(flags, "json");
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   try {
     const row = readSandbox(db, id);
     const cfg = requireManagedRemote(row, "reconciled");
@@ -1733,7 +1733,7 @@ async function reconcile(id, flags) {
 }
 
 function printStatus(id, flags) {
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   try {
     const row = readSandbox(db, id);
     if (!row) throw new CliError(`Unknown sandbox id: ${id}`);
@@ -1758,7 +1758,7 @@ function printStatus(id, flags) {
 
 async function tunnel(id, flags) {
   assertCommand("ssh", "Install OpenSSH client.");
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   let row;
   try {
     row = readSandbox(db, id);
@@ -1795,7 +1795,7 @@ async function tunnel(id, flags) {
 
 async function pause(id, flags) {
   if (!boolFlag(flags, "yes")) throw new CliError("Refusing to pause without --yes.");
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   try {
     const row = readSandbox(db, id);
     const cfg = requireManagedRemote(row, "paused");
@@ -1826,7 +1826,7 @@ async function pause(id, flags) {
 }
 
 async function resume(id, flags) {
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   try {
     const row = readSandbox(db, id);
     const cfg = requireManagedRemote(row, "resumed");
@@ -1873,7 +1873,7 @@ async function resume(id, flags) {
 
 async function destroy(id, flags) {
   if (!boolFlag(flags, "yes")) throw new CliError("Refusing to destroy without --yes.");
-  const db = openMissionControlDb();
+  const db = openConcourseDb();
   const row = readSandbox(db, id);
   if (!row) {
     db.close();
@@ -1917,7 +1917,7 @@ async function destroy(id, flags) {
       );
     }
     // --keep-row terminates the instance but leaves the sandbox row for the caller
-    // to delete (so Mission Control's server-side cleanup runs project teardown).
+    // to delete (so Concourse's server-side cleanup runs project teardown).
     if (boolFlag(flags, "keep-row")) {
       console.log(`[remote-vm] instance terminated; sandbox row ${id} left for caller to remove`);
     } else {
@@ -1933,7 +1933,7 @@ async function destroy(id, flags) {
 }
 
 function printHelp() {
-  console.log(`Mission Control remote VM CLI
+  console.log(`Concourse remote VM CLI
 
 Usage:
   pnpm remote-vm deploy aws --name <name> --region <region> [--size t3.medium]
@@ -1948,7 +1948,7 @@ Common deploy flags:
   --access-cidr <cidr>    Source CIDR allowed to reach the agent port. Defaults to your public IPv4 /32.
   --wait-timeout <sec>    Bootstrap wait timeout. Default: 900.
   --no-wait              Store the VM after cloud creation without waiting for agent health.
-  --activate             Make the new sandbox the active Mission Control scope.
+  --activate             Make the new sandbox the active Concourse scope.
   --json                 Print a machine-readable REMOTE_VM_RESULT_JSON line.
 
 Lifecycle flags:

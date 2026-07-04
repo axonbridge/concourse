@@ -18,7 +18,7 @@ type LatestRelease = {
 };
 
 async function fetchLatest(): Promise<LatestRelease> {
-  const url = academyUrl("/api/mission-control/releases?limit=1");
+  const url = academyUrl("/api/concourse/releases?limit=1");
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`mc-releases ${res.status}`);
   const body = (await res.json()) as { releases?: Array<{ version?: string }> };
@@ -31,8 +31,8 @@ async function fetchLatest(): Promise<LatestRelease> {
   };
 }
 
-export const latestMissionControlVersionQueryOptions = queryOptions({
-  queryKey: ["mission-control", "latest-version"] as const,
+export const latestConcourseVersionQueryOptions = queryOptions({
+  queryKey: ["concourse", "latest-version"] as const,
   queryFn: fetchLatest,
   staleTime: MS_PER_HOUR,
   gcTime: MS_PER_DAY,
@@ -40,5 +40,5 @@ export const latestMissionControlVersionQueryOptions = queryOptions({
   refetchOnWindowFocus: false,
 });
 
-export const useLatestMissionControlVersion = () =>
-  useQuery(latestMissionControlVersionQueryOptions);
+export const useLatestConcourseVersion = () =>
+  useQuery(latestConcourseVersionQueryOptions);

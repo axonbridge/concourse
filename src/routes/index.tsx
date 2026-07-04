@@ -40,10 +40,10 @@ import {
 import type { Group } from "~/db/schema";
 
 export const Route = createFileRoute("/")({
-  component: MissionControlPage,
+  component: ConcoursePage,
 });
 
-function MissionControlPage() {
+function ConcoursePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const projectsQuery = useScopedProjects();

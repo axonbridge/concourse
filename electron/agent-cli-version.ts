@@ -178,7 +178,7 @@ export function checkAgentCliVersion(
 
 export function agentVersionErrorMessage(check: Exclude<AgentVersionCheck, { ok: true }>): string {
   if (check.reason === "outdated" && check.version) {
-    return `${check.label} ${check.version} is installed, but MissionControl requires ${check.label} ${check.requiredVersion} or newer.`;
+    return `${check.label} ${check.version} is installed, but Concourse requires ${check.label} ${check.requiredVersion} or newer.`;
   }
-  return `MissionControl could not verify the installed ${check.label} version. ${check.label} ${check.requiredVersion} or newer is required.`;
+  return `Concourse could not verify the installed ${check.label} version. ${check.label} ${check.requiredVersion} or newer is required.`;
 }

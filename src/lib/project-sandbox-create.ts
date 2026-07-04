@@ -174,7 +174,7 @@ export async function createProjectSandbox({
     const cloneRemote =
       remote ?? (await electron.sandbox.detectRemote(project.path).catch(() => null));
     if (!cloneRemote) {
-      throw new Error("This project needs an origin remote before Mission Control can clone it into a sandbox.");
+      throw new Error("This project needs an origin remote before Concourse can clone it into a sandbox.");
     }
 
     const pathName = projectSandboxPathName(project.path, project.name);

@@ -135,16 +135,16 @@ describe("agent hook installation", () => {
     );
   });
 
-  it("installs the OpenCode Mission Control plugin", () => {
+  it("installs the OpenCode Concourse plugin", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "mc-hooks-"));
 
     installAgentHooks("opencode", cwd);
 
-    const file = path.join(cwd, ".opencode", "plugins", "mission-control.js");
+    const file = path.join(cwd, ".opencode", "plugins", "concourse.js");
     const source = fs.readFileSync(file, "utf8");
-    expect(source).toContain("@mission-control-managed");
+    expect(source).toContain("@concourse-managed");
     expect(source).toContain("/api/hooks/opencode");
     expect(source).toContain("session.idle");
-    expect(source).toContain("MissionControlStatus");
+    expect(source).toContain("ConcourseStatus");
   });
 });

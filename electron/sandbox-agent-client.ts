@@ -5,7 +5,7 @@
 // for fs.* / git.* and (b) fire-and-forget PTY control with callback streams for
 // output/exit. The remotePty / remoteFs / remoteGit IPC bridges call into this.
 //
-// Message shapes mirror the published @agentsystemlabs/mission-control-agent
+// Message shapes mirror the published @agentsystemlabs/concourse-agent
 // protocol structurally (kept inline so the Electron build doesn't import the
 // agent package's runtime deps — same convention as the preload bridge types).
 
@@ -50,7 +50,7 @@ export type SpawnArgs = {
   cols?: number;
   rows?: number;
   dangerouslySkipPermissions?: boolean;
-  missionControlTheme?: "dark" | "light";
+  concourseTheme?: "dark" | "light";
   mcEnv?: { port?: number; token?: string };
 };
 

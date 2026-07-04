@@ -15,8 +15,8 @@ import { Icon } from "~/components/ui/Icon";
 import { HotkeyTooltip, EscTooltip } from "~/components/ui/Tooltip";
 import {
   buildMermaidInitConfig,
-  getMissionControlColorScheme,
-  watchMissionControlColorScheme,
+  getConcourseColorScheme,
+  watchConcourseColorScheme,
 } from "~/lib/mermaid-theme";
 import { useHotkey } from "~/lib/use-hotkey";
 import type { DiagramFormat } from "~/shared/diagram";
@@ -237,14 +237,14 @@ export function DiagramDialog({
     null;
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
-  const [colorScheme, setColorScheme] = useState(getMissionControlColorScheme);
+  const [colorScheme, setColorScheme] = useState(getConcourseColorScheme);
   const renderKey = payload
     ? `${payload.id}:${payload.source.length}:${colorScheme}`
     : "closed";
   const diagramLabelId = useId();
 
-  useEffect(() => watchMissionControlColorScheme(() => {
-    setColorScheme(getMissionControlColorScheme());
+  useEffect(() => watchConcourseColorScheme(() => {
+    setColorScheme(getConcourseColorScheme());
   }), []);
 
   useHotkey("dialog.submit", () => onClose(), { enabled: open });

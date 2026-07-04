@@ -1,5 +1,5 @@
 /**
- * The CLI tool Mission Control invokes to generate a commit message.
+ * The CLI tool Concourse invokes to generate a commit message.
  * Order in COMMIT_CLI_VALUES doubles as the auto-detection priority used
  * the first time a user clicks Ship and has no preference saved.
  */

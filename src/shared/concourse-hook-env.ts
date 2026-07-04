@@ -5,10 +5,10 @@ export type PtyHookEnv = {
   token: string;
 };
 
-/** Hostname a sandbox container uses to reach the Mission Control API on the host. */
+/** Hostname a sandbox container uses to reach the Concourse API on the host. */
 export const SANDBOX_HOOK_API_HOST = "host.docker.internal";
 
-/** Hostname the Electron host uses to reach its own loopback Mission Control API. */
+/** Hostname the Electron host uses to reach its own loopback Concourse API. */
 export const LOCAL_HOOK_API_HOST = "127.0.0.1";
 
 /** Hostname sandbox agent hooks POST to — the agent's own loopback HTTP server. */
@@ -16,7 +16,7 @@ export const AGENT_LOCAL_HOOK_API_HOST = LOCAL_HOOK_API_HOST;
 
 // The PTY/agent hook commands POST to whatever host is baked into MC_API_URL.
 // On the Electron host that is loopback; inside a sandbox the agent's local HTTP
-// API receives hooks and relays them to Mission Control over WebSocket.
+// API receives hooks and relays them to Concourse over WebSocket.
 // host.docker.internal remains for legacy direct-to-host wiring.
 const ALLOWED_HOOK_HOSTS = new Set<string>([
   LOCAL_HOOK_API_HOST,
@@ -29,11 +29,11 @@ function isValidPort(port: number | null | undefined): port is number {
 }
 
 /**
- * Build the Mission Control API base URL an agent's hooks should POST to,
+ * Build the Concourse API base URL an agent's hooks should POST to,
  * parameterized by host so the same construction serves both the Electron host
  * (`127.0.0.1`) and a Docker sandbox container (`host.docker.internal`).
  */
-export function buildMissionControlApiUrl(
+export function buildConcourseApiUrl(
   host: string,
   port: number | null | undefined,
 ): string | null {
@@ -43,18 +43,18 @@ export function buildMissionControlApiUrl(
 }
 
 /** Host-side loopback API URL (Electron runtime). */
-export function buildLocalMissionControlApiUrl(port: number | null | undefined): string | null {
-  return buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, port);
+export function buildLocalConcourseApiUrl(port: number | null | undefined): string | null {
+  return buildConcourseApiUrl(LOCAL_HOOK_API_HOST, port);
 }
 
 /** Sandbox-side API URL reaching the host via host.docker.internal. */
-export function buildSandboxMissionControlApiUrl(port: number | null | undefined): string | null {
-  return buildMissionControlApiUrl(SANDBOX_HOOK_API_HOST, port);
+export function buildSandboxConcourseApiUrl(port: number | null | undefined): string | null {
+  return buildConcourseApiUrl(SANDBOX_HOOK_API_HOST, port);
 }
 
 /** Loopback URL for the sandbox agent's own hook HTTP endpoint. */
 export function buildAgentLocalHookApiUrl(port: number | null | undefined): string | null {
-  return buildMissionControlApiUrl(AGENT_LOCAL_HOOK_API_HOST, port);
+  return buildConcourseApiUrl(AGENT_LOCAL_HOOK_API_HOST, port);
 }
 
 export function buildSandboxHookRelayUrl(
@@ -63,7 +63,7 @@ export function buildSandboxHookRelayUrl(
   taskId: string,
   hookEvent?: string,
 ): string | null {
-  const base = buildLocalMissionControlApiUrl(mcPort);
+  const base = buildLocalConcourseApiUrl(mcPort);
   if (!base) return null;
   const url = new URL(`/api/hooks/${slug}`, base);
   url.searchParams.set("taskId", taskId);

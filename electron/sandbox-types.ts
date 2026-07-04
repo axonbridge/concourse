@@ -47,10 +47,8 @@ export type SandboxConfig = {
 
 export type OpResult = { ok: true } | { ok: false; error: string };
 
-import { AGENT_VERSION } from "@agentsystemlabs/mission-control-agent";
-
 // Must match the published sandbox agent; a mismatch surfaces as `update-required`.
-export const EXPECTED_SANDBOX_AGENT_VERSION = AGENT_VERSION;
+export const EXPECTED_SANDBOX_AGENT_VERSION = "0.3.1";
 
 export function isSandboxAgentVersionCurrent(version: string): boolean {
   return version === EXPECTED_SANDBOX_AGENT_VERSION;

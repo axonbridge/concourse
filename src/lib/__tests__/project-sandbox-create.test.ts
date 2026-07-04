@@ -10,7 +10,7 @@ import { setupCommandNeedsPackageJson } from "../setup-command";
 
 describe("projectSandboxPathName", () => {
   it("uses the last path segment", () => {
-    expect(projectSandboxPathName("/Users/dev/mission-control", "fallback")).toBe("mission-control");
+    expect(projectSandboxPathName("/Users/dev/concourse", "fallback")).toBe("concourse");
   });
 });
 

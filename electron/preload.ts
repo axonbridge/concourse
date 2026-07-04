@@ -83,7 +83,7 @@ export type RemotePtySpawnOptionsBridge = {
   cols?: number;
   rows?: number;
   dangerouslySkipPermissions?: boolean;
-  missionControlTheme?: "dark" | "light";
+  concourseTheme?: "dark" | "light";
 };
 
 export type RemoteVmDeployInputBridge = {
@@ -485,7 +485,7 @@ const electronAPI = {
       agent?: string;
       dangerouslySkipPermissions?: boolean;
       mcEnv?: { apiUrl?: string; token?: string };
-      missionControlTheme?: "dark" | "light";
+      concourseTheme?: "dark" | "light";
       // Required when `agent` is omitted: signals an intentional user-shell
       // terminal that runs `command` through the login shell. Agent terminals
       // (claude-code/codex/cursor-cli/opencode) must leave this unset and pass `command`

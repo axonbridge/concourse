@@ -339,7 +339,7 @@ export function registerUpdateManager(
 
   // TODO(academy auto-update infra): this only activates once academy serves the
   // generic-provider artifacts (latest-mac.yml, latest.yml, latest-linux.yml,
-  // *.blockmap, *.zip) at https://agentsystem.dev/downloads/mission-control/auto-update.
+  // *.blockmap, *.zip) at https://agentsystem.dev/downloads/concourse/auto-update.
   // Until then autoUpdater will report `error` here and the renderer falls back to
   // openExternal(downloadUrl).
 }

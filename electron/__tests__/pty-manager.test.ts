@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { disposePty, isCwdWithin, planLaunchPortKillTargets } from "../pty-manager";
 
 describe("planLaunchPortKillTargets", () => {
-  it("marks Mission Control runtime ports as protected", () => {
+  it("marks Concourse runtime ports as protected", () => {
     expect(planLaunchPortKillTargets([5173, 3000], [5173])).toEqual([
       { port: 5173, protected: true },
       { port: 3000, protected: false },

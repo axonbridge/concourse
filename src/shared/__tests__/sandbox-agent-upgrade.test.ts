@@ -8,9 +8,9 @@ import {
 
 describe("sandbox agent upgrade helpers", () => {
   it("builds the npm install + systemctl restart command", () => {
-    expect(SANDBOX_AGENT_UPGRADE_COMMAND).toContain("sudo npm install -g @agentsystemlabs/mission-control-agent@latest");
-    expect(SANDBOX_AGENT_UPGRADE_COMMAND).toContain("sudo systemctl restart mission-control-agent");
-    expect(SANDBOX_AGENT_UPGRADE_COMMAND).toContain("sudo systemctl try-restart mission-control-tls || true");
+    expect(SANDBOX_AGENT_UPGRADE_COMMAND).toContain("sudo npm install -g @agentsystemlabs/concourse-agent@latest");
+    expect(SANDBOX_AGENT_UPGRADE_COMMAND).toContain("sudo systemctl restart concourse-agent");
+    expect(SANDBOX_AGENT_UPGRADE_COMMAND).toContain("sudo systemctl try-restart concourse-tls || true");
   });
 
   it("recognizes upgrade pty ids", () => {

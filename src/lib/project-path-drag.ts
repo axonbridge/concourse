@@ -1,4 +1,4 @@
-export const PROJECT_PATH_DRAG_MIME = "application/x-mission-control-project-path";
+export const PROJECT_PATH_DRAG_MIME = "application/x-concourse-project-path";
 
 const PATH_NEEDS_QUOTING = /[\s"'\\]/;
 const QUOTE_ESCAPE = /"/g;

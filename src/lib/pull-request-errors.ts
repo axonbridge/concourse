@@ -18,7 +18,7 @@ export function formatCreatePullRequestError(error: unknown): CreatePullRequestE
       return {
         title: "Create pull request unavailable",
         message:
-          "Mission Control could not reach the create-pull-request API. Restart the app after updating, or open GitHub and create the pull request manually.",
+          "Concourse could not reach the create-pull-request API. Restart the app after updating, or open GitHub and create the pull request manually.",
       };
     }
 

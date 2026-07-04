@@ -1,5 +1,5 @@
 {
-  "name": "mission-control",
+  "name": "concourse",
   "version": "0.47.0",
   "description": "Desktop control surface for managing agentic coding work across many projects.",
   "license": "MIT",
@@ -76,7 +76,6 @@
     "postinstall": "pnpm native:electron || true"
   },
   "dependencies": {
-    "@agentsystemlabs/mission-control-agent": "0.3.1",
     "@anthropic-ai/claude-agent-sdk": "0.3.195",
     "@codemirror/lang-javascript": "6.2.5",
     "@codemirror/lang-json": "6.0.2",
@@ -154,7 +153,7 @@
     ]
   },
   "build": {
-    "appId": "labs.agentsystem.missioncontrol",
+    "appId": "labs.agentsystem.concourse",
     "productName": "Concourse",
     "files": [
       "dist/**/*",
@@ -190,7 +189,7 @@
       ],
       "category": "public.app-category.developer-tools",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Mission Control uses the microphone for push-to-talk voice commands. Audio is transcribed locally on your machine and never leaves your computer."
+        "NSMicrophoneUsageDescription": "Concourse uses the microphone for push-to-talk voice commands. Audio is transcribed locally on your machine and never leaves your computer."
       },
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -212,7 +211,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://agentsystem.dev/downloads/mission-control/auto-update",
+        "url": "https://agentsystem.dev/downloads/concourse/auto-update",
         "channel": "latest"
       }
     ]

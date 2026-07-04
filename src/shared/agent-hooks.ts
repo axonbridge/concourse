@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { writeOpencodeMissionControlPlugin } from "./opencode-mission-control-plugin";
+import { writeOpencodeConcoursePlugin } from "./opencode-concourse-plugin";
 
 const MARKER = "_mcManaged";
 
@@ -76,7 +76,7 @@ function buildPosixHookCommand(
   event: string,
   style: "claude" | "cursor"
 ): string {
-  // Read stdin (the agent's hook payload JSON) and forward to Mission Control.
+  // Read stdin (the agent's hook payload JSON) and forward to Concourse.
   // Fail-soft: never block the user's session if MC is down.
   const url = `"$MC_API_URL/api/hooks/${endpointSlug}?taskId=$MC_TASK_ID&hookEvent=${encodeURIComponent(event)}"`;
   if (style === "cursor") {
@@ -84,7 +84,7 @@ function buildPosixHookCommand(
       'if [ -z "$MC_TASK_ID" ] || [ -z "$MC_API_URL" ]; then printf \'{"continue":true}\\n\'; exit 0; fi; ' +
       "cat | curl -sS -m 3 -X POST " +
       '-H "Authorization: Bearer $MC_API_TOKEN" ' +
-      '-H "X-Mission-Control-Runtime: electron-local" ' +
+      '-H "X-Concourse-Runtime: electron-local" ' +
       '-H "Content-Type: application/json" ' +
       `--data-binary @- ${url} >/dev/null 2>&1 || true; ` +
       "printf '{\"continue\":true}\\n'"
@@ -94,7 +94,7 @@ function buildPosixHookCommand(
     'if [ -z "$MC_TASK_ID" ] || [ -z "$MC_API_URL" ]; then exit 0; fi; ' +
     "curl -sS -m 3 -X POST " +
     '-H "Authorization: Bearer $MC_API_TOKEN" ' +
-    '-H "X-Mission-Control-Runtime: electron-local" ' +
+    '-H "X-Concourse-Runtime: electron-local" ' +
     '-H "Content-Type: application/json" ' +
     "--data-binary @- " +
     `${url} ` +
@@ -120,7 +120,7 @@ function buildPowerShellHookCommand(
     "$payload = [Console]::In.ReadToEnd()",
     "$taskId = [System.Uri]::EscapeDataString($env:MC_TASK_ID)",
     `$url = "$($env:MC_API_URL)/api/hooks/${endpointSlug}?taskId=$taskId&hookEvent=${eventParam}"`,
-    '$headers = @{ Authorization = "Bearer $($env:MC_API_TOKEN)"; "X-Mission-Control-Runtime" = "electron-local" }',
+    '$headers = @{ Authorization = "Bearer $($env:MC_API_TOKEN)"; "X-Concourse-Runtime" = "electron-local" }',
     'try { Invoke-RestMethod -Method Post -Uri $url -Headers $headers -Body $payload -ContentType "application/json" -TimeoutSec 3 -ErrorAction Stop | Out-Null } catch {}' +
       continueOutput,
   ].join("; ");
@@ -166,7 +166,7 @@ function buildManagedGroup(
 }
 
 /**
- * Ensure the agent's project-local hook config carries Mission Control's hook
+ * Ensure the agent's project-local hook config carries Concourse's hook
  * entries. Existing user hooks are preserved; we only add, replace, or remove
  * entries tagged with our `_mcManaged` marker.
  */
@@ -177,7 +177,7 @@ export function installAgentHooks(
 ): void {
   if (!agent) return;
   if (agent === "opencode") {
-    writeOpencodeMissionControlPlugin(cwd);
+    writeOpencodeConcoursePlugin(cwd);
     return;
   }
   const spec = AGENT_HOOKS[agent];

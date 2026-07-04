@@ -4,7 +4,7 @@ import { makeFail } from "./lib/cli.mjs";
 // for the platforms you can actually build on your laptop.
 //
 // Usage:
-//   MISSION_CONTROL_RELEASE_TOKEN=... ACADEMY_BASE_URL=https://agentsystem.dev \
+//   CONCOURSE_RELEASE_TOKEN=... ACADEMY_BASE_URL=https://agentsystem.dev \
 //     node scripts/release-local.mjs [--version v0.2.0] [--platforms mac-arm64,mac-x64] \
 //                                    [--notes "..."] [--notes-file path] [--skip-build]
 //
@@ -15,7 +15,7 @@ import { makeFail } from "./lib/cli.mjs";
 //   --notes      empty
 //
 // Env (read at runtime, not at parse time, so .env-loader wrappers work):
-//   MISSION_CONTROL_RELEASE_TOKEN  required — bearer token for academy
+//   CONCOURSE_RELEASE_TOKEN  required — bearer token for academy
 //   ACADEMY_BASE_URL               required — e.g. https://agentsystem.dev
 //
 // You can also drop a `.env.release` file in the repo root with KEY=VAL lines;
@@ -111,9 +111,9 @@ if (notes !== null) notes = notes.trim() || null;
 
 const skipBuild = Boolean(getArg("skip-build", { boolean: true }));
 
-const { MISSION_CONTROL_RELEASE_TOKEN, ACADEMY_BASE_URL } = process.env;
-if (!MISSION_CONTROL_RELEASE_TOKEN)
-  fail("MISSION_CONTROL_RELEASE_TOKEN env var is required");
+const { CONCOURSE_RELEASE_TOKEN, ACADEMY_BASE_URL } = process.env;
+if (!CONCOURSE_RELEASE_TOKEN)
+  fail("CONCOURSE_RELEASE_TOKEN env var is required");
 if (!ACADEMY_BASE_URL) fail("ACADEMY_BASE_URL env var is required");
 
 // ---------- build ----------

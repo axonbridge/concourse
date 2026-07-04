@@ -1,25 +1,25 @@
 ---
-name: missioncontrol-notify
-description: When you finish a task, hit a question, or fail, POST your status to the MissionControl desktop app so the user sees it without checking your terminal.
+name: concourse-notify
+description: When you finish a task, hit a question, or fail, POST your status to the Concourse desktop app so the user sees it without checking your terminal.
 ---
 
-# MissionControl status hook
+# Concourse status hook
 
-You are running inside a terminal launched by MissionControl. There is a task ID associated with this run, and a localhost API you can call to update the user's mission-control board.
+You are running inside a terminal launched by Concourse. There is a task ID associated with this run, and a localhost API you can call to update the user's concourse board.
 
 ## How to find your credentials
 
 Two values you need:
 
-- `MC_PORT` — the port MissionControl is listening on
+- `MC_PORT` — the port Concourse is listening on
 - `MC_TOKEN` — bearer token for the writable API
 - `MC_TASK_ID` — the task ID for this terminal
 
 Lookup order:
 
 1. Read environment variables `MC_PORT`, `MC_TOKEN`, `MC_TASK_ID` if set.
-2. Otherwise, read `~/Library/Application Support/MissionControl/.port` (macOS) or `~/.config/MissionControl/.port` (Linux) for the port. The token can be copied from the MissionControl Settings page (it stays the same across launches).
-3. The task ID is shown in the terminal pane header inside MissionControl. Ask the user if you can't find it.
+2. Otherwise, read `~/Library/Application Support/Concourse/.port` (macOS) or `~/.config/Concourse/.port` (Linux) for the port. The token can be copied from the Concourse Settings page (it stays the same across launches).
+3. The task ID is shown in the terminal pane header inside Concourse. Ask the user if you can't find it.
 
 ## When to POST
 
@@ -58,7 +58,7 @@ Lookup order:
 - `interrupted` — user interrupted the agent and it is waiting for revised instructions
 - `finished` — task complete, ready for review/commit
 - `terminated` — task stopped and won't proceed without intervention
-- `disconnected` — MissionControl lost the terminal process
+- `disconnected` — Concourse lost the terminal process
 
 ## Optional fields
 

@@ -621,7 +621,7 @@ export function TerminalPane({
               rows: ptySize.rows,
               agent: cliAgent,
               dangerouslySkipPermissions: descriptor.dangerouslySkipPermissions,
-              missionControlTheme: getTerminalColorScheme(),
+              concourseTheme: getTerminalColorScheme(),
               // mcEnv is injected by the main process for sandbox spawns.
             })
           : await electron.pty.spawn({
@@ -633,7 +633,7 @@ export function TerminalPane({
               agent: cliAgent,
               dangerouslySkipPermissions: descriptor.dangerouslySkipPermissions,
               mcEnv: await resolveMcEnv(electron),
-              missionControlTheme: getTerminalColorScheme(),
+              concourseTheme: getTerminalColorScheme(),
               // Voice-seeded starting prompt, consumed once on the first spawn so
               // reloads/re-spawns never re-inject it. Undefined for normal sessions.
               initialInput,

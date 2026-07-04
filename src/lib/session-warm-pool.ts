@@ -179,7 +179,7 @@ export async function prepareSessionWarmSlot(input: {
         agent: resolveTerminalAgent(draftTask.agent),
         dangerouslySkipPermissions: draftTask.claudeSkipPermissions,
         mcEnv,
-        missionControlTheme: getTerminalColorScheme(),
+        concourseTheme: getTerminalColorScheme(),
       });
       if (generation !== warmGeneration) {
         await electron.pty.kill(ptyId).catch(() => undefined);

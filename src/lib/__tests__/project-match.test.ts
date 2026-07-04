@@ -8,7 +8,7 @@ describe("matchProjects", () => {
   it("matches an exact name confidently", () => {
     const r = match("agentic jumpstart", [
       { id: "1", name: "Agentic Jumpstart" },
-      { id: "2", name: "Mission Control" },
+      { id: "2", name: "Concourse" },
     ]);
     expect(r.confident).toBe(true);
     expect(r.best?.item.id).toBe("1");
@@ -17,7 +17,7 @@ describe("matchProjects", () => {
   it("handles word-splitting (OwlTales → 'owl tales')", () => {
     const r = match("owl tales", [
       { id: "1", name: "OwlTales" },
-      { id: "2", name: "Mission Control" },
+      { id: "2", name: "Concourse" },
     ]);
     expect(r.best?.item.id).toBe("1");
     expect(r.confident).toBe(true);
@@ -35,7 +35,7 @@ describe("matchProjects", () => {
   it("matches a partial name", () => {
     const r = match("jumpstart", [
       { id: "1", name: "Agentic Jumpstart" },
-      { id: "2", name: "Mission Control" },
+      { id: "2", name: "Concourse" },
     ]);
     expect(r.best?.item.id).toBe("1");
   });
@@ -55,7 +55,7 @@ describe("matchProjects", () => {
   it("returns no match for an unrelated query", () => {
     const r = match("quarterly taxes", [
       { id: "1", name: "Owl Tales" },
-      { id: "2", name: "Mission Control" },
+      { id: "2", name: "Concourse" },
     ]);
     expect(r.best).toBeNull();
     expect(r.candidates).toHaveLength(0);

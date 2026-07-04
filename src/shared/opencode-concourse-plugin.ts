@@ -2,20 +2,20 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 /** Marker comment — MC replaces this file on every OpenCode spawn. */
-export const OPENCODE_MISSION_CONTROL_PLUGIN_MARKER = "@mission-control-managed";
+export const OPENCODE_CONCOURSE_PLUGIN_MARKER = "@concourse-managed";
 
 /** Env vars the host injects so a spawned agent can reach the MC hook API. */
 export const MC_AGENT_ENV_KEYS = ["MC_TASK_ID", "MC_API_URL", "MC_API_TOKEN"] as const;
 
-export const OPENCODE_MISSION_CONTROL_PLUGIN_SEGMENTS = [
+export const OPENCODE_CONCOURSE_PLUGIN_SEGMENTS = [
   ".opencode",
   "plugins",
-  "mission-control.js",
+  "concourse.js",
 ] as const;
 
-export function opencodeMissionControlPluginSource(): string {
-  return `// ${OPENCODE_MISSION_CONTROL_PLUGIN_MARKER}
-/** Mission Control status bridge for OpenCode (auto-installed). */
+export function opencodeConcoursePluginSource(): string {
+  return `// ${OPENCODE_CONCOURSE_PLUGIN_MARKER}
+/** Concourse status bridge for OpenCode (auto-installed). */
 
 function sessionIdFrom(event) {
   const props = event?.properties ?? {};
@@ -32,7 +32,7 @@ function sessionIdFrom(event) {
   );
 }
 
-async function postMissionControlHook(hookEventName, body = {}) {
+async function postConcourseHook(hookEventName, body = {}) {
   const taskId = process.env.MC_TASK_ID;
   const apiUrl = process.env.MC_API_URL;
   const token = process.env.MC_API_TOKEN;
@@ -52,7 +52,7 @@ async function postMissionControlHook(hookEventName, body = {}) {
       headers: {
         Authorization: "Bearer " + token,
         "Content-Type": "application/json",
-        "X-Mission-Control-Runtime": "electron-local",
+        "X-Concourse-Runtime": "electron-local",
       },
       body: JSON.stringify(payload),
     });
@@ -61,7 +61,7 @@ async function postMissionControlHook(hookEventName, body = {}) {
   }
 }
 
-export const MissionControlStatus = async () => {
+export const ConcourseStatus = async () => {
   return {
     "shell.env": async (_input, output) => {
       ${MC_AGENT_ENV_KEYS.map(
@@ -75,14 +75,14 @@ export const MissionControlStatus = async () => {
         .filter(Boolean)
         .join("\\n")
         .trim();
-      await postMissionControlHook("UserPromptSubmit", {
+      await postConcourseHook("UserPromptSubmit", {
         session_id: input.sessionID,
         ...(prompt ? { prompt } : {}),
       });
     },
     "tool.execute.before": async (input) => {
       if (input.tool !== "question") return;
-      void postMissionControlHook(
+      void postConcourseHook(
         "QuestionRequest",
         input.sessionID ? { session_id: input.sessionID } : {},
       );
@@ -93,7 +93,7 @@ export const MissionControlStatus = async () => {
       if (event.type === "session.created") {
         const sessionId = sessionIdFrom(event);
         if (sessionId) {
-          await postMissionControlHook("SessionStart", { session_id: sessionId });
+          await postConcourseHook("SessionStart", { session_id: sessionId });
         }
         return;
       }
@@ -103,20 +103,20 @@ export const MissionControlStatus = async () => {
         const sessionId = sessionIdFrom(event);
         const statusType = props.status?.type;
         if (statusType === "idle") {
-          await postMissionControlHook("Stop", sessionId ? { session_id: sessionId } : {});
+          await postConcourseHook("Stop", sessionId ? { session_id: sessionId } : {});
         }
         return;
       }
 
       if (event.type === "session.idle") {
         const sessionId = sessionIdFrom(event);
-        await postMissionControlHook("Stop", sessionId ? { session_id: sessionId } : {});
+        await postConcourseHook("Stop", sessionId ? { session_id: sessionId } : {});
         return;
       }
 
       if (event.type === "question.asked") {
         const sessionId = sessionIdFrom(event);
-        await postMissionControlHook(
+        await postConcourseHook(
           "QuestionRequest",
           sessionId ? { session_id: sessionId } : {},
         );
@@ -125,7 +125,7 @@ export const MissionControlStatus = async () => {
 
       if (event.type === "permission.asked") {
         const sessionId = sessionIdFrom(event);
-        await postMissionControlHook(
+        await postConcourseHook(
           "PermissionRequest",
           sessionId ? { session_id: sessionId } : {},
         );
@@ -136,15 +136,15 @@ export const MissionControlStatus = async () => {
 `;
 }
 
-export function opencodeMissionControlPluginPath(cwd: string): string {
-  return path.join(cwd, ...OPENCODE_MISSION_CONTROL_PLUGIN_SEGMENTS);
+export function opencodeConcoursePluginPath(cwd: string): string {
+  return path.join(cwd, ...OPENCODE_CONCOURSE_PLUGIN_SEGMENTS);
 }
 
-export function writeOpencodeMissionControlPlugin(cwd: string): void {
-  const file = opencodeMissionControlPluginPath(cwd);
+export function writeOpencodeConcoursePlugin(cwd: string): void {
+  const file = opencodeConcoursePluginPath(cwd);
   try {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, opencodeMissionControlPluginSource(), "utf8");
+    fs.writeFileSync(file, opencodeConcoursePluginSource(), "utf8");
   } catch {
     // best-effort — card status simply won't update if install fails
   }

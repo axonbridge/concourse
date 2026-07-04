@@ -1,4 +1,4 @@
-export type MissionControlColorScheme = "dark" | "light";
+export type ConcourseColorScheme = "dark" | "light";
 
 export type MermaidInitConfig = {
   startOnLoad: false;
@@ -8,7 +8,7 @@ export type MermaidInitConfig = {
   themeVariables: Record<string, string | boolean>;
 };
 
-export function getMissionControlColorScheme(): MissionControlColorScheme {
+export function getConcourseColorScheme(): ConcourseColorScheme {
   if (typeof document === "undefined") return "dark";
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
 }
@@ -20,7 +20,7 @@ function readCssVar(name: string, fallback: string): string {
 }
 
 export function buildMermaidInitConfig(
-  scheme: MissionControlColorScheme = getMissionControlColorScheme(),
+  scheme: ConcourseColorScheme = getConcourseColorScheme(),
 ): MermaidInitConfig {
   const isDark = scheme === "dark";
 
@@ -79,7 +79,7 @@ export function buildMermaidInitConfig(
   };
 }
 
-export function watchMissionControlColorScheme(onChange: () => void): () => void {
+export function watchConcourseColorScheme(onChange: () => void): () => void {
   if (typeof document === "undefined") return () => undefined;
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {

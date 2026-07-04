@@ -1,9 +1,9 @@
 /** Shell one-liner run on a systemd-managed remote VM to refresh the sandbox agent. */
 export const SANDBOX_AGENT_UPGRADE_COMMAND = [
   "set -e",
-  "sudo npm install -g @agentsystemlabs/mission-control-agent@latest",
-  "sudo systemctl restart mission-control-agent",
-  "sudo systemctl try-restart mission-control-tls || true",
+  "sudo npm install -g @agentsystemlabs/concourse-agent@latest",
+  "sudo systemctl restart concourse-agent",
+  "sudo systemctl try-restart concourse-tls || true",
 ].join(" && ");
 
 export const SANDBOX_AGENT_UPGRADE_PTY_PREFIX = "mc-upgrade-";
@@ -16,7 +16,7 @@ export function isSandboxAgentUpgradePty(ptyId: string): boolean {
 export function sandboxAgentUpgradeOutputLooksSuccessful(output: string): boolean {
   return (
     /added \d+ packages?|changed \d+ packages?|up to date in/i.test(output) ||
-    /@agentsystemlabs\/mission-control-agent@/.test(output)
+    /@agentsystemlabs\/concourse-agent@/.test(output)
   );
 }
 

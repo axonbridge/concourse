@@ -6,7 +6,7 @@ import { LOCAL_SCOPE_ID } from "~/shared/sandbox";
 // runtime parity: a user who was running the global Docker sandbox keeps their
 // projects executing in a container (now modeled as a "Default" sandbox);
 // everyone else stays on Local (host). Reads the legacy electron app_settings
-// written by electron/sandbox-settings.ts (same missioncontrol.db).
+// written by electron/sandbox-settings.ts (same concourse.db).
 // See docs/multi-sandbox-plan.md §11.
 
 const MIGRATED_FLAG = "multiSandbox.migrated";

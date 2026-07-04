@@ -383,7 +383,7 @@ export function registerFileHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
       const root = path.resolve(projectRoot);
       const displayPath = sanitizeDisplayPath(path.relative(root, abs));
       const message =
-        "Mission Control is about to modify a file that controls automatic command execution.";
+        "Concourse is about to modify a file that controls automatic command execution.";
       const detail =
         `File: ${displayPath}\n\n` +
         "Files like .claude/settings.local.json, .git/hooks/*, package.json, and " +

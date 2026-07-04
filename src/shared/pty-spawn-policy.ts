@@ -18,8 +18,8 @@ export type BaseSpawnRequest = {
   cols?: number;
   rows?: number;
   mcEnv?: { apiUrl?: string; token?: string };
-  /** Mission Control UI theme so agent skills can match diagram styling. */
-  missionControlTheme?: "dark" | "light";
+  /** Concourse UI theme so agent skills can match diagram styling. */
+  concourseTheme?: "dark" | "light";
 };
 
 export type AgentSpawnRequest = BaseSpawnRequest & {

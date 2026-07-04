@@ -16,7 +16,7 @@ let _db: Database.Database | null = null;
 function openDb(userDataDir: string): Database.Database {
   if (_db) return _db;
   fs.mkdirSync(userDataDir, { recursive: true });
-  const dbPath = path.join(userDataDir, "missioncontrol.db");
+  const dbPath = path.join(userDataDir, "concourse.db");
   const db = new Database(dbPath, {
     nativeBinding: resolveElectronBetterSqlite3NativeBinding(),
   });

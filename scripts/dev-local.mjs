@@ -19,8 +19,8 @@ const mode = process.argv[2] ?? "electron";
 const env = { ...process.env };
 env.MC_DEV_HOST ||= "127.0.0.1";
 env.MC_DEV_PORT = String(parsePort(env.MC_DEV_PORT, DEFAULT_DEV_PORT));
-// Isolate dev's SQLite store + app state from an INSTALLED MissionControl.app,
-// which uses the default ~/Library/.../MissionControl path and may run a
+// Isolate dev's SQLite store + app state from an INSTALLED Concourse.app,
+// which uses the default ~/Library/.../Concourse path and may run a
 // schema-divergent build against the same DB file (corrupting both). Honor an
 // explicit override for CI / custom setups.
 env.MC_USER_DATA_DIR ||= resolve(root, ".dev-userdata");
@@ -37,7 +37,7 @@ env.MC_DEV_PORT = String(port);
 env.MC_DEV_URL ||= origin;
 env.MC_SERVER_ORIGIN ||= origin;
 
-console.log(`[dev] using Mission Control dev server on ${origin}`);
+console.log(`[dev] using Concourse dev server on ${origin}`);
 
 await runElectronDev(origin);
 
@@ -154,7 +154,7 @@ function cleanupStaleDevServer(port) {
   if (stalePids.length === 0) return;
 
   console.log(
-    `[dev] stopping stale Mission Control dev server on ${env.MC_DEV_HOST}:${port} ` +
+    `[dev] stopping stale Concourse dev server on ${env.MC_DEV_HOST}:${port} ` +
       `(pid${stalePids.length === 1 ? "" : "s"} ${stalePids.join(", ")})`,
   );
 

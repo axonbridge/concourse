@@ -6,7 +6,7 @@ describe("resolveProductionServerEntry", () => {
   it("resolves the server entry from the packaged app.asar root", () => {
     const appPath = path.join(
       "/Applications",
-      "MissionControl.app",
+      "Concourse.app",
       "Contents",
       "Resources",
       "app.asar",
@@ -27,7 +27,7 @@ describe("resolveProductionServerEntry", () => {
   });
 
   it("falls back to the repo dist server when running the production server locally", () => {
-    const repoRoot = path.join("/tmp", "mission-control");
+    const repoRoot = path.join("/tmp", "concourse");
     const expectedEntry = path.join(repoRoot, "dist", "server", "server.js");
 
     const { entry } = resolveProductionServerEntry({
@@ -41,7 +41,7 @@ describe("resolveProductionServerEntry", () => {
   });
 
   it("keeps a legacy dist-server fallback for stale local artifacts", () => {
-    const repoRoot = path.join("/tmp", "mission-control");
+    const repoRoot = path.join("/tmp", "concourse");
     const expectedEntry = path.join(repoRoot, "dist-server", "server", "server.js");
 
     const { entry } = resolveProductionServerEntry({

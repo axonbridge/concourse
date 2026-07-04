@@ -25,11 +25,11 @@ describe("Electron shell environment helpers", () => {
     const parsed = parseShellEnvOutput(
       [
         "startup banner",
-        "__MISSION_CONTROL_ENV_START__",
+        "__CONCOURSE_ENV_START__",
         "PATH=/from/shell/bin:/usr/bin",
         "DOCKER_HOST=unix:///Users/me/.docker/run/docker.sock",
         "invalid-key=value",
-        "__MISSION_CONTROL_ENV_END__",
+        "__CONCOURSE_ENV_END__",
         "prompt noise",
       ].join("\n"),
     );
@@ -46,7 +46,7 @@ describe("Electron shell environment helpers", () => {
     const appData = path.join(root, "AppData", "Roaming");
     const localAppData = path.join(root, "AppData", "Local");
     const systemRoot = path.join(root, "Windows");
-    const packagedPath = path.join(root, "MissionControl");
+    const packagedPath = path.join(root, "Concourse");
     const voltaHome = path.join(root, "Volta");
     const pnpmHome = path.join(root, "PnpmHome");
     const userDockerBin = path.join(home, ".docker", "bin");

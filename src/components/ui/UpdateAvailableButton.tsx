@@ -1,7 +1,7 @@
 import { Btn } from "./Btn";
 import { isElectron } from "~/lib/electron";
 import { openExternal } from "~/lib/open-external";
-import { useLatestMissionControlVersion } from "~/queries/mission-control-version";
+import { useLatestConcourseVersion } from "~/queries/concourse-version";
 import {
   useAutoUpdaterState,
   canTriggerUpdateCheck,
@@ -12,7 +12,7 @@ import {
 
 export function UpdateAvailableButton() {
   const updater = useAutoUpdaterState();
-  const { data: academy } = useLatestMissionControlVersion();
+  const { data: academy } = useLatestConcourseVersion();
   const downloadUpdate = async () => {
     const res = await triggerUpdateDownload();
     if (!res.ok) console.error("[updater] download failed:", res.error);

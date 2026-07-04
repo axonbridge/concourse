@@ -4,8 +4,8 @@ import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 import { agentHomePathSuffixes } from "../src/shared/agent-cli-config";
 
-const SHELL_ENV_START = "__MISSION_CONTROL_ENV_START__";
-const SHELL_ENV_END = "__MISSION_CONTROL_ENV_END__";
+const SHELL_ENV_START = "__CONCOURSE_ENV_START__";
+const SHELL_ENV_END = "__CONCOURSE_ENV_END__";
 const SHELL_ENV_CAPTURE_TIMEOUT_MS = 3_000;
 
 type BuildUserPathOptions = {

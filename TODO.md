@@ -1,17 +1,17 @@
 # TODO
 
-Product backlog for Mission Control — personal + work use cases.
+Product backlog for Concourse — personal + work use cases.
 
 ---
 
 ## Metrics & token usage
 
-The Cursor status line shows live session token usage, but Mission Control still lacks easy at-a-glance totals per project and per session, plus cost/time KPIs for repeatable work.
+The Cursor status line shows live session token usage, but Concourse still lacks easy at-a-glance totals per project and per session, plus cost/time KPIs for repeatable work.
 
 **Current state:** Backend + `UsagePanel` exist (`/api/usage`, per-project / per-session / per-day breakdowns from Claude Code JSONL logs). The panel is not wired into navigation yet, and metrics are not surfaced on project cards or session rows.
 
 - [ ] **Wire up Token Usage panel** — add nav entry (settings sidebar, top bar, or keybinding) that opens `UsagePanel` (`setActivePanel("usage")` in `__root.tsx` is never called today)
-- [ ] **Per-project token totals on Mission Control grid** — show cumulative usage on each `ProjectCard` (badge or subtitle), drill-down to project-scoped usage
+- [ ] **Per-project token totals on Concourse grid** — show cumulative usage on each `ProjectCard` (badge or subtitle), drill-down to project-scoped usage
 - [ ] **Per-session token totals in project detail** — show token count on each finished/running session row, not only in the global usage table
 - [ ] **Estimated cost column** — convert tokens → USD using configurable model pricing (Sonnet / Opus / Haiku rates in settings)
 - [ ] **Session duration & time KPIs** — track wall-clock time per session (created → finished) and surface averages for repeatable task types

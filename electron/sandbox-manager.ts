@@ -55,7 +55,7 @@ let initialized = false;
 // the host. Injected by main.ts (never trusted from the renderer).
 let getSandboxHookEnv: (() => { port: number; token: string } | null) | null = null;
 
-/** Relay a sandbox agent hook frame to the host Mission Control API. */
+/** Relay a sandbox agent hook frame to the host Concourse API. */
 function forwardSandboxHook(
   slug: string,
   taskId: string,
@@ -71,7 +71,7 @@ function forwardSandboxHook(
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${hook.token}`,
-      "X-Mission-Control-Runtime": "electron-sandbox-relay",
+      "X-Concourse-Runtime": "electron-sandbox-relay",
     },
     body: body || "{}",
   }).catch((err) => {
@@ -727,7 +727,7 @@ function publicSettings(
 }
 
 function buildDiagnostics(): string {
-  const lines: string[] = ["Mission Control sandbox diagnostics"];
+  const lines: string[] = ["Concourse sandbox diagnostics"];
   lines.push(`active sandbox: ${activeSandboxId ?? "(none / Local)"}`);
   for (const { sandboxId, state } of getRegistry().allStates()) {
     const detail =
@@ -1108,7 +1108,7 @@ type RemotePtySpawnOpts = {
   cols?: number;
   rows?: number;
   dangerouslySkipPermissions?: boolean;
-  missionControlTheme?: "dark" | "light";
+  concourseTheme?: "dark" | "light";
 };
 
 export function registerSandboxManager(
@@ -1303,7 +1303,7 @@ export function registerSandboxManager(
         cols: opts.cols,
         rows: opts.rows,
         dangerouslySkipPermissions: opts.dangerouslySkipPermissions,
-        missionControlTheme: opts.missionControlTheme,
+        concourseTheme: opts.concourseTheme,
         mcEnv: hook ? { port: hook.port, token: hook.token } : undefined,
       });
       return { ptyId };

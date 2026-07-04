@@ -20,9 +20,6 @@ importers:
 
   .:
     dependencies:
-      '@agentsystemlabs/mission-control-agent':
-        specifier: 0.3.1
-        version: 0.3.1
       '@anthropic-ai/claude-agent-sdk':
         specifier: 0.3.195
         version: 0.3.195(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(zod@4.4.3)
@@ -221,11 +218,6 @@ packages:
 
   7zip-bin@5.2.0:
     resolution: {integrity: sha512-ukTPVhqG4jNzMro2qA9HSCSSVJN3aN7tlb+hfqYCt3ER0yWroeA2VR38MNrOHLQ/cVj+DaIMad0kFCtWWowh/A==}
-
-  '@agentsystemlabs/mission-control-agent@0.3.1':
-    resolution: {integrity: sha512-0pfaFHOqrNYOSEBpNg4c3DkayiKWYGW+dy7WJVxzH4uo8woUmkDYVXXbnt0bqMHB4vjzCDS2nVQi1L8YoPs6lw==}
-    engines: {node: '>=24.0.0'}
-    hasBin: true
 
   '@antfu/install-pkg@1.1.0':
     resolution: {integrity: sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ==}
@@ -4868,15 +4860,6 @@ packages:
 snapshots:
 
   7zip-bin@5.2.0: {}
-
-  '@agentsystemlabs/mission-control-agent@0.3.1':
-    dependencies:
-      ignore: 7.0.5
-      node-pty: 1.1.0
-      ws: 8.21.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   '@antfu/install-pkg@1.1.0':
     dependencies:

@@ -36,7 +36,7 @@ function createCommittedRepo(): string {
   tempDirs.push(dir);
   git(dir, ["init"]);
   git(dir, ["config", "user.email", "test@example.com"]);
-  git(dir, ["config", "user.name", "Mission Control Test"]);
+  git(dir, ["config", "user.name", "Concourse Test"]);
   fs.writeFileSync(path.join(dir, "README.md"), "initial\n");
   git(dir, ["add", "README.md"]);
   git(dir, ["commit", "-m", "initial"]);
@@ -75,7 +75,7 @@ describe("worktree helpers", () => {
   });
 
   it("resolves worktrees under the project .worktree directory", () => {
-    const root = path.resolve("/tmp/mission-control-project");
+    const root = path.resolve("/tmp/concourse-project");
     expect(resolveWorktreePath(root, "solar-river-fox")).toBe(
       path.join(root, ".worktree", "solar-river-fox"),
     );
@@ -120,7 +120,7 @@ describe("worktree helpers", () => {
 
     expect(fs.existsSync(worktree.path)).toBe(false);
     expect(git(root, ["stash", "list"])).toContain(
-      `Mission Control backup before deleting worktree ${worktree.name}`,
+      `Concourse backup before deleting worktree ${worktree.name}`,
     );
   });
 
@@ -138,7 +138,7 @@ describe("worktree helpers", () => {
 
     expect(fs.existsSync(worktree.path)).toBe(false);
     expect(git(root, ["stash", "list"])).not.toContain(
-      `Mission Control backup before deleting worktree ${worktree.name}`,
+      `Concourse backup before deleting worktree ${worktree.name}`,
     );
   });
 
@@ -203,7 +203,7 @@ describe("worktree helpers", () => {
     expect(response.status).toBe(204);
     expect(fs.existsSync(worktree.path)).toBe(false);
     expect(git(root, ["stash", "list"])).toContain(
-      `Mission Control backup before deleting worktree ${worktree.name}`,
+      `Concourse backup before deleting worktree ${worktree.name}`,
     );
   });
 });

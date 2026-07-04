@@ -161,7 +161,7 @@ export function TerminalSettingsPage() {
             }}
             aria-hidden
           >
-            $ mission-control — preview at {fontSize}px (base {TERMINAL_FONT_SIZE}px)
+            $ concourse — preview at {fontSize}px (base {TERMINAL_FONT_SIZE}px)
           </div>
         </div>
       </Field>

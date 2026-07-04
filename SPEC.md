@@ -1,8 +1,8 @@
-# MissionControl — Product Spec (v1)
+# Concourse — Product Spec (v1)
 
 ## Vision
 
-A focused desktop app that helps developers manage agentic coding work across many projects without the cluttered sidebar of Cursor/Codex/etc. Each project gets a card on a single Mission Control surface. Click in, see exactly what your agents are doing, open multiple terminal sessions side-by-side, and get back to the home view in one click. The app is an Electron shell wrapping a TanStack Start app — Electron because we need a long-lived process that can expose local HTTP endpoints other CLI tools can post to (status updates, completion signals).
+A focused desktop app that helps developers manage agentic coding work across many projects without the cluttered sidebar of Cursor/Codex/etc. Each project gets a card on a single Concourse surface. Click in, see exactly what your agents are doing, open multiple terminal sessions side-by-side, and get back to the home view in one click. The app is an Electron shell wrapping a TanStack Start app — Electron because we need a long-lived process that can expose local HTTP endpoints other CLI tools can post to (status updates, completion signals).
 
 ## Target User
 
@@ -16,7 +16,7 @@ Show me at a glance which projects need my attention and let me pop into a proje
 
 ### Goals (v1)
 
-- Single Mission Control grid view of project cards with at-a-glance status (running / needs-input / done counts)
+- Single Concourse grid view of project cards with at-a-glance status (running / needs-input / done counts)
 - Add/remove projects by working directory, pin to top, organize into groups
 - Project detail view with tasks broken into Needs-input / Running / Done columns
 - Multi-select tasks → opens a terminal panel that splits horizontally to show all selected sessions concurrently
@@ -40,7 +40,7 @@ Show me at a glance which projects need my attention and let me pop into a proje
 
 ## Features
 
-### Feature 1: Mission Control grid
+### Feature 1: Concourse grid
 
 - **Story:** As a developer, I want to see all my projects on one screen with high-level status so I know which one to focus on next.
 - **Acceptance:**
@@ -127,7 +127,7 @@ Show me at a glance which projects need my attention and let me pop into a proje
 
 - **Story:** The app should match the look-and-feel of the prototype in `designs/` exactly.
 - **Acceptance:**
-  - [x] All design tokens from `designs/MissionControl.html` are extracted to a global CSS file (CSS custom properties)
+  - [x] All design tokens from `designs/Concourse.html` are extracted to a global CSS file (CSS custom properties)
   - [x] Geist + Geist Mono fonts loaded
   - [x] Dark theme matches the prototype pixel-for-pixel
   - [~] Light theme variant works (matches `[data-theme="light"]` overrides in the prototype) — page chrome is themed; xterm terminal interior stays dark
@@ -141,7 +141,7 @@ Show me at a glance which projects need my attention and let me pop into a proje
 
 - **Story:** All my projects, groups, tasks, and pins survive an app restart.
 - **Acceptance:**
-  - [x] SQLite database at `app.getPath('userData')/missioncontrol.db`
+  - [x] SQLite database at `app.getPath('userData')/concourse.db`
   - [x] Drizzle ORM with `better-sqlite3` driver
   - [ ] Migrations checked in under `src/db/migrations/` — currently uses inline `CREATE TABLE IF NOT EXISTS` bootstrap in `src/db/client.ts`; drizzle-kit generate not yet run
   - [~] On first launch, run pending migrations — schema is ensured idempotently on first DB open, but not via the migrator
@@ -176,7 +176,7 @@ A `Group` has many `Projects`. A `Project` has many `Tasks`. A `Task` has zero o
 
 | Route                | Page                  | Auth        | Description                                                              |
 | -------------------- | --------------------- | ----------- | ------------------------------------------------------------------------ |
-| `/`                  | Mission Control       | none (UI)   | Grid of all project cards                                                |
+| `/`                  | Concourse       | none (UI)   | Grid of all project cards                                                |
 | `/projects/:id`      | Project Detail        | none (UI)   | Tasks split by status + open-terminals panel                             |
 | `/archive`           | Archive               | none (UI)   | All archived tasks across all projects                                   |
 | `/settings`          | Settings              | none (UI)   | Theme, API token, keyboard shortcuts info                                |
@@ -246,7 +246,7 @@ The user wants both: (1) a desktop app that owns local resources (PTYs, SQLite, 
   - Status communicated by colored dot + colored shimmer bar (running) or static dot (needs-input/done)
   - Status pills (`◯ 3 running`, `◯ 1 needs input`, `◯ 5 done`) on cards
   - Modals are centered, blurred backdrop, top-right close button
-  - Top bar always shows a clickable `MissionControl` logo crumb that returns to home
+  - Top bar always shows a clickable `Concourse` logo crumb that returns to home
 
 ## Architecture Overview
 
@@ -299,7 +299,7 @@ The Electron main process is the only writer for SQLite. The TanStack Start serv
   - Dependencies: T1
   - Status: Dev mode done — Electron waits on `wait-on tcp:5173` then loads `MC_DEV_URL`. Prod build path (`pnpm package`) wired but unverified.
 
-- [x] **T3: Global design tokens + Tailwind setup** — port `--bg`, `--surface-*`, `--text*`, `--border*`, `--accent`, `--status-*`, `--mono`, `--sans`, `--radius-*` from `designs/MissionControl.html` to a global CSS file. Configure Tailwind to read those tokens. Add Geist + Geist Mono via `@fontsource`. Add the keyframes (`shimmer`, `pulse-dot`, `caret`, `fade-up`, `slide-right`).
+- [x] **T3: Global design tokens + Tailwind setup** — port `--bg`, `--surface-*`, `--text*`, `--border*`, `--accent`, `--status-*`, `--mono`, `--sans`, `--radius-*` from `designs/Concourse.html` to a global CSS file. Configure Tailwind to read those tokens. Add Geist + Geist Mono via `@fontsource`. Add the keyframes (`shimmer`, `pulse-dot`, `caret`, `fade-up`, `slide-right`).
   - Skills: `ui-design`
   - Complexity: M
   - Dependencies: T2
@@ -319,7 +319,7 @@ The Electron main process is the only writer for SQLite. The TanStack Start serv
   - Dependencies: T3
   - Status: Done. Plus `Section`, `EmptyState` added.
 
-- [x] **T6: Mission Control view** — port `MissionControl` + `ProjectCard` + `Section` + `EmptyState` from `designs/views.jsx`. Wire up density toggle, search, group/pin sections, dot-grid background. Hook up to live data via TanStack Query (loaders) hitting the projects API.
+- [x] **T6: Concourse view** — port `Concourse` + `ProjectCard` + `Section` + `EmptyState` from `designs/views.jsx`. Wire up density toggle, search, group/pin sections, dot-grid background. Hook up to live data via TanStack Query (loaders) hitting the projects API.
   - Skills: `react-patterns`, `data-fetching`, `tanstack-start`
   - Complexity: M
   - Dependencies: T5, T8 (projects API)
@@ -415,11 +415,11 @@ The Electron main process is the only writer for SQLite. The TanStack Start serv
   - Skills: `docs-agent`
   - Complexity: S
   - Dependencies: all
-  - Status: Done. `README.md` covers install / dev / API + endpoints. Skill file at `docs/skills/missioncontrol-notify.md`.
+  - Status: Done. `README.md` covers install / dev / API + endpoints. Skill file at `docs/skills/concourse-notify.md`.
 
 ## Success Criteria
 
-- [x] App launches into Mission Control view with seed empty state on first run
+- [x] App launches into Concourse view with seed empty state on first run
 - [x] I can add a project from a real folder on disk and it appears as a card
 - [x] I can pin/unpin and regroup the project; state persists across restart
 - [x] I can click a project, click "New agent", pick Claude Code, and a real `claude` PTY opens in a side panel

@@ -22,9 +22,9 @@ export function resolveUserDataDir(): string {
   if (process.env.MC_USER_DATA_DIR) return process.env.MC_USER_DATA_DIR;
   const platform = process.platform;
   const home = os.homedir();
-  if (platform === "darwin") return path.join(home, "Library/Application Support/MissionControl");
-  if (platform === "win32") return path.join(home, "AppData/Roaming/MissionControl");
-  return path.join(home, ".config/MissionControl");
+  if (platform === "darwin") return path.join(home, "Library/Application Support/Concourse");
+  if (platform === "win32") return path.join(home, "AppData/Roaming/Concourse");
+  return path.join(home, ".config/Concourse");
 }
 
 export function resolveSkillsDir(): string {
@@ -35,7 +35,7 @@ export function getDb() {
   if (_db) return _db;
   const dir = resolveUserDataDir();
   fs.mkdirSync(dir, { recursive: true });
-  const dbPath = path.join(dir, "missioncontrol.db");
+  const dbPath = path.join(dir, "concourse.db");
   _sqlite = new Database(dbPath, {
     nativeBinding: resolveElectronBetterSqlite3NativeBinding(),
   });

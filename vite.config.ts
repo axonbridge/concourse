@@ -3,7 +3,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { missionControlApi } from "./src/server/vite-api-plugin";
+import { concourseApi } from "./src/server/vite-api-plugin";
 import { DEV_SERVER_HOST, DEV_SERVER_PORT } from "./src/shared/dev-server";
 
 const pkg = JSON.parse(
@@ -26,7 +26,7 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    missionControlApi(),
+    concourseApi(),
     tanstackStart({
       srcDirectory: "src",
     }),

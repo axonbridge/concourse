@@ -8,13 +8,13 @@ const TOKEN_QUERY_REDACT_MESSAGE = /([?&])token=[^&#\s"']+/gi;
 const TOKEN_REDACTED_REPLACEMENT = "$1token=<redacted>";
 
 /**
- * Vite plugin that mounts the MissionControl `/api/*` Web-fetch handler
+ * Vite plugin that mounts the Concourse `/api/*` Web-fetch handler
  * as a Connect middleware. Lazy-imports the handler so Vite's SSR
  * boundary keeps better-sqlite3 / native bindings on the Node side.
  */
-export function missionControlApi(): Plugin {
+export function concourseApi(): Plugin {
   return {
-    name: "mission-control-api",
+    name: "concourse-api",
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (!req.url || !req.url.startsWith("/api/")) return next();

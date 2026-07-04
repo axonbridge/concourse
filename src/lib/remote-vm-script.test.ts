@@ -61,7 +61,7 @@ describe("remote-vm CLI helpers", () => {
     expect(script).toContain("@openai/codex@latest");
     expect(script).toContain("@anthropic-ai/claude-code@latest");
     expect(script).toContain("opencode-ai@latest");
-    expect(script).toContain("@agentsystemlabs/mission-control-agent@latest");
+    expect(script).toContain("@agentsystemlabs/concourse-agent@latest");
     expect(script).toContain("https://cursor.com/install");
     expect(script).toContain("MC_AGENT_BIND_HOST=0.0.0.0");
     expect(script).toContain("User=workspace");
@@ -72,16 +72,16 @@ describe("remote-vm CLI helpers", () => {
     const script = renderUserData({ apiKey: "abc123" });
     // The NodeSource deb installs the global bin under /usr/bin, so the old
     // hardcoded ExecStart silently failed with 203/EXEC and the deploy hung.
-    expect(script).not.toContain("/usr/local/bin/mission-control-agent");
-    expect(script).toContain("ExecStart=/usr/bin/env mission-control-agent");
+    expect(script).not.toContain("/usr/local/bin/concourse-agent");
+    expect(script).toContain("ExecStart=/usr/bin/env concourse-agent");
     // And it fails the bootstrap loudly if the bin never installed.
-    expect(script).toContain("command -v mission-control-agent");
+    expect(script).toContain("command -v concourse-agent");
   });
 
   it("does not emit the TLS sidecar when tls is off", () => {
     const script = renderUserData({ apiKey: "abc123" });
     expect(script).not.toContain("mc-tls-proxy.mjs");
-    expect(script).not.toContain("mission-control-tls.service");
+    expect(script).not.toContain("concourse-tls.service");
     expect(script).toContain("MC_AGENT_BIND_HOST=0.0.0.0");
   });
 
@@ -91,8 +91,8 @@ describe("remote-vm CLI helpers", () => {
     expect(script).toContain("MC_AGENT_BIND_HOST=127.0.0.1");
     expect(script).toContain("openssl req -x509");
     expect(script).toContain("/usr/local/lib/mc-tls-proxy.mjs");
-    expect(script).toContain("mission-control-tls.service");
-    expect(script).toContain("systemctl enable --now mission-control-tls");
+    expect(script).toContain("concourse-tls.service");
+    expect(script).toContain("systemctl enable --now concourse-tls");
     // Readiness verifies the HTTPS path on 443 before declaring the box ready.
     expect(script).toContain("https://127.0.0.1:443/health");
   });
@@ -194,7 +194,7 @@ describe("remote-vm CLI helpers", () => {
 
   it("stores cloud VM state in the existing sandboxes/app_settings tables", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-remote-vm-test-"));
-    const db = new Database(path.join(dir, "missioncontrol.db"));
+    const db = new Database(path.join(dir, "concourse.db"));
     try {
       ensureRemoteVmSchema(db);
       const remoteConfig = createRemoteConfig({
@@ -273,21 +273,21 @@ describe("remote-vm CLI helpers", () => {
 
   it("always wires the activity heartbeat env + runtime dir for the idle watchdog", () => {
     const script = renderUserData({ apiKey: "abc123", tls: true });
-    expect(script).toContain("MC_AGENT_ACTIVITY_FILE=/run/mission-control-agent/activity");
-    expect(script).toContain("RuntimeDirectory=mission-control-agent");
+    expect(script).toContain("MC_AGENT_ACTIVITY_FILE=/run/concourse-agent/activity");
+    expect(script).toContain("RuntimeDirectory=concourse-agent");
   });
 
   it("installs the idle auto-stop watchdog only when an idle timeout is set", () => {
     const withIdle = renderUserData({ apiKey: "abc123", tls: true, idleTimeoutMinutes: 30 });
-    expect(withIdle).toContain("mission-control-idle.timer");
+    expect(withIdle).toContain("concourse-idle.timer");
     expect(withIdle).toContain("/usr/local/lib/mc-idle-check.sh");
-    expect(withIdle).toContain("systemctl enable --now mission-control-idle.timer");
+    expect(withIdle).toContain("systemctl enable --now concourse-idle.timer");
     // 30 minutes → 1800 seconds baked into the unit + script default.
     expect(withIdle).toContain("MC_IDLE_SECONDS=1800");
     expect(withIdle).toContain("/sbin/shutdown -h now");
 
     const noIdle = renderUserData({ apiKey: "abc123", tls: true, idleTimeoutMinutes: 0 });
-    expect(noIdle).not.toContain("mission-control-idle.timer");
+    expect(noIdle).not.toContain("concourse-idle.timer");
     expect(noIdle).not.toContain("mc-idle-check.sh");
   });
 
@@ -304,9 +304,9 @@ describe("remote-vm CLI helpers", () => {
     const script = renderUserData({ apiKey: "abc123", tls: true, setupScript });
     const b64 = Buffer.from(setupScript, "utf8").toString("base64");
     expect(script).toContain(b64);
-    expect(script).toContain("base64 -d /opt/mission-control-agent/setup.b64");
+    expect(script).toContain("base64 -d /opt/concourse-agent/setup.b64");
     // Runs isolated: a non-zero exit is logged, never aborts provisioning.
-    expect(script).toContain("/var/log/mission-control-setup.log");
+    expect(script).toContain("/var/log/concourse-setup.log");
     // The literal script text is NOT spliced in raw (only the base64 form).
     expect(script).not.toContain("echo 'hi' # with 'quotes'");
   });
@@ -384,7 +384,7 @@ describe("remote-vm CLI helpers", () => {
 
   it("persists the requested git auth mode for a deployed sandbox", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-remote-vm-auth-"));
-    const db = new Database(path.join(dir, "missioncontrol.db"));
+    const db = new Database(path.join(dir, "concourse.db"));
     try {
       ensureRemoteVmSchema(db);
       const remoteConfig = createRemoteConfig({
@@ -425,7 +425,7 @@ describe("remote-vm CLI helpers", () => {
 
   it("persists copy_agent_creds when requested, defaulting to 0", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-remote-vm-creds-"));
-    const db = new Database(path.join(dir, "missioncontrol.db"));
+    const db = new Database(path.join(dir, "concourse.db"));
     try {
       ensureRemoteVmSchema(db);
       const remoteConfig = createRemoteConfig({
@@ -471,14 +471,14 @@ describe("golden AMI provisioning", () => {
       // Secrets + per-instance config must NEVER be baked into the public image.
       expect(script).not.toContain("MC_AGENT_API_KEY");
       expect(script).not.toContain("openssl req -x509");
-      expect(script).not.toContain("systemctl enable --now mission-control-agent");
+      expect(script).not.toContain("systemctl enable --now concourse-agent");
     });
 
     it("renderBootUserData writes the per-instance secret/cert and no installs", () => {
       const script = renderBootUserData({ apiKey: "secret-123", tls: true });
       expect(script).toContain("MC_AGENT_API_KEY=secret-123");
       expect(script).toContain("openssl req -x509");
-      expect(script).toContain("systemctl enable --now mission-control-agent");
+      expect(script).toContain("systemctl enable --now concourse-agent");
       expect(script).toContain("MC_AGENT_BIND_HOST=127.0.0.1");
       // The heavy install steps are baked into the AMI, never re-run at boot.
       // (Match real install commands, not the systemd-unit comment that mentions npm.)
@@ -495,7 +495,7 @@ describe("golden AMI provisioning", () => {
       expect(installIdx).toBeGreaterThanOrEqual(0);
       expect(bootIdx).toBeGreaterThan(installIdx);
       expect(script).toContain("openssl req -x509");
-      expect(script).toContain("systemctl enable --now mission-control-agent");
+      expect(script).toContain("systemctl enable --now concourse-agent");
     });
   });
 

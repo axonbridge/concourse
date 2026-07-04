@@ -23,10 +23,10 @@ describe("app-settings-store", () => {
     ).toBe(false);
   });
 
-  it("reads persisted boolean settings from missioncontrol.db", () => {
+  it("reads persisted boolean settings from concourse.db", () => {
     userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "mc-app-settings-"));
     fs.mkdirSync(userDataDir, { recursive: true });
-    const dbPath = path.join(userDataDir, "missioncontrol.db");
+    const dbPath = path.join(userDataDir, "concourse.db");
 
     // Seed the same app_settings table the server writes through settings API.
     const db = new Database(dbPath);

@@ -90,7 +90,7 @@ export type BasePtySpawnOptions = {
   cols?: number;
   rows?: number;
   mcEnv?: { apiUrl?: string; token?: string };
-  missionControlTheme?: "dark" | "light";
+  concourseTheme?: "dark" | "light";
 };
 
 export type AgentPtySpawnOptions = BasePtySpawnOptions & {
@@ -127,7 +127,7 @@ export type RemotePtySpawnOptions = {
   cols?: number;
   rows?: number;
   dangerouslySkipPermissions?: boolean;
-  missionControlTheme?: "dark" | "light";
+  concourseTheme?: "dark" | "light";
 };
 
 export type SandboxRuntimeMode = "host" | "docker";
@@ -486,7 +486,7 @@ export type ElectronBridge = {
     diagnostics: () => Promise<string>;
     /** Provision git/SSH auth in a sandbox; returns the generated public key (generate mode). */
     setupGitAuth: (sandboxId?: string) => Promise<{ publicKey?: string }>;
-    /** npm install -g @agentsystemlabs/mission-control-agent@latest + systemctl restart on a remote VM. */
+    /** npm install -g @agentsystemlabs/concourse-agent@latest + systemctl restart on a remote VM. */
     upgradeAgent: (sandboxId?: string) => Promise<{ ok: true } | { ok: false; error: string }>;
     /** Read the saved remote VM bearer token (desktop-only). */
     revealApiKey: (

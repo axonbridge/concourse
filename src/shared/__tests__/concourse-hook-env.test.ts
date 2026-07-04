@@ -1,51 +1,51 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildMissionControlApiUrl,
-  buildLocalMissionControlApiUrl,
-  buildSandboxMissionControlApiUrl,
+  buildConcourseApiUrl,
+  buildLocalConcourseApiUrl,
+  buildSandboxConcourseApiUrl,
   buildAgentLocalHookApiUrl,
   buildSandboxHookRelayUrl,
   buildSyntheticHookUrl,
   hookEndpointSlug,
   SANDBOX_HOOK_API_HOST,
   LOCAL_HOOK_API_HOST,
-} from "../mission-control-hook-env";
+} from "../concourse-hook-env";
 
-describe("buildMissionControlApiUrl — host parameterization", () => {
+describe("buildConcourseApiUrl — host parameterization", () => {
   it("builds a loopback URL for the Electron host", () => {
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, 8080)).toBe("http://127.0.0.1:8080");
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, 8080)).toBe("http://127.0.0.1:8080");
   });
 
   it("builds a host.docker.internal URL for the sandbox container", () => {
-    expect(buildMissionControlApiUrl(SANDBOX_HOOK_API_HOST, 9333)).toBe(
+    expect(buildConcourseApiUrl(SANDBOX_HOOK_API_HOST, 9333)).toBe(
       "http://host.docker.internal:9333",
     );
   });
 
   it("rejects hosts outside the allow-list", () => {
-    expect(buildMissionControlApiUrl("evil.example.com", 9333)).toBeNull();
-    expect(buildMissionControlApiUrl("10.0.0.1", 9333)).toBeNull();
+    expect(buildConcourseApiUrl("evil.example.com", 9333)).toBeNull();
+    expect(buildConcourseApiUrl("10.0.0.1", 9333)).toBeNull();
   });
 
   it("rejects invalid ports", () => {
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, 0)).toBeNull();
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, -1)).toBeNull();
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, 70000)).toBeNull();
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, 1.5)).toBeNull();
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, null)).toBeNull();
-    expect(buildMissionControlApiUrl(LOCAL_HOOK_API_HOST, undefined)).toBeNull();
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, 0)).toBeNull();
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, -1)).toBeNull();
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, 70000)).toBeNull();
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, 1.5)).toBeNull();
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, null)).toBeNull();
+    expect(buildConcourseApiUrl(LOCAL_HOOK_API_HOST, undefined)).toBeNull();
   });
 });
 
 describe("host-specific convenience builders", () => {
-  it("buildLocalMissionControlApiUrl targets loopback", () => {
-    expect(buildLocalMissionControlApiUrl(8080)).toBe("http://127.0.0.1:8080");
-    expect(buildLocalMissionControlApiUrl(0)).toBeNull();
+  it("buildLocalConcourseApiUrl targets loopback", () => {
+    expect(buildLocalConcourseApiUrl(8080)).toBe("http://127.0.0.1:8080");
+    expect(buildLocalConcourseApiUrl(0)).toBeNull();
   });
 
-  it("buildSandboxMissionControlApiUrl targets host.docker.internal", () => {
-    expect(buildSandboxMissionControlApiUrl(9333)).toBe("http://host.docker.internal:9333");
-    expect(buildSandboxMissionControlApiUrl(0)).toBeNull();
+  it("buildSandboxConcourseApiUrl targets host.docker.internal", () => {
+    expect(buildSandboxConcourseApiUrl(9333)).toBe("http://host.docker.internal:9333");
+    expect(buildSandboxConcourseApiUrl(0)).toBeNull();
   });
 
   it("buildAgentLocalHookApiUrl targets loopback agent HTTP", () => {

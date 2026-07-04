@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { makeFail } from "./lib/cli.mjs";
-// Per-platform mission-control publish helper.
+// Per-platform concourse publish helper.
 //
 // Subcommands:
 //   prepare   Create-or-get the release row on academy for $RELEASE_VERSION.
@@ -21,7 +21,7 @@ import { readFileSync, createReadStream, statSync } from "node:fs";
 import { join } from "node:path";
 
 const {
-  MISSION_CONTROL_RELEASE_TOKEN,
+  CONCOURSE_RELEASE_TOKEN,
   ACADEMY_BASE_URL,
   RELEASE_VERSION,
   RELEASE_NOTES,
@@ -31,8 +31,8 @@ const {
 
 const fail = makeFail("publish-release");
 
-if (!MISSION_CONTROL_RELEASE_TOKEN)
-  fail("MISSION_CONTROL_RELEASE_TOKEN is required");
+if (!CONCOURSE_RELEASE_TOKEN)
+  fail("CONCOURSE_RELEASE_TOKEN is required");
 if (!ACADEMY_BASE_URL) fail("ACADEMY_BASE_URL is required");
 if (!RELEASE_VERSION) fail("RELEASE_VERSION is required");
 
@@ -44,7 +44,7 @@ async function apiCall(method, path, body) {
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${MISSION_CONTROL_RELEASE_TOKEN}`,
+      Authorization: `Bearer ${CONCOURSE_RELEASE_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -69,7 +69,7 @@ async function prepare() {
         .map((s) => s.trim())
         .filter(Boolean)
     : undefined;
-  const result = await apiCall("POST", "/api/mission-control/releases", {
+  const result = await apiCall("POST", "/api/concourse/releases", {
     version,
     notes,
     expectedPlatforms,
@@ -108,7 +108,7 @@ async function publish() {
 
     const result = await apiCall(
       "POST",
-      `/api/mission-control/releases/${encodeURIComponent(version)}/assets`,
+      `/api/concourse/releases/${encodeURIComponent(version)}/assets`,
       body
     );
     console.log(
@@ -136,7 +136,7 @@ async function publish() {
 async function finalize() {
   const result = await apiCall(
     "POST",
-    `/api/mission-control/releases/${encodeURIComponent(version)}/finalize`,
+    `/api/concourse/releases/${encodeURIComponent(version)}/finalize`,
     {}
   );
   console.log(`[publish-release] finalized:`, result);

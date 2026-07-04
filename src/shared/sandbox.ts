@@ -51,7 +51,7 @@ export type SandboxRemoteConfig = {
   /** SHA-256 fingerprint of `agentCa` (informational / future pin-by-hash). */
   agentCertSha256?: string | null;
   /**
-   * Managed provider metadata. Present only for Mission Control-provisioned
+   * Managed provider metadata. Present only for Concourse-provisioned
    * remotes. Only "aws" is provisioned today; the `string` fallback keeps reads
    * type-safe for legacy rows persisted under removed providers.
    */

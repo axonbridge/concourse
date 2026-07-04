@@ -14,7 +14,7 @@ import {
 
 const PROJECTS: VoiceProject[] = [
   { id: "p1", name: "Agentic Jumpstart" },
-  { id: "p2", name: "Mission Control" },
+  { id: "p2", name: "Concourse" },
   { id: "p3", name: "Landing Page" },
   { id: "o1", name: "Owl Tales" },
 ];
@@ -53,14 +53,14 @@ describe('workflow: "open <project name>" (+ switch variations)', () => {
   it.each([
     ["open agentic jumpstart", "p1"],
     ["open my owl tales project", "o1"],
-    ["open the mission control project", "p2"],
+    ["open the concourse project", "p2"],
     ["open landing page", "p3"],
     ["switch to owl tales", "o1"],
-    ["change to mission control", "p2"],
+    ["change to concourse", "p2"],
     ["go to agentic jumpstart", "p1"],
     ["jump to landing page", "p3"],
     ["navigate to owl tales", "o1"],
-    ["take me to mission control", "p2"],
+    ["take me to concourse", "p2"],
     ["owl tales", "o1"], // bare project name, no verb
     ["owl tales project", "o1"], // push-to-talk clipped the verb
     ["my agentic jumpstart project", "p1"],
@@ -83,7 +83,7 @@ describe('workflow: "open <project name>" (+ switch variations)', () => {
     const projects: VoiceProject[] = [
       { id: "a", name: "Owl Tales" },
       { id: "b", name: "Owl Park" },
-      { id: "c", name: "Mission Control" },
+      { id: "c", name: "Concourse" },
     ];
     const cmd = parseVoiceCommand("open owl", projects);
     expect(cmd.kind).toBe("switch-ambiguous");
@@ -249,10 +249,10 @@ describe("custom voice command aliases", () => {
   });
 
   it("uses switch aliases as project-name prefixes", () => {
-    expect(parseVoiceCommand("hop to mission control", PROJECTS, SCRIPTS, ALIASES)).toMatchObject({
+    expect(parseVoiceCommand("hop to concourse", PROJECTS, SCRIPTS, ALIASES)).toMatchObject({
       kind: "switch-project",
       projectId: "p2",
-      query: "mission control",
+      query: "concourse",
     });
   });
 
@@ -316,7 +316,7 @@ describe("freeform task -> default agent (no 'create an agent' needed)", () => {
       prompt: "fix the login bug",
     });
     expect(
-      parseVoiceCommand("switch to mission control", PROJECTS, SCRIPTS, undefined, {
+      parseVoiceCommand("switch to concourse", PROJECTS, SCRIPTS, undefined, {
         allowFreeformTask: false,
       }),
     ).toMatchObject({ kind: "switch-project", projectId: "p2" });

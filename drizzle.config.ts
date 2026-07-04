@@ -7,10 +7,10 @@ const userData =
   path.join(
     os.homedir(),
     process.platform === "darwin"
-      ? "Library/Application Support/MissionControl"
+      ? "Library/Application Support/Concourse"
       : process.platform === "win32"
-        ? "AppData/Roaming/MissionControl"
-        : ".config/MissionControl"
+        ? "AppData/Roaming/Concourse"
+        : ".config/Concourse"
   );
 
 export default defineConfig({
@@ -18,7 +18,7 @@ export default defineConfig({
   out: "./src/db/migrations",
   dialect: "sqlite",
   dbCredentials: {
-    url: path.join(userData, "missioncontrol.db"),
+    url: path.join(userData, "concourse.db"),
   },
   strict: true,
   verbose: true,
