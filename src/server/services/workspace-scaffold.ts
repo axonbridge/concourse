@@ -30,27 +30,28 @@ function writeIfMissing(content: string, dest: string): void {
 }
 
 const STARTER_ASK = `---
-description: Ask a question and get a sourced answer from the company's Confluence knowledge base.
+description: Ask a question and get a sourced answer from this workspace's knowledge and files.
 examples:
   - "How does agent authentication work?"
 ---
 
 # Ask
 
-Answer the question in "$ARGUMENTS" by searching Confluence (via the atlassian
-tools) and reading the most relevant pages in full. Cite every source (page
-title + last-updated date). If nothing relevant exists, say so — never fabricate.
+Answer the question in "$ARGUMENTS" using this workspace: its knowledge base,
+its files, and any MCP integrations declared in \`.mcp.json\`. Read the most
+relevant sources in full and cite every one (file path or source + date). If
+nothing relevant exists, say so — never fabricate.
 
 ## Knowledge-first (required)
 
 Follow the knowledge-first protocol in \`skills/knowledge-first.md\`: check
-\`knowledge/facts/\` and the org facts folder before searching, serve only
-non-stale facts (cite the fact file + date, offer "refresh"), fetch live on
-miss, and save durable facts back after the run.
+\`knowledge/facts/\` before searching elsewhere, serve only non-stale facts
+(cite the fact file + date, offer "refresh"), fetch live on miss, and save
+durable facts back after the run.
 `;
 
 const STARTER_DOC = `---
-description: Draft a well-structured Confluence page from your notes or a conversation.
+description: Draft a well-structured document from your notes or a conversation.
 examples:
   - "Document our weekly report process"
 ---
@@ -58,8 +59,8 @@ examples:
 # Doc
 
 Turn "$ARGUMENTS" (plus anything the user pastes) into a clear, well-structured
-document. Show the draft for review; publish to Confluence (via the atlassian
-tools) only after the user approves.
+markdown document. Show the draft for review; once approved, save it under
+\`outputs/doc/\` (or publish via a connected integration if the user asks).
 `;
 
 const STARTER_CREATE_WORKFLOW = `---
@@ -125,15 +126,15 @@ description: Concourse workspace for ${name}.
 
 ## What this is
 
-The Concourse workspace for ${name}. Commands turn live company data into
+The Concourse workspace for ${name}. Commands turn your data and notes into
 useful outputs; everything here is plain markdown you can read and edit.
 
 ## Commands
 
 | Command | Use when... |
 |---------|-------------|
-| \`/ask\` | You want a sourced answer from the company knowledge base |
-| \`/doc\` | You want to draft and publish a document |
+| \`/ask\` | You want a sourced answer from this workspace's knowledge |
+| \`/doc\` | You want to draft a well-structured document |
 | \`/create-workflow\` | You want to automate a repetitive task |
 
 ## Knowledge
@@ -181,10 +182,11 @@ description: Entry point for this workspace's knowledge graph.
     "utf8",
   );
 
+  // Empty by default — declare the MCP servers this workspace actually uses.
   if (!fs.existsSync(path.join(dir, ".mcp.json")))
   fs.writeFileSync(
     path.join(dir, ".mcp.json"),
-    JSON.stringify({ mcpServers: { atlassian: { type: "http", url: "https://mcp.atlassian.com/v1/mcp/authv2" } } }, null, 2) + "\n",
+    JSON.stringify({ mcpServers: {} }, null, 2) + "\n",
     "utf8",
   );
 }
