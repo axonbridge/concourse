@@ -6,14 +6,18 @@ import type { TaskAgent } from "./domain";
 export const AGENT_SETUP: Partial<
   Record<TaskAgent, { install: string; auth: string; label: string }>
 > = {
+  // npm-distributed CLIs: Volta intercepts bare `npm i -g` without creating a
+  // runnable shim, so prefer `volta install` when Volta manages this machine.
   "claude-code": {
     label: "Claude Code",
-    install: "npm install -g @anthropic-ai/claude-code@latest",
+    install:
+      "(command -v volta >/dev/null 2>&1 && volta install @anthropic-ai/claude-code) || npm install -g @anthropic-ai/claude-code@latest",
     auth: "claude",
   },
   codex: {
     label: "Codex",
-    install: "npm install -g @openai/codex@latest",
+    install:
+      "(command -v volta >/dev/null 2>&1 && volta install @openai/codex) || npm install -g @openai/codex@latest",
     auth: "codex login",
   },
   "cursor-cli": {
