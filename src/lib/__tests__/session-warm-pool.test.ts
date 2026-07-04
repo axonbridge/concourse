@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { defaultSessionPayload, prepareSessionWarmSlot } from "../session-warm-pool";
+import { defaultSessionPayload } from "../session-warm-pool";
 
 afterEach(() => {
   vi.unstubAllGlobals();

@@ -114,12 +114,6 @@ pnpm dist:mac     # or dist:win / dist:linux — untested platforms
 App data lives in the user-data dir (`~/Library/Application
 Support/Concourse`).
 
-## Skill file for external CLIs
-
-A drop-in skill for Claude Code / Codex / Cursor CLI lives in
-`docs/skills/concourse-notify.md`. Paste it into the CLI's instructions or
-memory so the agent knows to POST its lifecycle events back to the app.
-
 ## License
 
 [MIT](LICENSE)

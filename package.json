@@ -46,7 +46,7 @@
     "dev:electron": "node scripts/dev-local.mjs electron",
     "dev:server": "corepack pnpm@11.1.2 native:node && vite --strictPort",
     "dev:electron:main": "node scripts/ensure-electron-sqlite.mjs && tsc -p electron/tsconfig.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\" && cross-env NODE_ENV=development electron dist-electron/electron/main.js",
-    "build:web": "vite build && node scripts/copy-bundled-skills.mjs",
+    "build:web": "vite build",
     "build:electron": "tsc -p electron/tsconfig.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\" && node -e \"require('fs').copyFileSync('electron/server-runner.mjs','dist-electron/electron/server-runner.mjs')\"",
     "build": "pnpm build:web && pnpm build:electron",
     "package": "pnpm build && pnpm native:electron && electron-builder",

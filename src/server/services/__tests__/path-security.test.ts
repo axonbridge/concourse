@@ -10,7 +10,6 @@ const { getDb } = await import("~/db/client");
 const { projects, tasks, groups, appSettings } = await import("~/db/schema");
 const { createProject } = await import("../projects");
 const { resolveRegisteredProjectPath } = await import("../path-security");
-const { assertSafeProjectRelativePath } = await import("../_skills-install-helpers");
 
 function mkdir(label: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), `mc-${label}-`));
@@ -32,15 +31,5 @@ describe("path security guards", () => {
 
     expect(resolveRegisteredProjectPath(registered)).toBe(fs.realpathSync(registered));
     expect(() => resolveRegisteredProjectPath(outside)).toThrow(/registered Concourse project/);
-  });
-
-  it("rejects skills install targets that cross symlinked project subdirectories", () => {
-    const project = mkdir("symlinked-project");
-    const outside = mkdir("outside-skills-target");
-    fs.symlinkSync(outside, path.join(project, ".claude"), "dir");
-
-    expect(() =>
-      assertSafeProjectRelativePath(project, ".claude/skills/evil", "skills install"),
-    ).toThrow(/symlink/);
   });
 });

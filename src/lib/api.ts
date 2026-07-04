@@ -1,5 +1,5 @@
 import type { Group, Project, Task, UserTerminal } from "~/db/schema";
-import type { TaskAgent, TaskStatus } from "~/shared/domain";
+import type { TaskStatus } from "~/shared/domain";
 import type { EngineId } from "~/shared/ai-providers";
 import type { CommandBundle, ProjectCommand, ProjectPathStatus, ProjectWithCounts } from "~/shared/projects";
 import { DEV_SERVER_ORIGIN } from "~/shared/dev-server";

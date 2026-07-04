@@ -26,10 +26,6 @@ export function resolveUserDataDir(): string {
   return path.join(home, ".config/Concourse");
 }
 
-export function resolveSkillsDir(): string {
-  return path.join(resolveUserDataDir(), "skills");
-}
-
 export function getDb() {
   if (_db) return _db;
   const dir = resolveUserDataDir();

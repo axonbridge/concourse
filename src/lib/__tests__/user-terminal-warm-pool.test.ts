@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  prepareUserTerminalWarmSlot,
-  userTerminalWarmSignature,
-} from "../user-terminal-warm-pool";
+import { userTerminalWarmSignature } from "../user-terminal-warm-pool";
 
 afterEach(() => {
   vi.unstubAllGlobals();
