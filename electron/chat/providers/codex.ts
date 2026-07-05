@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import log from "electron-log/main";
 import type { ChatEvent } from "../../../src/shared/chat";
 import { projectClaudeWorkspace } from "../../../src/domain/workspace/projectors/claude";
@@ -72,6 +74,22 @@ export const codexChatProvider: ChatProvider = {
       }
     };
 
+    // Codex can't "see" images by reading files — they must ride the native
+    // `-i/--image` flag (developers.openai.com/codex/cli/features#image-inputs).
+    // Attachments are staged under .concourse/attachments/ and referenced in
+    // the message text; lift the image ones into args.
+    const imageArgs = (text: string): string[] => {
+      const out: string[] = [];
+      const re = /\.concourse\/attachments\/[^\s"'`)\]]+\.(?:png|jpe?g|gif|webp)/gi;
+      for (const match of text.match(re) ?? []) {
+        const abs = path.resolve(opts.cwd, match);
+        if (abs.startsWith(path.resolve(opts.cwd) + path.sep) && fs.existsSync(abs)) {
+          out.push("-i", abs);
+        }
+      }
+      return out;
+    };
+
     const runTurn = (rawText: string) => {
       busy = true;
       emit({ kind: "status", sessionId: sid, status: "running" });
@@ -79,6 +97,7 @@ export const codexChatProvider: ChatProvider = {
       const args = ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write"];
       if (opts.model) args.push("-m", opts.model);
       if (threadId) args.splice(1, 0, "resume", threadId);
+      args.push(...imageArgs(text));
       args.push(text);
       current = runJsonlTurn("codex", args, opts.cwd, handleEvent, (line) =>
         log.warn("[codex]", line.trim()),
