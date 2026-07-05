@@ -2081,7 +2081,13 @@ function ProjectPage() {
     }
   };
 
-  const saveTaskEdits = async (patch: { title: string; description: string }) => {
+  const saveTaskEdits = async (patch: {
+    title: string;
+    description: string;
+    icon: string | null;
+    iconColor: string | null;
+    imagePath: string | null;
+  }) => {
     if (!project || !editingTask) return;
     try {
       await api.updateTask(editingTask.id, patch);

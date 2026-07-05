@@ -6,7 +6,6 @@ import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { HotkeyTooltip, Tooltip } from "~/components/ui/Tooltip";
 import { AgentLogo } from "~/components/ui/AgentLogo";
 import { SessionAvatar } from "~/components/ui/SessionAvatar";
-import { SessionIconDialog } from "~/components/views/SessionIconDialog";
 import { useDiagrams } from "~/lib/use-diagram-events";
 import { AGENT_META, STATUS_META } from "~/lib/design-meta";
 import { isSentinelTitle } from "~/lib/task-sentinels";
@@ -65,7 +64,6 @@ export function TaskCard({
   const archived = task.archived;
 
   const sentinel = isSentinelTitle(task.title);
-  const [iconDialogOpen, setIconDialogOpen] = useState(false);
   const updated = formatRelative(task.updatedAt);
   const toggleTask = () => onToggle(task.id);
 
@@ -211,15 +209,16 @@ export function TaskCard({
         <div style={{ position: "relative", flexShrink: 0 }}>
           <button
             type="button"
-            title="Customize session icon"
-            aria-label={`Customize icon for ${task.title}`}
+            title={onEdit ? "Edit session (title, icon, image)" : undefined}
+            aria-label={`Edit ${task.title}`}
+            disabled={!onEdit}
             onClick={(e) => {
               e.stopPropagation();
-              setIconDialogOpen(true);
+              onEdit?.(task);
             }}
             style={{
               all: "unset",
-              cursor: "pointer",
+              cursor: onEdit ? "pointer" : "default",
               display: "block",
               pointerEvents: "auto",
             }}
@@ -611,14 +610,6 @@ export function TaskCard({
         </div>
       )}
 
-      <div onClick={(e) => e.stopPropagation()} style={{ pointerEvents: "auto" }}>
-        <SessionIconDialog
-          task={task}
-          open={iconDialogOpen}
-          onClose={() => setIconDialogOpen(false)}
-          onSaved={() => setIconDialogOpen(false)}
-        />
-      </div>
     </CardFrame>
   );
 }
