@@ -2220,3 +2220,52 @@ html[data-theme="light"][data-minimal="true"] .mc-card-frame[data-focused="true"
 .cursor-glow {
   display: none !important;
 }
+
+/* Syntax highlighting in diff panes (@lezer/highlight classHighlighter
+   classes). Catppuccin Mocha shades by default, Latte in light theme —
+   matching the CodeMirror editors. */
+.mc-diff-code .tok-keyword { color: #cba6f7; }
+.mc-diff-code .tok-operator { color: #89dceb; }
+.mc-diff-code .tok-punctuation { color: #9399b2; }
+.mc-diff-code .tok-string,
+.mc-diff-code .tok-string2 { color: #a6e3a1; }
+.mc-diff-code .tok-comment { color: #6c7086; font-style: italic; }
+.mc-diff-code .tok-number,
+.mc-diff-code .tok-bool,
+.mc-diff-code .tok-atom,
+.mc-diff-code .tok-literal { color: #fab387; }
+.mc-diff-code .tok-variableName.tok-definition,
+.mc-diff-code .tok-propertyName,
+.mc-diff-code .tok-labelName { color: #89b4fa; }
+.mc-diff-code .tok-typeName,
+.mc-diff-code .tok-className,
+.mc-diff-code .tok-namespace { color: #f9e2af; }
+.mc-diff-code .tok-meta { color: #9399b2; }
+.mc-diff-code .tok-invalid { color: #f38ba8; }
+.mc-diff-code .tok-heading { color: #f38ba8; font-weight: 600; }
+.mc-diff-code .tok-link,
+.mc-diff-code .tok-url { color: #89dceb; text-decoration: underline; }
+.mc-diff-code .tok-emphasis { font-style: italic; }
+.mc-diff-code .tok-strong { font-weight: 700; }
+
+html[data-theme="light"] .mc-diff-code .tok-keyword { color: #8839ef; }
+html[data-theme="light"] .mc-diff-code .tok-operator { color: #04a5e5; }
+html[data-theme="light"] .mc-diff-code .tok-punctuation { color: #7c7f93; }
+html[data-theme="light"] .mc-diff-code .tok-string,
+html[data-theme="light"] .mc-diff-code .tok-string2 { color: #40a02b; }
+html[data-theme="light"] .mc-diff-code .tok-comment { color: #9ca0b0; }
+html[data-theme="light"] .mc-diff-code .tok-number,
+html[data-theme="light"] .mc-diff-code .tok-bool,
+html[data-theme="light"] .mc-diff-code .tok-atom,
+html[data-theme="light"] .mc-diff-code .tok-literal { color: #fe640b; }
+html[data-theme="light"] .mc-diff-code .tok-variableName.tok-definition,
+html[data-theme="light"] .mc-diff-code .tok-propertyName,
+html[data-theme="light"] .mc-diff-code .tok-labelName { color: #1e66f5; }
+html[data-theme="light"] .mc-diff-code .tok-typeName,
+html[data-theme="light"] .mc-diff-code .tok-className,
+html[data-theme="light"] .mc-diff-code .tok-namespace { color: #df8e1d; }
+html[data-theme="light"] .mc-diff-code .tok-meta { color: #7c7f93; }
+html[data-theme="light"] .mc-diff-code .tok-invalid { color: #d20f39; }
+html[data-theme="light"] .mc-diff-code .tok-heading { color: #d20f39; }
+html[data-theme="light"] .mc-diff-code .tok-link,
+html[data-theme="light"] .mc-diff-code .tok-url { color: #04a5e5; }

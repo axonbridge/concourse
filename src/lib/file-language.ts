@@ -5,7 +5,8 @@ import { html } from "@codemirror/lang-html";
 import { markdown } from "@codemirror/lang-markdown";
 import { python } from "@codemirror/lang-python";
 import { yaml } from "@codemirror/lang-yaml";
-import { StreamLanguage } from "@codemirror/language";
+import { Language, LanguageSupport, StreamLanguage } from "@codemirror/language";
+import type { Parser } from "@lezer/common";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { toml } from "@codemirror/legacy-modes/mode/toml";
 import { rust } from "@codemirror/legacy-modes/mode/rust";
@@ -62,4 +63,14 @@ export function languageForFilename(name: string): Extension[] {
   if (ext === "sql") return [StreamLanguage.define(sql({}))];
   if (ext === "xml" || ext === "svg" || ext === "plist") return [StreamLanguage.define(xml)];
   return [];
+}
+
+/** The bare Lezer parser for a filename, for highlighting outside an editor
+ *  (e.g. diff panes). Null when the language is unknown. */
+export function parserForFilename(name: string): Parser | null {
+  const first = languageForFilename(name)[0];
+  if (!first) return null;
+  if (first instanceof LanguageSupport) return first.language.parser;
+  if (first instanceof Language) return first.parser;
+  return null;
 }

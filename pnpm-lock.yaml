@@ -68,6 +68,12 @@ importers:
       '@fontsource/space-grotesk':
         specifier: 5.2.10
         version: 5.2.10
+      '@lezer/common':
+        specifier: 1.5.2
+        version: 1.5.2
+      '@lezer/highlight':
+        specifier: 1.2.3
+        version: 1.2.3
       '@modelcontextprotocol/sdk':
         specifier: 1.29.0
         version: 1.29.0(zod@4.4.3)

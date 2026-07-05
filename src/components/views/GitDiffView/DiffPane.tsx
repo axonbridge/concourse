@@ -1,5 +1,8 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
+import { classHighlighter, highlightCode } from "@lezer/highlight";
+import type { Parser } from "@lezer/common";
 import { Icon } from "~/components/ui/Icon";
+import { parserForFilename } from "~/lib/file-language";
 import type { GitDiff } from "~/server/services/git";
 
 export function DiffPane({
@@ -52,13 +55,115 @@ export function DiffPane({
       </Centered>
     );
   }
-  return <DiffText patch={diff.patch} />;
+  return <DiffText patch={diff.patch} filePath={filePath} />;
 }
 
-function DiffText({ patch }: { patch: string }) {
+/** Tokenize `code` with a Lezer parser and return one array of styled spans
+ *  per line. Falls back to plain lines if the parser chokes. */
+function highlightToLines(code: string, parser: Parser): React.ReactNode[][] {
+  const lines: React.ReactNode[][] = [[]];
+  let key = 0;
+  try {
+    highlightCode(
+      code,
+      parser.parse(code),
+      classHighlighter,
+      (text, classes) => {
+        lines[lines.length - 1].push(
+          classes ? (
+            <span key={key++} className={classes}>
+              {text}
+            </span>
+          ) : (
+            text
+          ),
+        );
+      },
+      () => lines.push([]),
+    );
+  } catch {
+    return code.split("\n").map((l) => [l]);
+  }
+  return lines;
+}
+
+/**
+ * Syntax-colored patch lines. Each hunk is highlighted as two contiguous
+ * blocks — old (context + deletions) and new (context + additions) — so
+ * multi-line constructs keep their colors; per-line parsing would break
+ * strings and JSX that span lines.
+ */
+function useHighlightedLines(patch: string, filePath: string | null): React.ReactNode[] {
+  return useMemo(() => {
+    const lines = patch.split("\n");
+    const parser = filePath ? parserForFilename(filePath) : null;
+    const rendered: React.ReactNode[] = lines.map((l) => l || " ");
+    if (!parser) return rendered;
+
+    let i = 0;
+    while (i < lines.length) {
+      if (!lines[i].startsWith("@@")) {
+        i++;
+        continue;
+      }
+      const start = ++i;
+      while (i < lines.length && !lines[i].startsWith("@@") && !lines[i].startsWith("diff --git")) {
+        i++;
+      }
+      const oldSrc: string[] = [];
+      const newSrc: string[] = [];
+      const oldRows: (number | null)[] = [];
+      const newRows: (number | null)[] = [];
+      for (let row = start; row < i; row++) {
+        const line = lines[row];
+        const c = line[0];
+        if (c === "\\") continue; // "\ No newline at end of file"
+        const body = line.slice(1);
+        if (c === "-") {
+          oldSrc.push(body);
+          oldRows.push(row);
+        } else if (c === "+") {
+          newSrc.push(body);
+          newRows.push(row);
+        } else {
+          // Context lines feed both parses; render from the new pass.
+          oldSrc.push(body);
+          oldRows.push(null);
+          newSrc.push(body);
+          newRows.push(row);
+        }
+      }
+      const oldHl = highlightToLines(oldSrc.join("\n"), parser);
+      const newHl = highlightToLines(newSrc.join("\n"), parser);
+      oldRows.forEach((row, k) => {
+        if (row === null || !oldHl[k]) return;
+        rendered[row] = (
+          <>
+            {"-"}
+            {oldHl[k]}
+          </>
+        );
+      });
+      newRows.forEach((row, k) => {
+        if (row === null || !newHl[k]) return;
+        rendered[row] = (
+          <>
+            {lines[row][0] ?? " "}
+            {newHl[k]}
+          </>
+        );
+      });
+    }
+    return rendered;
+  }, [patch, filePath]);
+}
+
+function DiffText({ patch, filePath }: { patch: string; filePath: string | null }) {
   const lines = patch.split("\n");
+  const highlighted = useHighlightedLines(patch, filePath);
   return (
     <pre
+      className="mc-diff-code"
       style={{
         flex: 1,
         margin: 0,
@@ -84,7 +189,7 @@ function DiffText({ patch }: { patch: string }) {
               ...style,
             }}
           >
-            {line || " "}
+            {highlighted[i]}
           </div>
         );
       })}
