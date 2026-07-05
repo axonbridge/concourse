@@ -284,6 +284,119 @@ export const claudeChatProvider: ChatProvider = {
     const agentCalls = new Map<string, string>();
     const backgroundAgents = new Map<string, string>();
 
+    // Lost-notification watchdog. A background agent's completion normally
+    // arrives as a <task-notification> user message — but that delivery can
+    // fail (observed live: a subagent died mid-tool-call; its file output
+    // existed but no notification ever came, leaving the chat "working in
+    // the background" forever). While agents are outstanding we poll their
+    // on-disk transcripts (~/.claude/projects/<slug>/<session>/subagents/):
+    // a transcript that ended cleanly (assistant + end_turn) and idled past
+    // a grace tick — or one stranded mid tool_use for far longer — gets a
+    // synthetic wake-up so the model verifies results and finishes.
+    const WATCHDOG_TICK_MS = 30_000;
+    const FINISHED_IDLE_MS = 90_000;
+    const STRANDED_IDLE_MS = 10 * 60_000;
+    let liveProviderSessionId = opts.providerSessionId ?? null;
+    const agentIdByToolUse = new Map<string, string>();
+    const finishedSightings = new Set<string>();
+    let watchdog: ReturnType<typeof setInterval> | null = null;
+
+    const subagentsDir = () =>
+      liveProviderSessionId
+        ? path.join(
+            os.homedir(),
+            ".claude",
+            "projects",
+            path.resolve(opts.cwd).replace(/[/.]/g, "-"),
+            liveProviderSessionId,
+            "subagents",
+          )
+        : null;
+
+    const resolveAgentId = (toolUseId: string): string | null => {
+      const cached = agentIdByToolUse.get(toolUseId);
+      if (cached) return cached;
+      const dir = subagentsDir();
+      if (!dir) return null;
+      try {
+        for (const f of fs.readdirSync(dir)) {
+          if (!f.endsWith(".meta.json")) continue;
+          try {
+            const meta = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+            if (meta?.toolUseId) {
+              agentIdByToolUse.set(
+                String(meta.toolUseId),
+                f.replace(/^agent-/, "").replace(/\.meta\.json$/, ""),
+              );
+            }
+          } catch {
+            /* partial write; retry next tick */
+          }
+        }
+      } catch {
+        return null;
+      }
+      return agentIdByToolUse.get(toolUseId) ?? null;
+    };
+
+    const subagentLooksDone = (agentId: string): boolean => {
+      const dir = subagentsDir();
+      if (!dir) return false;
+      const file = path.join(dir, `agent-${agentId}.jsonl`);
+      try {
+        const idle = Date.now() - fs.statSync(file).mtimeMs;
+        if (idle < FINISHED_IDLE_MS) return false;
+        const lines = fs.readFileSync(file, "utf8").trimEnd().split("\n");
+        const last = JSON.parse(lines[lines.length - 1]);
+        if (last?.type === "assistant" && last?.message?.stop_reason === "end_turn") return true;
+        // No clean ending recorded — treat as dead only after a long idle so
+        // a genuinely slow tool call doesn't trigger a false wake-up.
+        return idle >= STRANDED_IDLE_MS;
+      } catch {
+        return false;
+      }
+    };
+
+    const watchdogTick = () => {
+      if (stopped || backgroundAgents.size === 0) return;
+      const woken: Array<{ toolUseId: string; label: string }> = [];
+      for (const [toolUseId, label] of backgroundAgents) {
+        const agentId = resolveAgentId(toolUseId);
+        if (!agentId || !subagentLooksDone(agentId)) {
+          finishedSightings.delete(toolUseId);
+          continue;
+        }
+        // Grace tick: first sighting arms it; the real notification usually
+        // lands in between. Second consecutive sighting wakes the model.
+        if (!finishedSightings.has(toolUseId)) {
+          finishedSightings.add(toolUseId);
+          continue;
+        }
+        backgroundAgents.delete(toolUseId);
+        finishedSightings.delete(toolUseId);
+        woken.push({ toolUseId, label });
+      }
+      if (woken.length === 0) return;
+      log.warn(
+        "[chat] background agent finished without a notification; waking the model",
+        woken.map((w) => w.label),
+      );
+      // The <task-notification> markers keep this message out of transcript
+      // replays and let the live loop clear the same ids idempotently.
+      const body = woken
+        .map((w) => `<task-notification><tool-use-id>${w.toolUseId}</tool-use-id></task-notification>`)
+        .join("\n");
+      queue.push(
+        userMessage(
+          `[SYSTEM NOTIFICATION - NOT USER INPUT]\n${body}\nBackground agent${woken.length > 1 ? "s" : ""} ${woken
+            .map((w) => `"${w.label}"`)
+            .join(", ")} appear${woken.length > 1 ? "" : "s"} to have finished, but the completion notification was not delivered. Verify the results on disk (the files or output the agent was asked to produce) and continue or wrap up the task.`,
+        ),
+      );
+      emit({ kind: "activity", sessionId: sid, label: "verifying background agent results" });
+      emit({ kind: "status", sessionId: sid, status: "running" });
+    };
+
     // Turn a raw Anthropic message object (live or replayed from a saved
     // session) into chat items. Same shape in both paths.
     const emitMessageItems = (message: any) => {
@@ -531,8 +644,10 @@ export const claudeChatProvider: ChatProvider = {
               }
               const text = block?.type === "text" ? String(block.text ?? "") : "";
               if (text.includes("<task-notification>")) {
-                const id = text.match(/<tool-use-id>([^<]+)<\/tool-use-id>/)?.[1];
-                if (id) backgroundAgents.delete(id);
+                // One message can carry several notifications (agents finishing
+                // together) — clear every referenced id, not just the first.
+                const ids = [...text.matchAll(/<tool-use-id>([^<]+)<\/tool-use-id>/g)].map((m) => m[1]);
+                if (ids.length) for (const id of ids) backgroundAgents.delete(id);
                 else backgroundAgents.clear();
               }
             }
@@ -545,9 +660,12 @@ export const claudeChatProvider: ChatProvider = {
               lastActivity = `${label} is working in the background`;
               emit({ kind: "activity", sessionId: sid, label: lastActivity });
               emit({ kind: "status", sessionId: sid, status: "running" });
+              if (!watchdog) watchdog = setInterval(watchdogTick, WATCHDOG_TICK_MS);
             } else {
               emit({ kind: "status", sessionId: sid, status: "awaiting-input" });
             }
+          } else if (m?.type === "system" && m.subtype === "init") {
+            if (m.session_id) liveProviderSessionId = String(m.session_id);
           } else if (m?.type === "system" && m.subtype === "permission_denied") {
             emit({
               kind: "item",
@@ -556,8 +674,10 @@ export const claudeChatProvider: ChatProvider = {
             });
           }
         }
+        if (watchdog) clearInterval(watchdog);
         emit({ kind: "status", sessionId: sid, status: "ended" });
       } catch (e) {
+        if (watchdog) clearInterval(watchdog);
         if (stopped) {
           // User-initiated stop aborts the SDK iterator — that's a clean end.
           emit({ kind: "status", sessionId: sid, status: "ended" });
