@@ -27,6 +27,8 @@ export function GitSettingsPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gh, setGh] = useState<{ installed: boolean; authenticated: boolean; account?: string } | null>(null);
+  const [signing, setSigning] = useState<{ enabled: boolean; signingKey?: string } | null>(null);
+  const [enablingSigning, setEnablingSigning] = useState(false);
   const [defaultsApplied, setDefaultsApplied] = useState<boolean | null>(null);
   const [applyingDefaults, setApplyingDefaults] = useState(false);
   const { createHomeSetupTerminal } = useUserTerminals();
@@ -35,6 +37,7 @@ export function GitSettingsPage() {
   useEffect(() => {
     void api.gitAvailable().then(setGitInfo).catch(() => setGitInfo(null));
     void api.gitGhStatus().then(setGh).catch(() => setGh(null));
+    void api.gitSigningStatus().then(setSigning).catch(() => setSigning(null));
     void api
       .gitRecommendedConfigStatus()
       .then((r) => setDefaultsApplied(r.applied))
@@ -99,6 +102,18 @@ export function GitSettingsPage() {
     await createHomeSetupTerminal("GitHub CLI setup", GH_CLI_SETUP_COMMAND);
     requestCloseSettings();
     void router.navigate({ to: "/" });
+  };
+
+  const enableSigning = async () => {
+    setError(null);
+    setEnablingSigning(true);
+    try {
+      setSigning(await api.enableGitSigning());
+    } catch (e: any) {
+      setError(e?.message || "Could not enable signing");
+    } finally {
+      setEnablingSigning(false);
+    }
   };
 
   const applyDefaults = async () => {
@@ -169,6 +184,45 @@ export function GitSettingsPage() {
             <div>
               <Btn variant="solid" icon="terminal" onClick={() => void setupGhCli()}>
                 {gh.installed ? "Sign in to GitHub" : "Install & sign in"}
+              </Btn>
+            </div>
+          )}
+        </div>
+      </Field>
+
+      <Field label="Commit signing">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 560 }}>
+          <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+            Signs every commit with your SSH key — required by repositories that enforce
+            verified commits.
+            {signing === null
+              ? " Checking…"
+              : signing.enabled
+                ? ` ✓ Enabled (${signing.signingKey ?? "SSH key"}).`
+                : " Not enabled on this machine."}
+          </div>
+          {signing !== null && !signing.enabled && (
+            <div>
+              <Btn
+                variant="solid"
+                onClick={() => void enableSigning()}
+                disabled={enablingSigning || !ssh?.exists}
+                title={ssh?.exists ? undefined : "Generate an SSH key first"}
+              >
+                {enablingSigning ? "Enabling…" : "Enable commit signing"}
+              </Btn>
+            </div>
+          )}
+          {signing?.enabled && (
+            <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+              For the &quot;Verified&quot; badge, also add the same public key to GitHub as a{" "}
+              <b>signing key</b> (key type dropdown on the add-key page):{" "}
+              <Btn
+                variant="ghost"
+                icon="globe"
+                onClick={() => window.open("https://github.com/settings/ssh/new", "_blank")}
+              >
+                Add signing key on GitHub
               </Btn>
             </div>
           )}

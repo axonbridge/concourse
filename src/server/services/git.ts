@@ -371,6 +371,41 @@ export async function testSshConnection(): Promise<SshTestResult> {
   return { ok: false, message: output.slice(0, 300) || "Could not reach github.com." };
 }
 
+export type SigningStatus = { enabled: boolean; signingKey?: string };
+
+/** Whether SSH-key commit signing is fully configured globally. */
+export async function commitSigningStatus(): Promise<SigningStatus> {
+  const read = async (key: string) => {
+    const r = await runCmd("git", ["config", "--global", "--get", key]);
+    return r.code === 0 ? r.stdout.trim() : "";
+  };
+  const format = await read("gpg.format");
+  const signingKey = await read("user.signingkey");
+  const sign = await read("commit.gpgsign");
+  return {
+    enabled: format === "ssh" && !!signingKey && sign.toLowerCase() === "true",
+    signingKey: signingKey || undefined,
+  };
+}
+
+/** Enable SSH-key commit signing with the machine's existing SSH key. The key
+ *  must also be added to GitHub as a SIGNING key for "Verified" badges. */
+export async function enableCommitSigning(): Promise<SigningStatus> {
+  const key = await sshKeyStatus();
+  if (!key.exists) {
+    throw new GitError("Generate an SSH key first — signing uses the same key.");
+  }
+  for (const [k, v] of [
+    ["gpg.format", "ssh"],
+    ["user.signingkey", key.keyPath],
+    ["commit.gpgsign", "true"],
+  ] as const) {
+    const r = await runCmd("git", ["config", "--global", k, v]);
+    if (r.code !== 0) throw new GitError(`git config ${k} failed`, r.stderr.trim());
+  }
+  return commitSigningStatus();
+}
+
 export type GitIdentity = { name: string; email: string };
 
 export async function getGitIdentity(): Promise<GitIdentity> {

@@ -516,6 +516,13 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  gitSigningStatus: () =>
+    req<{ enabled: boolean; signingKey?: string }>("/api/git/signing"),
+  enableGitSigning: () =>
+    req<{ enabled: boolean; signingKey?: string }>("/api/git/signing", {
+      method: "POST",
+      body: "{}",
+    }),
   gitIdentity: () => req<{ name: string; email: string }>("/api/git/identity"),
   setGitIdentity: (identity: { name: string; email: string }) =>
     req<{ name: string; email: string }>("/api/git/identity", {

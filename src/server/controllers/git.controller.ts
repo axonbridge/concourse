@@ -2,10 +2,12 @@ import { z } from "zod";
 import {
   applyRecommendedGitConfig,
   checkoutGitBranch,
+  commitSigningStatus,
   cloneRepository,
   commit as gitCommit,
   createPullRequest as gitCreatePullRequest,
   discardFileChanges,
+  enableCommitSigning,
   generateSshKey,
   getGitDiff,
   getGitIdentity,
@@ -185,6 +187,22 @@ export async function configStatus(): Promise<Response> {
 export async function configApply(): Promise<Response> {
   try {
     return json({ applied: await applyRecommendedGitConfig() });
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function signingStatus(): Promise<Response> {
+  try {
+    return json(await commitSigningStatus());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function signingEnable(): Promise<Response> {
+  try {
+    return json(await enableCommitSigning());
   } catch (e) {
     return handleDomainError(e) ?? asGitErrorResponse(e);
   }

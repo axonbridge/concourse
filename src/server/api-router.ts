@@ -271,6 +271,8 @@ async function dispatch(
   if (pathname === "/api/git/gh" && method === "GET") return gitController.ghStatus();
   if (pathname === "/api/git/config/recommended" && method === "GET") return gitController.configStatus();
   if (pathname === "/api/git/config/recommended" && method === "POST") return gitController.configApply();
+  if (pathname === "/api/git/signing" && method === "GET") return gitController.signingStatus();
+  if (pathname === "/api/git/signing" && method === "POST") return gitController.signingEnable();
   if (pathname === "/api/git/identity" && method === "GET") return gitController.identityGet();
   if (pathname === "/api/git/identity" && method === "POST") return gitController.identitySet(request);
 
