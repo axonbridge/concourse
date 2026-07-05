@@ -157,6 +157,8 @@ import {
 } from "~/lib/design-meta";
 import { useSyncProjectDiagrams } from "~/lib/use-diagram-events";
 import { useGitDiffViewOpen } from "~/lib/git-diff-view-store";
+import { useFileBrowserViewOpen } from "~/lib/file-browser-view-store";
+import { FileBrowserView } from "~/components/views/FileBrowserView";
 
 export const Route = createFileRoute("/projects/$id")({
   component: ProjectPage,
@@ -474,13 +476,24 @@ function ProjectPage() {
   });
   const { open: showDiffView, toggle: toggleDiffView, close: closeDiffView, setOpen: setDiffViewOpen } =
     useGitDiffViewOpen(id);
+  const { open: showFileBrowser, toggle: toggleFileBrowser, close: closeFileBrowser } =
+    useFileBrowserViewOpen(id);
   const onToggleDiffView = useCallback(() => {
     if (!projectPathReady || !gitEnabled) return;
+    closeFileBrowser();
     toggleDiffView();
-  }, [projectPathReady, gitEnabled, toggleDiffView]);
+  }, [projectPathReady, gitEnabled, toggleDiffView, closeFileBrowser]);
+  const onToggleFileBrowser = useCallback(() => {
+    if (!projectPathReady) return;
+    closeDiffView();
+    toggleFileBrowser();
+  }, [projectPathReady, toggleFileBrowser, closeDiffView]);
   useEffect(() => {
     if (projectPathBlocked || !gitEnabled) closeDiffView();
   }, [projectPathBlocked, gitEnabled, closeDiffView]);
+  useEffect(() => {
+    if (projectPathBlocked) closeFileBrowser();
+  }, [projectPathBlocked, closeFileBrowser]);
   const [showNewAgent, setShowNewAgent] = useState(false);
   const [showCommandPicker, setShowCommandPicker] = useState(false);
   const [chatSession, setChatSession] = useState<
@@ -2508,6 +2521,8 @@ function ProjectPage() {
     </HeaderActions>
   );
 
+  const fullBleedView = showDiffView || showFileBrowser;
+
   return (
     <>
       <CursorGlow />
@@ -2515,7 +2530,7 @@ function ProjectPage() {
         style={{
           flex: 1,
           minHeight: 0,
-          overflow: showDiffView ? "hidden" : "auto",
+          overflow: fullBleedView ? "hidden" : "auto",
           padding: 0,
           display: "flex",
           flexDirection: "column",
@@ -2525,14 +2540,14 @@ function ProjectPage() {
       <CardFrame
         style={{
           width: "100%",
-          minHeight: showDiffView ? 0 : "100%",
-          flex: showDiffView ? 1 : undefined,
-          flexShrink: showDiffView ? undefined : 0,
+          minHeight: fullBleedView ? 0 : "100%",
+          flex: fullBleedView ? 1 : undefined,
+          flexShrink: fullBleedView ? undefined : 0,
           boxSizing: "border-box",
           padding: 8,
-          display: showDiffView ? "flex" : undefined,
-          flexDirection: showDiffView ? "column" : undefined,
-          overflow: showDiffView ? "hidden" : undefined,
+          display: fullBleedView ? "flex" : undefined,
+          flexDirection: fullBleedView ? "column" : undefined,
+          overflow: fullBleedView ? "hidden" : undefined,
         }}
       >
         <div
@@ -2543,7 +2558,7 @@ function ProjectPage() {
             gap: 12,
             rowGap: 10,
             flexWrap: "wrap",
-            margin: showDiffView ? "-8px -8px 12px" : "-8px -8px 32px",
+            margin: fullBleedView ? "-8px -8px 12px" : "-8px -8px 32px",
             padding: "22px 24px 18px",
             position: "relative",
             isolation: "isolate",
@@ -2665,6 +2680,16 @@ function ProjectPage() {
                     Find file in project
                   </DropdownMenuItem>
                 </HotkeyTooltip>
+                <DropdownMenuItem
+                  icon="file"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    onToggleFileBrowser();
+                  }}
+                  disabled={projectPathBlocked}
+                >
+                  Browse Files
+                </DropdownMenuItem>
                 {project.githubUrl ? (
                   <DropdownMenuItem
                     icon="github"
@@ -2807,7 +2832,7 @@ function ProjectPage() {
           </div>
         )}
 
-        {!showDiffView && tasks.length > 0 && (
+        {!fullBleedView && tasks.length > 0 && (
           <div
             style={{
               display: "flex",
@@ -2896,15 +2921,21 @@ function ProjectPage() {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: showDiffView ? 0 : 48,
-            paddingInline: showDiffView ? 0 : 12,
+            gap: fullBleedView ? 0 : 48,
+            paddingInline: fullBleedView ? 0 : 12,
             boxSizing: "border-box",
-            flex: showDiffView ? 1 : undefined,
-            minHeight: showDiffView ? 0 : undefined,
-            overflow: showDiffView ? "hidden" : undefined,
+            flex: fullBleedView ? 1 : undefined,
+            minHeight: fullBleedView ? 0 : undefined,
+            overflow: fullBleedView ? "hidden" : undefined,
           }}
         >
-          {showDiffView && gitEnabled ? (
+          {showFileBrowser ? (
+            <FileBrowserView
+              projectPath={selectedWorktreePath || project.path}
+              enabled={projectPathReady}
+              onBack={closeFileBrowser}
+            />
+          ) : showDiffView && gitEnabled ? (
             <GitDiffView
               projectId={project.id}
               worktreeId={selectedWorktreeId}

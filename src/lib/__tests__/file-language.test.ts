@@ -22,9 +22,17 @@ describe("languageForFilename", () => {
     expect(languageForFilename(".env").length).toBeGreaterThan(0);
     expect(languageForFilename(".env.local").length).toBeGreaterThan(0);
   });
+  it("returns a language for common non-JS files", () => {
+    expect(languageForFilename("README.md").length).toBeGreaterThan(0);
+    expect(languageForFilename("styles.css").length).toBeGreaterThan(0);
+    expect(languageForFilename("main.py").length).toBeGreaterThan(0);
+    expect(languageForFilename("config.yaml").length).toBeGreaterThan(0);
+    expect(languageForFilename("setup.sh").length).toBeGreaterThan(0);
+    expect(languageForFilename("Cargo.toml").length).toBeGreaterThan(0);
+  });
   it("returns empty for unknown extensions", () => {
-    expect(languageForFilename("README.md")).toEqual([]);
     expect(languageForFilename("data.csv")).toEqual([]);
+    expect(languageForFilename("archive.tar")).toEqual([]);
   });
   it("works with full paths", () => {
     expect(languageForFilename("src/foo/bar.ts").length).toBeGreaterThan(0);
