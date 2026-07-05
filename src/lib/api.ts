@@ -79,6 +79,8 @@ export type AppSettings = {
   voiceCommandAliases: VoiceCommandAliases;
 };
 
+import type { DockerComposeStatus } from "~/server/services/docker";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -550,6 +552,24 @@ export const api = {
       `/api/projects/${projectId}/git/delete-branch`,
       { method: "POST", body: JSON.stringify({ ...body, worktreeId: body.worktreeId ?? null }) },
     ),
+  dockerStatus: (projectId: string, worktreeId?: string | null) =>
+    req<DockerComposeStatus>(
+      `/api/projects/${projectId}/docker/status${worktreeId ? `?worktreeId=${encodeURIComponent(worktreeId)}` : ""}`,
+    ),
+  dockerUp: (projectId: string, worktreeId?: string | null) =>
+    req<{ ok: true }>(
+      `/api/projects/${projectId}/docker/up${worktreeId ? `?worktreeId=${encodeURIComponent(worktreeId)}` : ""}`,
+      { method: "POST" },
+    ),
+  dockerStop: (projectId: string, worktreeId?: string | null) =>
+    req<{ ok: true }>(
+      `/api/projects/${projectId}/docker/stop${worktreeId ? `?worktreeId=${encodeURIComponent(worktreeId)}` : ""}`,
+      { method: "POST" },
+    ),
+  dockerEngineStart: (projectId: string) =>
+    req<{ ok: boolean; app: string | null }>(`/api/projects/${projectId}/docker/engine-start`, {
+      method: "POST",
+    }),
   gitPull: (projectId: string, worktreeId?: string | null) =>
     req<{ result: { kind: "pulled" | "up-to-date"; summary: string } }>(
       `/api/projects/${projectId}/git/pull`,

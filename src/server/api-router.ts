@@ -21,6 +21,7 @@ import * as hooksController from "./controllers/hooks.controller";
 import * as usageController from "./controllers/usage.controller";
 import * as eventsController from "./controllers/events.controller";
 import * as gitController from "./controllers/git.controller";
+import * as dockerController from "./controllers/docker.controller";
 import * as commitCliController from "./controllers/commit-cli.controller";
 import * as projectFileController from "./controllers/project-file.controller";
 import * as healthController from "./controllers/health.controller";
@@ -39,6 +40,7 @@ const PROJECT_COMMAND_BUNDLE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+
 const PROJECT_COMMAND_ONE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+)$/;
 const PROJECT_FILE_PATH = /^\/api\/projects\/([^/]+)\/file$/;
 const PROJECT_GIT_PATH = /^\/api\/projects\/([^/]+)\/git\/([a-z-]+)$/;
+const PROJECT_DOCKER_PATH = /^\/api\/projects\/([^/]+)\/docker\/([a-z-]+)$/;
 const PROJECT_USER_TERMINALS_PATH = /^\/api\/projects\/([^/]+)\/user-terminals$/;
 const GROUP_PATH = /^\/api\/groups\/([^/]+)$/;
 const TASK_PATH = /^\/api\/tasks\/([^/]+)$/;
@@ -294,6 +296,15 @@ async function dispatch(
     if (action === "delete-branch" && method === "POST") return gitController.deleteBranch(id, request);
     if (action === "create-pr" && method === "POST") return gitController.createPr(id, request);
     if (action === "checkout" && method === "POST") return gitController.checkout(id, request);
+  }
+  m = pathname.match(PROJECT_DOCKER_PATH);
+  if (m) {
+    const id = decode(m[1]);
+    const action = m[2]!;
+    if (action === "status" && method === "GET") return dockerController.status(id, url);
+    if (action === "up" && method === "POST") return dockerController.up(id, url);
+    if (action === "stop" && method === "POST") return dockerController.stop(id, url);
+    if (action === "engine-start" && method === "POST") return dockerController.engineStart(id);
   }
   m = pathname.match(PROJECT_USER_TERMINALS_PATH);
   if (m) {

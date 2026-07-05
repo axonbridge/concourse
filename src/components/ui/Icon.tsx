@@ -27,6 +27,7 @@ export type IconName =
   | "home"
   | "globe"
   | "play"
+  | "box"
   | "download"
   | "upload"
   | "group"
@@ -192,6 +193,13 @@ export function Icon({ name, size = 14, style }: { name: IconName; size?: number
       );
     case "play":
       return <svg {...common}><path d="M4 3l9 5-9 5V3z" fill="currentColor" /></svg>;
+    case "box":
+      return (
+        <svg {...common}>
+          <path d="M8 1.8l5.5 3v6.4l-5.5 3-5.5-3V4.8l5.5-3z" />
+          <path d="M2.5 4.8L8 7.8l5.5-3M8 7.8v6.4" />
+        </svg>
+      );
     case "download":
       return <svg {...common}><path d="M8 3v8M4 7l4 4 4-4M2 13h12" /></svg>;
     case "upload":
