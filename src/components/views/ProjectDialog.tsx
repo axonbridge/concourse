@@ -314,7 +314,9 @@ export function ProjectDialog({
         ...(project ? { gitEnabled } : {}),
       });
     } catch (e: any) {
-      setError(e?.message || "Save failed");
+      const stderr = typeof e?.body?.stderr === "string" ? e.body.stderr.trim() : "";
+      const message = e?.message || "Save failed";
+      setError(stderr && !message.includes(stderr) ? `${message}\n${stderr}` : message);
     }
   };
 
@@ -948,6 +950,8 @@ export function ProjectDialog({
               color: "var(--status-failed)",
               fontFamily: "var(--mono)",
               fontSize: 11.5,
+              whiteSpace: "pre-wrap",
+              overflowWrap: "break-word",
             }}
           >
             {error}

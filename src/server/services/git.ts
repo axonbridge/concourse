@@ -324,7 +324,20 @@ export async function cloneRepository(input: {
   }
   const r = await runGit(parent, ["clone", "--", url, dest], { timeoutMs: CLONE_TIMEOUT_MS });
   if (r.code !== 0) {
-    throw new GitError("git clone failed", r.stderr.trim().slice(0, 500));
+    const stderr = r.stderr.trim().slice(0, 500);
+    if (/could not read Username|Authentication failed|Permission denied \(publickey\)/i.test(stderr)) {
+      throw new GitError(
+        "This repository requires authentication — use an SSH URL (git@github.com:you/repo.git) with your SSH key set up, or a repo your credentials can reach.",
+        stderr,
+      );
+    }
+    if (/Repository not found|not found/i.test(stderr)) {
+      throw new GitError(
+        "Repository not found — check the URL (private repos also show this when you lack access).",
+        stderr,
+      );
+    }
+    throw new GitError("git clone failed", stderr);
   }
   return { path: dest };
 }
