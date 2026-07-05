@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
-import { Pencil } from "lucide-react";
-import { TiPin, TiPinOutline } from "react-icons/ti";
+import { Pencil, Pin } from "lucide-react";
 
 export type IconName =
   | "plus"
@@ -69,9 +68,10 @@ export function Icon({ name, size = 14, style }: { name: IconName; size?: number
     case "minus":
       return <svg {...common}><path d="M3 8h10" /></svg>;
     case "pin":
-      return <TiPinOutline size={size} style={style} />;
+      return <Pin size={size} style={style} strokeWidth={1.6} />;
     case "pin-fill":
-      return <TiPin size={size} style={style} />;
+      // Filled variant so a pinned card reads differently at a glance.
+      return <Pin size={size} style={style} strokeWidth={1.6} fill="currentColor" />;
     case "search":
       return (
         <svg {...common}>
