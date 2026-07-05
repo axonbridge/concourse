@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import log from "electron-log/main";
 import type { ChatEvent } from "../../../src/shared/chat";
@@ -15,6 +16,64 @@ import type { ChatProvider, ChatSessionHandle, ChatStartOptions } from "../provi
 // exist. Reads AGENTS.md (projected from workspace.md for CWF workspaces).
 // Codex has no slash-command mechanism, so /commands are resolved by the app
 // from the CWF source and inlined into the turn (inlineSlashCommand).
+
+// A slash-command turn was sent to Codex as the full inlined instructions —
+// on replay show what the user actually typed, not the expanded body.
+function displayUserText(text: string): string {
+  if (!text.startsWith("Follow this command's instructions")) return text;
+  const parts = text.split("## User request\n\n");
+  if (parts.length > 1) return parts[parts.length - 1]!.trim();
+  const slug = text.match(/\(\/([\w-]+)\)/)?.[1];
+  return slug ? `/${slug}` : text.slice(0, 200);
+}
+
+/** Rebuild the visible transcript from Codex's local rollout file
+ *  (~/.codex/sessions/**\/rollout-…-<threadId>.jsonl). Best-effort: a missing
+ *  or unparseable file just means the chat reopens without history. */
+function replayCodexTranscript(
+  threadId: string,
+  sid: string,
+  emit: (event: ChatEvent) => void,
+): void {
+  try {
+    const root = path.join(os.homedir(), ".codex", "sessions");
+    const entries = fs.readdirSync(root, { recursive: true }) as string[];
+    const rel = entries.find((e) => String(e).endsWith(`${threadId}.jsonl`));
+    if (!rel) return;
+    for (const line of fs.readFileSync(path.join(root, String(rel)), "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      let d: any;
+      try {
+        d = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (d?.type !== "response_item") continue;
+      const payload = d.payload ?? {};
+      if (payload.type !== "message") continue;
+      const role = payload.role;
+      if (role !== "user" && role !== "assistant") continue;
+      const text = (payload.content ?? [])
+        .map((c: any) => (typeof c?.text === "string" ? c.text : ""))
+        .join("")
+        .trim();
+      if (!text) continue;
+      // Skip injected context (permissions, environment, AGENTS.md payloads).
+      if (role === "user" && /^</.test(text)) continue;
+      emit({
+        kind: "item",
+        sessionId: sid,
+        item: {
+          id: randomUUID(),
+          type: role === "user" ? "user" : "assistant",
+          text: role === "user" ? displayUserText(text) : text,
+        },
+      });
+    }
+  } catch {
+    /* best-effort */
+  }
+}
 
 export const codexChatProvider: ChatProvider = {
   id: "codex",
@@ -147,6 +206,7 @@ export const codexChatProvider: ChatProvider = {
         // Transcripts live in ~/.codex/sessions; `exec resume <id>` reopens the
         // thread with prior context. Ids we persisted come from thread.started.
         threadId = opts.providerSessionId;
+        replayCodexTranscript(threadId, sid, emit);
       } else if (opts.resume) {
         emit({
           kind: "item",
