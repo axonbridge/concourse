@@ -6,6 +6,7 @@ import { useHotkey } from "~/lib/use-hotkey";
 import { toast } from "sonner";
 import {
   useDeleteProjectFile,
+  useDiscardAllChanges,
   useDiscardFile,
   useGitDiff,
   useGitPull,
@@ -20,6 +21,7 @@ import {
 } from "./ChangedFilesList";
 import { DiffPane } from "./DiffPane";
 import { BranchTypeahead } from "~/components/views/BranchTypeahead";
+import { BranchManagerDialog } from "~/components/views/BranchManagerDialog";
 
 export function GitDiffView({
   projectId,
@@ -41,6 +43,8 @@ export function GitDiffView({
   const unstageM = useUnstageFiles(projectId, worktreeId);
   const deleteM = useDeleteProjectFile(projectId, worktreeId);
   const discardM = useDiscardFile(projectId, worktreeId);
+  const discardAllM = useDiscardAllChanges(projectId, worktreeId);
+  const [branchManagerOpen, setBranchManagerOpen] = useState(false);
   const pullM = useGitPull(projectId, worktreeId);
 
   const [selection, setSelection] = useState<FileSelection>(null);
@@ -187,6 +191,22 @@ export function GitDiffView({
           branch={status?.branch}
           worktreePath={projectPath}
         />
+        <Btn
+          variant="ghost"
+          icon="settings"
+          title="Manage branches (delete local/remote)"
+          aria-label="Manage branches"
+          onClick={() => setBranchManagerOpen(true)}
+          style={{ width: 32, padding: 0 }}
+        >
+          {""}
+        </Btn>
+        <BranchManagerDialog
+          projectId={projectId}
+          worktreeId={worktreeId ?? null}
+          open={branchManagerOpen}
+          onClose={() => setBranchManagerOpen(false)}
+        />
       </div>
 
       {error ? (
@@ -218,6 +238,11 @@ export function GitDiffView({
             onUnstageAll={onUnstageAll}
             onDeleteFile={(p) => deleteM.mutate(p)}
             onDiscardFile={(p) => discardM.mutate(p)}
+            onDiscardAll={() =>
+              discardAllM.mutate(undefined, {
+                onError: (e) => toast.error(e instanceof Error ? e.message : "Discard failed"),
+              })
+            }
             busyPaths={busyPaths}
             projectId={projectId}
             worktreeId={worktreeId}

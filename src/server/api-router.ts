@@ -289,6 +289,9 @@ async function dispatch(
     if (action === "commit" && method === "POST") return gitController.commit(id, request);
     if (action === "push" && method === "POST") return gitController.push(id, request);
     if (action === "pull" && method === "POST") return gitController.pull(id, request);
+    if (action === "commit-message" && method === "POST") return gitController.commitMessage(id, request);
+    if (action === "discard-all" && method === "POST") return gitController.discardAll(id, request);
+    if (action === "delete-branch" && method === "POST") return gitController.deleteBranch(id, request);
     if (action === "create-pr" && method === "POST") return gitController.createPr(id, request);
     if (action === "checkout" && method === "POST") return gitController.checkout(id, request);
   }

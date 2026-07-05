@@ -70,6 +70,7 @@ export function ChangedFilesList({
   onUnstageAll: _onUnstageAll,
   onDeleteFile,
   onDiscardFile,
+  onDiscardAll,
   busyPaths,
   projectId,
   worktreeId,
@@ -85,6 +86,7 @@ export function ChangedFilesList({
   onUnstageAll: () => void;
   onDeleteFile: (path: string) => void;
   onDiscardFile: (path: string) => void;
+  onDiscardAll: () => void;
   busyPaths: Set<string>;
   projectId: string;
   worktreeId?: string | null;
@@ -99,6 +101,7 @@ export function ChangedFilesList({
   const [menu, setMenu] = useState<FileContextMenu | null>(null);
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
   const [confirmDiscardPath, setConfirmDiscardPath] = useState<string | null>(null);
+  const [confirmDiscardAll, setConfirmDiscardAll] = useState(false);
   const initialCachedViewRef = useRef<FileListView | null>(null);
   const [viewMode, setViewMode] = useState<FileListView>(() =>
     readSavedFileListView(initialCachedViewRef),
@@ -293,6 +296,9 @@ export function ChangedFilesList({
           actionIcon="plus"
           actionTitle="Accept All"
           onAction={unstaged.length > 0 ? onStageAll : undefined}
+          secondaryActionIcon="minus"
+          secondaryActionTitle="Discard All"
+          onSecondaryAction={unstaged.length > 0 ? () => setConfirmDiscardAll(true) : undefined}
         >
           {unstaged.length === 0 ? (
             <Empty text="No changes" />
@@ -417,6 +423,27 @@ export function ChangedFilesList({
           </CardFrame>,
           document.body,
         )}
+      <ConfirmDialog
+        open={confirmDiscardAll}
+        onClose={() => setConfirmDiscardAll(false)}
+        onConfirm={() => {
+          onDiscardAll();
+          setConfirmDiscardAll(false);
+        }}
+        title="Discard all changes"
+        confirmLabel="Discard all"
+        variant="danger"
+        icon="minus"
+        width={460}
+      >
+        <div style={{ fontSize: 13, color: "var(--text)", marginBottom: 6 }}>
+          Discard all {unstaged.length} unaccepted change{unstaged.length === 1 ? "" : "s"}?
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+          Edited files are restored to their last committed version and new files are
+          removed from disk. Accepted changes are kept. This cannot be undone.
+        </div>
+      </ConfirmDialog>
       <ConfirmDialog
         open={confirmDiscardPath !== null}
         onClose={() => setConfirmDiscardPath(null)}
@@ -574,6 +601,9 @@ function Section({
   actionIcon,
   actionTitle,
   onAction,
+  secondaryActionIcon,
+  secondaryActionTitle,
+  onSecondaryAction,
   extra,
 }: {
   label: string;
@@ -583,6 +613,9 @@ function Section({
   actionIcon?: "plus" | "x";
   actionTitle?: string;
   onAction?: () => void;
+  secondaryActionIcon?: "minus";
+  secondaryActionTitle?: string;
+  onSecondaryAction?: () => void;
   extra?: ReactNode;
 }) {
   const sectionTone = SECTION_TONES[tone];
@@ -617,6 +650,18 @@ function Section({
           {count}
         </span>
         <span style={{ flex: 1 }}>{label}</span>
+        {onSecondaryAction && secondaryActionIcon && secondaryActionTitle && (
+          <button
+            type="button"
+            onClick={onSecondaryAction}
+            title={secondaryActionTitle}
+            aria-label={secondaryActionTitle}
+            style={textBtnStyle}
+          >
+            <Icon name={secondaryActionIcon} size={10} />
+            <span>{secondaryActionTitle}</span>
+          </button>
+        )}
         {onAction && actionIcon && actionTitle && (
           <button
             type="button"

@@ -6,6 +6,8 @@ import {
   cloneRepository,
   commit as gitCommit,
   createPullRequest as gitCreatePullRequest,
+  deleteGitBranch,
+  discardAllChanges,
   discardFileChanges,
   enableCommitSigning,
   generateSshKey,
@@ -16,6 +18,7 @@ import {
   gitErrorPayload,
   isGitAvailable,
   listGitBranches,
+  prepareCommitMessage,
   pull as gitPull,
   push as gitPush,
   recommendedGitConfigStatus,
@@ -47,6 +50,15 @@ const commitBody = z.object({
   /** Verbatim commit message; when provided, the CLI generation step is
    * skipped entirely. Used by the ship-failed dialog's manual recovery. */
   message: z.string().trim().min(1).max(4_000).optional(),
+});
+const deleteBranchBody = z.object({
+  branch: z.string().trim().min(1).max(255),
+  worktreeId: z.string().nullable().optional(),
+  discardChanges: z.boolean().optional(),
+});
+const commitMessageBody = z.object({
+  autoStage: z.boolean().optional(),
+  worktreeId: z.string().nullable().optional(),
 });
 const checkoutBody = z.object({
   branch: z.string().trim().min(1).max(255),
@@ -261,6 +273,50 @@ export async function commit(rawId: string, request: Request): Promise<Response>
       autoStage: parsed.data.autoStage,
       worktreeId: parsed.data.worktreeId ?? null,
       message: parsed.data.message,
+    }));
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function commitMessage(rawId: string, request: Request): Promise<Response> {
+  const idParsed = idParam.safeParse(rawId);
+  if (!idParsed.success) return notFound();
+  const parsed = await parseJsonBody(request, commitMessageBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    return json(await prepareCommitMessage(idParsed.data, {
+      autoStage: parsed.data.autoStage,
+      worktreeId: parsed.data.worktreeId ?? null,
+    }));
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function discardAll(rawId: string, request: Request): Promise<Response> {
+  const idParsed = idParam.safeParse(rawId);
+  if (!idParsed.success) return notFound();
+  const parsed = await parseJsonBody(request, stageBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    await discardAllChanges(idParsed.data, parsed.data.worktreeId ?? null);
+    return json({ ok: true });
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function deleteBranch(rawId: string, request: Request): Promise<Response> {
+  const idParsed = idParam.safeParse(rawId);
+  if (!idParsed.success) return notFound();
+  const parsed = await parseJsonBody(request, deleteBranchBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    return json(await deleteGitBranch(idParsed.data, {
+      branch: parsed.data.branch,
+      worktreeId: parsed.data.worktreeId ?? null,
+      discardChanges: parsed.data.discardChanges,
     }));
   } catch (e) {
     return handleDomainError(e) ?? asGitErrorResponse(e);

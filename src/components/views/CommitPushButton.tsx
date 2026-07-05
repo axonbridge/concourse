@@ -5,6 +5,8 @@ import { mcToastCustom, McToastCloseButton } from "~/lib/mc-toast";
 import { CardFrame } from "~/components/ui/CardFrame";
 import { Icon } from "~/components/ui/Icon";
 import { ApiError } from "~/lib/api";
+import { Modal } from "~/components/ui/Modal";
+import { api } from "~/lib/api";
 import { useGitCommit, useGitPush, useGitStatus } from "~/queries/git";
 import { isCommitCli, type CommitCli } from "~/shared/commit-cli";
 import {
@@ -230,6 +232,10 @@ export function CommitPushButton({
   const [shipFailed, setShipFailed] = useState<ShipFailedDialogState>(
     SHIP_FAILED_INITIAL,
   );
+  // Ship review step: generate the commit message first, let the user edit it,
+  // then commit+push with the (possibly edited) message.
+  const [messageDraft, setMessageDraft] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   /**
    * Run commit (with optional manual message) then push, share toasts.
@@ -288,15 +294,9 @@ export function CommitPushButton({
     [onError],
   );
 
-  const onCommitAndPush = useCallback(async () => {
-    if (!enabled) return;
-    if (isProjectShipping(projectId, worktreeId)) return;
-
-    beginShipOperation(projectId, worktreeId);
-    try {
-      const result = await runShip();
-      if (result.ok) return;
-      const { raw, prefix } = result.error as { raw: unknown; prefix: string };
+  const handleShipFailure = useCallback(
+    (error: unknown) => {
+      const { raw, prefix } = error as { raw: unknown; prefix: string };
       const ciFailure = readCommitCliFailure(raw);
       if (ciFailure && !prefix) {
         // Commit step failed before anything landed — the dialog owns recovery.
@@ -311,10 +311,51 @@ export function CommitPushButton({
       }
       const message = raw instanceof Error ? raw.message : "Commit & push failed";
       surfaceShipError(prefix + message);
+    },
+    [surfaceShipError],
+  );
+
+  // Phase 1: stage + generate the commit message, then open the review dialog.
+  const onCommitAndPush = useCallback(async () => {
+    if (!enabled) return;
+    if (isProjectShipping(projectId, worktreeId) || generating) return;
+    setGenerating(true);
+    try {
+      const preview = await api.prepareCommitMessage(projectId, { autoStage, worktreeId });
+      if (preview.kind === "nothing-to-commit") {
+        // Fall through to the classic path so ahead-of-remote commits still push
+        // and the "nothing to ship" toast stays consistent.
+        beginShipOperation(projectId, worktreeId);
+        try {
+          const result = await runShip();
+          if (!result.ok) handleShipFailure(result.error);
+        } finally {
+          endShipOperation(projectId, worktreeId);
+        }
+        return;
+      }
+      setMessageDraft(preview.message);
+    } catch (e) {
+      surfaceShipError(e instanceof Error ? e.message : "Could not generate a commit message");
+    } finally {
+      setGenerating(false);
+    }
+  }, [enabled, projectId, worktreeId, generating, autoStage, runShip, handleShipFailure, surfaceShipError]);
+
+  // Phase 2: the user confirmed (possibly edited) the message — commit + push.
+  const onConfirmShip = useCallback(async () => {
+    const message = messageDraft?.trim();
+    if (!message) return;
+    if (isProjectShipping(projectId, worktreeId)) return;
+    setMessageDraft(null);
+    beginShipOperation(projectId, worktreeId);
+    try {
+      const result = await runShip(message);
+      if (!result.ok) handleShipFailure(result.error);
     } finally {
       endShipOperation(projectId, worktreeId);
     }
-  }, [enabled, projectId, worktreeId, runShip, surfaceShipError]);
+  }, [messageDraft, projectId, worktreeId, runShip, handleShipFailure]);
 
   const onManualCommit = useCallback(
     async (message: string) => {
@@ -359,7 +400,7 @@ export function CommitPushButton({
     return () => window.removeEventListener(VOICE_SHIP_EVENT, onVoiceShip);
   }, [onCommitAndPush]);
 
-  const busy = projectShipping;
+  const busy = projectShipping || generating;
   const tooltip = enabled
     ? title ?? "commit & push"
     : "Ship unavailable until the project folder is valid";
@@ -367,7 +408,7 @@ export function CommitPushButton({
   const labelBusy = (
     <>
       <Spinner />
-      {shipPhase === "pushing" ? "Pushing…" : "Committing…"}
+      {generating ? "Generating…" : shipPhase === "pushing" ? "Pushing…" : "Committing…"}
     </>
   );
   const labelIdle = (
@@ -424,6 +465,53 @@ export function CommitPushButton({
   return (
     <>
       {primaryButton}
+      <Modal
+        open={messageDraft !== null}
+        onClose={() => setMessageDraft(null)}
+        title="Review commit message"
+        width={520}
+        footer={
+          <>
+            <Btn variant="ghost" onClick={() => setMessageDraft(null)}>
+              Cancel
+            </Btn>
+            <Btn
+              variant="primary"
+              icon="upload"
+              onClick={() => void onConfirmShip()}
+              disabled={!messageDraft?.trim()}
+            >
+              Commit & push
+            </Btn>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <textarea
+            value={messageDraft ?? ""}
+            onChange={(e) => setMessageDraft(e.target.value)}
+            rows={5}
+            autoFocus
+            style={{
+              width: "100%",
+              resize: "vertical",
+              background: "var(--surface-0)",
+              border: "1px solid var(--border)",
+              borderRadius: 7,
+              color: "var(--text)",
+              fontFamily: "var(--mono)",
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              padding: "9px 11px",
+              boxSizing: "border-box",
+            }}
+          />
+          <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+            Generated from your changes — edit as needed. Cancel keeps the changes
+            staged without committing.
+          </div>
+        </div>
+      </Modal>
       <ShipFailedDialog
         state={shipFailed}
         onClose={() => setShipFailed(SHIP_FAILED_INITIAL)}

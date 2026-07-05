@@ -126,6 +126,25 @@ export function useGitCommit(projectId: string, worktreeId?: string | null) {
   });
 }
 
+/** Discard every unstaged change (tracked restored, untracked removed). */
+export function useDiscardAllChanges(projectId: string, worktreeId?: string | null) {
+  const invalidate = useInvalidateGit(projectId, worktreeId);
+  return useMutation({
+    mutationFn: () => api.discardAllGitChanges(projectId, worktreeId),
+    onSettled: invalidate,
+  });
+}
+
+/** Delete a branch (remote best-effort first, then local force-delete). */
+export function useDeleteBranch(projectId: string, worktreeId?: string | null) {
+  const invalidate = useInvalidateGit(projectId, worktreeId);
+  return useMutation({
+    mutationFn: (opts: { branch: string; discardChanges?: boolean }) =>
+      api.deleteGitBranch(projectId, { ...opts, worktreeId }),
+    onSettled: invalidate,
+  });
+}
+
 /** Fast-forward pull of the current branch; invalidates all git queries. */
 export function useGitPull(projectId: string, worktreeId?: string | null) {
   const invalidate = useInvalidateGit(projectId, worktreeId);

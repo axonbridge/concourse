@@ -665,6 +665,102 @@ export async function commit(
   return { kind: "committed", sha, message };
 }
 
+export type CommitMessagePreview =
+  | { kind: "ready"; message: string }
+  | { kind: "nothing-to-commit" };
+
+/** Stage (like Ship would) and generate the commit message WITHOUT committing,
+ *  so the user can review/edit it in a dialog first. Staging is left in place —
+ *  the follow-up commit call reuses it. */
+export async function prepareCommitMessage(
+  projectId: string,
+  opts: { autoStage?: boolean; worktreeId?: string | null } = {},
+): Promise<CommitMessagePreview> {
+  const { autoStage = true } = opts;
+  const cwd = projectCwd(projectId, opts.worktreeId);
+  const status = await gitOk(cwd, ["status", "--porcelain=v1", "-z"]);
+  if (!status.trim()) return { kind: "nothing-to-commit" };
+  if (autoStage) {
+    await gitOk(cwd, ["add", "-A"]);
+  }
+  const cached = await gitOk(cwd, ["diff", "--cached", "--name-only"]);
+  if (!cached.trim()) return { kind: "nothing-to-commit" };
+  const message = (await generateCommitMessage(projectId, opts.worktreeId)).trim();
+  if (!message) throw new GitError("generated commit message was empty");
+  return { kind: "ready", message };
+}
+
+/** Discard every unstaged change: tracked files restored from HEAD, untracked
+ *  files and directories removed. Staged (accepted) changes are untouched. */
+export async function discardAllChanges(
+  projectId: string,
+  worktreeId?: string | null,
+): Promise<void> {
+  const cwd = projectCwd(projectId, worktreeId);
+  await assertGitRepository(cwd);
+  const restore = await runGit(cwd, ["checkout", "HEAD", "--", "."]);
+  // A repo with no commits yet has no HEAD to restore from — only clean then.
+  if (restore.code !== 0 && !/ambiguous argument 'HEAD'|did not match/i.test(restore.stderr)) {
+    throw new GitError("git checkout failed", restore.stderr.trim());
+  }
+  await gitOk(cwd, ["clean", "-fd"]);
+}
+
+export type DeleteBranchResult = {
+  localDeleted: boolean;
+  /** null = no remote branch existed; boolean = remote delete outcome. */
+  remoteDeleted: boolean | null;
+  switchedTo?: string;
+};
+
+/** Delete a branch remote-first: if a remote branch exists try to delete it
+ *  (a failure there still allows the local delete), then force-delete the
+ *  local branch. Deleting the checked-out branch switches to the default
+ *  branch first — optionally discarding pending changes. */
+export async function deleteGitBranch(
+  projectId: string,
+  opts: { branch: string; worktreeId?: string | null; discardChanges?: boolean },
+): Promise<DeleteBranchResult> {
+  const branch = opts.branch.trim();
+  if (!branch) throw new GitError("branch is required");
+  if (branch === DEFAULT_BRANCH) {
+    throw new GitError(`Refusing to delete ${DEFAULT_BRANCH}.`);
+  }
+  const cwd = projectCwd(projectId, opts.worktreeId);
+  await assertGitRepository(cwd);
+
+  let switchedTo: string | undefined;
+  const current = await currentBranchName(cwd);
+  if (current === branch) {
+    if (opts.discardChanges) {
+      await gitOk(cwd, ["reset", "--hard"]);
+      await gitOk(cwd, ["clean", "-fd"]);
+    }
+    const co = await runGit(cwd, ["checkout", DEFAULT_BRANCH]);
+    if (co.code !== 0) {
+      throw new GitError(
+        `Couldn't switch to ${DEFAULT_BRANCH} before deleting — pending changes may conflict. Ship or discard them first.`,
+        co.stderr.trim(),
+      );
+    }
+    switchedTo = DEFAULT_BRANCH;
+  }
+
+  let remoteDeleted: boolean | null = null;
+  if (await remoteBranchExists(cwd, branch)) {
+    const r = await runGit(cwd, ["push", "origin", "--delete", branch], {
+      timeoutMs: PUSH_TIMEOUT_MS,
+    });
+    remoteDeleted = r.code === 0;
+  }
+
+  const local = await runGit(cwd, ["branch", "-D", branch]);
+  if (local.code !== 0) {
+    throw new GitError("git branch -D failed", local.stderr.trim());
+  }
+  return { localDeleted: true, remoteDeleted, switchedTo };
+}
+
 export type PushResult =
   | { kind: "pushed"; setUpstream: boolean; output: string }
   | { kind: "nothing-to-push" };

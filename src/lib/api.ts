@@ -532,6 +532,24 @@ export const api = {
       method: "POST",
       body: JSON.stringify(identity),
     }),
+  prepareCommitMessage: (projectId: string, opts?: { autoStage?: boolean; worktreeId?: string | null }) =>
+    req<{ kind: "ready"; message: string } | { kind: "nothing-to-commit" }>(
+      `/api/projects/${projectId}/git/commit-message`,
+      { method: "POST", body: JSON.stringify({ autoStage: opts?.autoStage, worktreeId: opts?.worktreeId ?? null }) },
+    ),
+  discardAllGitChanges: (projectId: string, worktreeId?: string | null) =>
+    req<{ ok: true }>(`/api/projects/${projectId}/git/discard-all`, {
+      method: "POST",
+      body: JSON.stringify({ worktreeId: worktreeId ?? null }),
+    }),
+  deleteGitBranch: (
+    projectId: string,
+    body: { branch: string; worktreeId?: string | null; discardChanges?: boolean },
+  ) =>
+    req<{ localDeleted: boolean; remoteDeleted: boolean | null; switchedTo?: string }>(
+      `/api/projects/${projectId}/git/delete-branch`,
+      { method: "POST", body: JSON.stringify({ ...body, worktreeId: body.worktreeId ?? null }) },
+    ),
   gitPull: (projectId: string, worktreeId?: string | null) =>
     req<{ result: { kind: "pulled" | "up-to-date"; summary: string } }>(
       `/api/projects/${projectId}/git/pull`,
