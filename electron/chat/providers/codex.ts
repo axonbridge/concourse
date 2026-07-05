@@ -32,6 +32,9 @@ export const codexChatProvider: ChatProvider = {
     const handleEvent = (ev: any) => {
       if (ev?.type === "thread.started" && ev.thread_id) {
         threadId = String(ev.thread_id);
+        // Report the vendor thread id so the app persists it on the task —
+        // reopening this chat later resumes via `codex exec resume <id>`.
+        emit({ kind: "provider-session", sessionId: sid, providerSessionId: threadId });
       } else if (ev?.type === "item.started" || ev?.type === "item.updated") {
         const t = ev.item?.item_type ?? ev.item?.type;
         if (t === "command_execution") {
@@ -134,11 +137,15 @@ export const codexChatProvider: ChatProvider = {
           text: "Codex runs with pre-set permissions (workspace sandbox) — it can read and edit files in this workspace without asking per action. Network access stays off.",
         },
       });
-      if (opts.resume) {
+      if (opts.resume && opts.providerSessionId) {
+        // Transcripts live in ~/.codex/sessions; `exec resume <id>` reopens the
+        // thread with prior context. Ids we persisted come from thread.started.
+        threadId = opts.providerSessionId;
+      } else if (opts.resume) {
         emit({
           kind: "item",
           sessionId: sid,
-          item: { id: randomUUID(), type: "notice", text: "Codex sessions don't support resume across app restarts yet — starting fresh." },
+          item: { id: randomUUID(), type: "notice", text: "No saved Codex thread for this chat — starting fresh." },
         });
       }
       if (opts.initialText.trim()) runTurn(opts.initialText);

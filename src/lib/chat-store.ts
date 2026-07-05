@@ -131,6 +131,15 @@ function ensureSubscribed() {
       state.permission = event.permission;
     } else if (event.kind === "activity") {
       state.activity = event.label;
+    } else if (event.kind === "provider-session") {
+      if (state.providerSessionId !== event.providerSessionId) {
+        state.providerSessionId = event.providerSessionId;
+        // Persist on the task (sessionId IS the task id) so reopening after an
+        // app restart resumes the vendor thread.
+        void api
+          .updateTask(event.sessionId, { claudeSessionId: event.providerSessionId })
+          .catch(() => undefined);
+      }
     }
     notify(event.sessionId);
   });

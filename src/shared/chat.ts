@@ -35,7 +35,11 @@ export type ChatEvent =
   | { kind: "activity"; sessionId: string; label: string }
   // Incremental text for the in-progress assistant reply (direct engines
   // stream tokens). Cleared when the completed "item" arrives.
-  | { kind: "delta"; sessionId: string; text: string };
+  | { kind: "delta"; sessionId: string; text: string }
+  // The vendor assigned/changed its own session id (e.g. Codex thread id,
+  // known only after the first turn). The store persists it on the task so
+  // reopening the chat resumes the same vendor thread.
+  | { kind: "provider-session"; sessionId: string; providerSessionId: string };
 
 // Approval POLICY lives in the domain (src/domain/policy/action-policy.ts);
 // each engine adapter maps its own tool vocabulary to ActionClasses (e.g.
