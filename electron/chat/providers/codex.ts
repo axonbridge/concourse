@@ -214,7 +214,18 @@ export const codexChatProvider: ChatProvider = {
           item: { id: randomUUID(), type: "notice", text: "No saved Codex thread for this chat — starting fresh." },
         });
       }
-      if (opts.initialText.trim()) runTurn(opts.initialText);
+      if (opts.initialText.trim()) {
+        // Resume-with-text = the user stopped the run and typed a new prompt;
+        // the replay above only covers the saved transcript, so show it.
+        if (opts.resume) {
+          emit({
+            kind: "item",
+            sessionId: sid,
+            item: { id: randomUUID(), type: "user", text: opts.initialText },
+          });
+        }
+        runTurn(opts.initialText);
+      }
       else emit({ kind: "status", sessionId: sid, status: "awaiting-input" });
     });
 

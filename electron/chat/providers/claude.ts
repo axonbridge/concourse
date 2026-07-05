@@ -32,6 +32,9 @@ type SdkQuery = (args: { prompt: AsyncIterable<unknown>; options: Record<string,
 // Render it as the friendly "/ask" instead of the raw XML; strip stray wrappers.
 function cleanUserText(raw: string): string {
   if (!raw) return "";
+  // Interrupt-steering preamble (added when the user stops a run and sends a
+  // new prompt) is engine-facing only — replays show just the user's text.
+  raw = raw.replace(/<concourse-interrupt-note>[\s\S]*?<\/concourse-interrupt-note>\s*/g, "");
   const name = raw.match(/<command-name>\s*\/?([^<]+?)\s*<\/command-name>/);
   if (name) {
     const args = raw.match(/<command-args>\s*([^<]*?)\s*<\/command-args>/);
@@ -474,8 +477,28 @@ export const claudeChatProvider: ChatProvider = {
       }
 
       // Only seed an initial message for a fresh session; a resume continues
-      // where it left off and waits for the user's next message.
-      if (opts.initialText.trim()) queue.push(userMessage(opts.initialText));
+      // where it left off and waits for the user's next message — EXCEPT when
+      // resume comes with text: that's "the user pressed Stop, then typed a
+      // new prompt". The replay above only covers the saved transcript, so
+      // surface the new message ourselves, and steer the model to it — a
+      // resumed mid-turn abort otherwise tends to pick its old task back up
+      // and ignore what the user just asked.
+      if (opts.initialText.trim()) {
+        if (opts.resume) {
+          emit({
+            kind: "item",
+            sessionId: sid,
+            item: { id: randomUUID(), type: "user", text: opts.initialText },
+          });
+          queue.push(
+            userMessage(
+              `<concourse-interrupt-note>The user pressed Stop — the previous run was cancelled mid-turn. Do NOT continue the interrupted work unless this message asks for it. Follow this new instruction:</concourse-interrupt-note>\n${opts.initialText}`,
+            ),
+          );
+        } else {
+          queue.push(userMessage(opts.initialText));
+        }
+      }
 
       // Capability-classed approvals: this adapter maps Claude tool names to
       // ActionClasses (claude-tools.ts); the DOMAIN policy decides allow/ask —

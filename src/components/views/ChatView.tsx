@@ -673,7 +673,7 @@ export function ChatView({
             permission
               ? "Approve or deny above to continue…"
               : session?.interrupted
-                ? "Stopped — your next message resumes the conversation…"
+                ? "Stopped — tell me what to do next…"
                 : "Type a message…"
           }
           rows={1}
