@@ -40,6 +40,8 @@ export function buildOptimisticTask(input: {
     title: TITLE_WAITING,
     titleManuallySet: false,
     icon: null,
+    iconColor: null,
+    imagePath: null,
     mode: input.mode ?? "terminal",
     agent: input.agent,
     status: DEFAULT_TASK_STATUS,

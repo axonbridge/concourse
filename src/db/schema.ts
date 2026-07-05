@@ -96,7 +96,12 @@ export const tasks = sqliteTable(
     scopeId: text("scope_id").notNull().default(LOCAL_SCOPE_ID),
     title: text("title").notNull(),
     titleManuallySet: integer("title_manually_set", { mode: "boolean" }).notNull().default(false),
+    // Session avatar: a lucide icon id (auto-picked by the title generator) OR
+    // a short monogram the user typed; color + optional custom image mirror
+    // the project icon experience.
     icon: text("icon"),
+    iconColor: text("icon_color"),
+    imagePath: text("image_path"),
     // "terminal" = classic xterm session; "chat" = the no-terminal chat surface
     // (rendered by ChatView, driven by the Claude Agent SDK).
     mode: text("mode").$type<"terminal" | "chat">().notNull().default("terminal"),

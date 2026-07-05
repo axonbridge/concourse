@@ -46,6 +46,8 @@ const updateTaskBody = z
   .object({
     title: z.string().trim().min(1, "title required"),
     icon: z.string().nullable(),
+    iconColor: z.string().max(32).nullable(),
+    imagePath: z.string().max(255).nullable(),
     branch: z.string(),
     pinned: z.boolean(),
     description: z.string().max(300),

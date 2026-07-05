@@ -22,6 +22,8 @@ const baseTask = {
   title: "Task",
   titleManuallySet: false,
   icon: null,
+  iconColor: null,
+  imagePath: null,
   mode: "terminal",
   status: "ready",
   branch: "main",

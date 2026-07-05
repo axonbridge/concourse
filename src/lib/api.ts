@@ -341,6 +341,9 @@ export const api = {
     id: string,
     body: {
       title?: string;
+      icon?: string | null;
+      iconColor?: string | null;
+      imagePath?: string | null;
       branch?: string;
       pinned?: boolean;
       description?: string;

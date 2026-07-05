@@ -355,6 +355,8 @@ function ensureSchema(sqlite: Database.Database) {
       title TEXT NOT NULL,
       title_manually_set INTEGER NOT NULL DEFAULT 0,
       icon TEXT,
+      icon_color TEXT,
+      image_path TEXT,
       agent TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT '${DEFAULT_TASK_STATUS}',
       branch TEXT NOT NULL DEFAULT '${DEFAULT_BRANCH}',
@@ -481,6 +483,8 @@ function ensureSchema(sqlite: Database.Database) {
   // tolerate pre-existing tables created without it.
   ensureColumn(sqlite, "tasks", "scope_id", `TEXT NOT NULL DEFAULT '${LOCAL_SCOPE_ID}'`);
   ensureColumn(sqlite, "tasks", "title_manually_set", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(sqlite, "tasks", "icon_color", "TEXT");
+  ensureColumn(sqlite, "tasks", "image_path", "TEXT");
   ensureColumn(sqlite, "tasks", "pinned", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(sqlite, "tasks", "mode", "TEXT NOT NULL DEFAULT 'terminal'");
   ensureColumn(sqlite, "tasks", "description", "TEXT NOT NULL DEFAULT ''");

@@ -5,11 +5,11 @@ import { Btn } from "~/components/ui/Btn";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { HotkeyTooltip, Tooltip } from "~/components/ui/Tooltip";
 import { AgentLogo } from "~/components/ui/AgentLogo";
-import { SessionIcon } from "~/components/ui/SessionIcon";
+import { SessionAvatar } from "~/components/ui/SessionAvatar";
+import { SessionIconDialog } from "~/components/views/SessionIconDialog";
 import { useDiagrams } from "~/lib/use-diagram-events";
 import { AGENT_META, STATUS_META } from "~/lib/design-meta";
 import { isSentinelTitle } from "~/lib/task-sentinels";
-import { DEFAULT_SESSION_ICON, isSessionIcon } from "~/lib/session-icons";
 import type { Task } from "~/db/schema";
 
 export function TaskCard({
@@ -65,7 +65,7 @@ export function TaskCard({
   const archived = task.archived;
 
   const sentinel = isSentinelTitle(task.title);
-  const sessionIcon = isSessionIcon(task.icon) ? task.icon : DEFAULT_SESSION_ICON;
+  const [iconDialogOpen, setIconDialogOpen] = useState(false);
   const updated = formatRelative(task.updatedAt);
   const toggleTask = () => onToggle(task.id);
 
@@ -207,25 +207,25 @@ export function TaskCard({
           pointerEvents: "none",
         }}
       >
-        {/* Left icon tile + status dot */}
+        {/* Left icon tile + status dot; click to customize (image/letters/icon/color). */}
         <div style={{ position: "relative", flexShrink: 0 }}>
-          <div
+          <button
+            type="button"
+            title="Customize session icon"
+            aria-label={`Customize icon for ${task.title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIconDialogOpen(true);
+            }}
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 14,
-              background: "linear-gradient(180deg, var(--surface-2), var(--surface-1))",
-              border: "1px solid var(--border)",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 2px rgba(0,0,0,0.35)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text-dim)",
+              all: "unset",
+              cursor: "pointer",
+              display: "block",
+              pointerEvents: "auto",
             }}
           >
-            <SessionIcon name={sessionIcon} size={26} strokeWidth={1.5} />
-          </div>
+            <SessionAvatar task={task} size={56} />
+          </button>
           {statusMeta.dot && (
             <span
               style={{
@@ -610,6 +610,15 @@ export function TaskCard({
           </ConfirmDialog>
         </div>
       )}
+
+      <div onClick={(e) => e.stopPropagation()} style={{ pointerEvents: "auto" }}>
+        <SessionIconDialog
+          task={task}
+          open={iconDialogOpen}
+          onClose={() => setIconDialogOpen(false)}
+          onSaved={() => setIconDialogOpen(false)}
+        />
+      </div>
     </CardFrame>
   );
 }

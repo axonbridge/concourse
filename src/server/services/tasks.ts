@@ -78,6 +78,8 @@ export function createTask(input: {
     title: input.title.trim(),
     titleManuallySet: false,
     icon: null,
+    iconColor: null,
+    imagePath: null,
     mode: input.mode ?? "terminal",
     agent: input.agent,
     status: input.status ?? DEFAULT_TASK_STATUS,
@@ -144,6 +146,8 @@ export function updateTask(
       | "title"
       | "titleManuallySet"
       | "icon"
+      | "iconColor"
+      | "imagePath"
       | "branch"
       | "pinned"
       | "description"
