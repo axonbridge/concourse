@@ -102,6 +102,9 @@ export const codexChatProvider: ChatProvider = {
       const args = threadId
         ? ["exec", "resume", threadId, "--json", "--skip-git-repo-check"]
         : ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write"];
+      // workspace-write protects .git by default, which breaks branch/commit
+      // steps in user workflows; writable_roots re-opens it (config-reference).
+      args.push("-c", 'sandbox_workspace_write.writable_roots=[".git"]');
       if (opts.model) args.push("-m", opts.model);
       args.push(...imageArgs(text));
       args.push(text);
