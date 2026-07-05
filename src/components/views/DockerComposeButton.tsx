@@ -184,11 +184,7 @@ export function DockerComposeButton({
                 onClick={runUp}
                 title="docker compose up -d (builds images on first run)"
               >
-                {upM.isPending
-                  ? "Starting…"
-                  : ready.running === ready.total && ready.total > 0
-                    ? "Restart missing"
-                    : "Start all"}
+                {upM.isPending ? "Starting…" : "Start all"}
               </Btn>
             </div>
             {upM.isPending && (
@@ -205,12 +201,17 @@ export function DockerComposeButton({
 
 function StateChip({ state, status }: { state: string; status: string | null }) {
   const healthy = status?.toLowerCase().includes("healthy") && !status?.toLowerCase().includes("unhealthy");
+  // A stopped container is "exited" in Docker-speak with a nonzero code when
+  // the app didn't trap SIGTERM — neither is an error after a manual Stop, so
+  // show it as neutral "stopped". Amber is reserved for running-but-unhealthy
+  // and transitional states (restarting, paused).
+  const label = state === "exited" || state === "created" ? "stopped" : state;
   const color =
     state === "running"
       ? healthy || !status?.toLowerCase().includes("health")
         ? "var(--status-done)"
         : "var(--status-needs)"
-      : state === "not-created"
+      : state === "exited" || state === "created" || state === "not-created"
         ? "var(--text-faint)"
         : "var(--status-needs)";
   return (
@@ -225,7 +226,7 @@ function StateChip({ state, status }: { state: string; status: string | null }) 
         color,
       }}
     >
-      {state}
+      {label}
     </span>
   );
 }
