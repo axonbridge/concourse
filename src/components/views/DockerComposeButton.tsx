@@ -5,6 +5,7 @@ import { Icon } from "~/components/ui/Icon";
 import { Modal } from "~/components/ui/Modal";
 import {
   useDockerEngineStart,
+  useDockerRestart,
   useDockerStatus,
   useDockerStop,
   useDockerUp,
@@ -28,7 +29,10 @@ export function DockerComposeButton({
   const { data: status, isError } = useDockerStatus(projectId, worktreeId, { enabled });
   const upM = useDockerUp(projectId, worktreeId);
   const stopM = useDockerStop(projectId, worktreeId);
+  const restartM = useDockerRestart(projectId, worktreeId);
   const engineM = useDockerEngineStart(projectId, worktreeId);
+
+  const anyBusy = upM.isPending || stopM.isPending || restartM.isPending;
 
   if (!status || isError || status.kind === "no-compose") return null;
 
@@ -51,6 +55,12 @@ export function DockerComposeButton({
     stopM.mutate(undefined, {
       onSuccess: () => toast.success("Docker stack stopped"),
       onError: (e) => toast.error(e instanceof Error ? e.message : "docker compose stop failed"),
+    });
+  const runRestart = () =>
+    restartM.mutate(undefined, {
+      onSuccess: () => toast.success("Docker stack restarted"),
+      onError: (e) =>
+        toast.error(e instanceof Error ? e.message : "docker compose restart failed"),
     });
 
   return (
@@ -169,23 +179,38 @@ export function DockerComposeButton({
                 </div>
               ))}
             </div>
+            {/* State-aware actions: a fully-running stack offers Restart, a
+                stopped/partial one offers Start (compose up -d starts only
+                what's missing). */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <Btn
                 variant="ghost"
-                disabled={stopM.isPending || upM.isPending || ready.running === 0}
+                disabled={anyBusy || ready.running === 0}
                 onClick={runStop}
               >
                 {stopM.isPending ? "Stopping…" : "Stop all"}
               </Btn>
-              <Btn
-                variant="primary"
-                icon="play"
-                disabled={upM.isPending || stopM.isPending}
-                onClick={runUp}
-                title="docker compose up -d (builds images on first run)"
-              >
-                {upM.isPending ? "Starting…" : "Start all"}
-              </Btn>
+              {ready.running === ready.total && ready.total > 0 ? (
+                <Btn
+                  variant="primary"
+                  icon="refresh"
+                  disabled={anyBusy}
+                  onClick={runRestart}
+                  title="docker compose restart — bounce all containers"
+                >
+                  {restartM.isPending ? "Restarting…" : "Restart all"}
+                </Btn>
+              ) : (
+                <Btn
+                  variant="primary"
+                  icon="play"
+                  disabled={anyBusy}
+                  onClick={runUp}
+                  title="docker compose up -d (builds images on first run)"
+                >
+                  {upM.isPending ? "Starting…" : "Start all"}
+                </Btn>
+              )}
             </div>
             {upM.isPending && (
               <div style={{ ...infoStyle, fontSize: 11.5 }}>

@@ -566,6 +566,11 @@ export const api = {
       `/api/projects/${projectId}/docker/stop${worktreeId ? `?worktreeId=${encodeURIComponent(worktreeId)}` : ""}`,
       { method: "POST" },
     ),
+  dockerRestart: (projectId: string, worktreeId?: string | null) =>
+    req<{ ok: true }>(
+      `/api/projects/${projectId}/docker/restart${worktreeId ? `?worktreeId=${encodeURIComponent(worktreeId)}` : ""}`,
+      { method: "POST" },
+    ),
   dockerEngineStart: (projectId: string) =>
     req<{ ok: boolean; app: string | null }>(`/api/projects/${projectId}/docker/engine-start`, {
       method: "POST",

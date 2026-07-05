@@ -193,6 +193,18 @@ export async function dockerComposeStop(
   return { ok: true };
 }
 
+/** `docker compose restart` — bounce running containers without recreating them. */
+export async function dockerComposeRestart(
+  projectId: string,
+  worktreeId?: string | null,
+): Promise<{ ok: true }> {
+  const cwd = projectCwd(projectId, worktreeId);
+  if (!findComposeFile(cwd)) throw new DockerError("No compose file in this project");
+  const r = await runDocker(cwd, ["compose", "restart"], 120_000);
+  if (r.code !== 0) throw new DockerError("docker compose restart failed", r.stderr.trim());
+  return { ok: true };
+}
+
 /** Launch the desktop app that provides the Docker daemon; the UI polls status. */
 export async function startDockerEngine(
   projectId: string,

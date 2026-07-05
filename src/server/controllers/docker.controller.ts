@@ -1,5 +1,6 @@
 import {
   DockerError,
+  dockerComposeRestart,
   dockerComposeStatus,
   dockerComposeStop,
   dockerComposeUp,
@@ -48,6 +49,16 @@ export async function stop(rawId: string, url: URL): Promise<Response> {
   if (!parsed.success) return notFound();
   try {
     return json(await dockerComposeStop(parsed.data, queryWorktreeId(url)));
+  } catch (e) {
+    return handleDomainError(e) ?? asDockerErrorResponse(e);
+  }
+}
+
+export async function restart(rawId: string, url: URL): Promise<Response> {
+  const parsed = idParam.safeParse(rawId);
+  if (!parsed.success) return notFound();
+  try {
+    return json(await dockerComposeRestart(parsed.data, queryWorktreeId(url)));
   } catch (e) {
     return handleDomainError(e) ?? asDockerErrorResponse(e);
   }

@@ -46,6 +46,14 @@ export function useDockerStop(projectId: string, worktreeId?: string | null) {
   });
 }
 
+export function useDockerRestart(projectId: string, worktreeId?: string | null) {
+  const invalidate = useInvalidateDocker(projectId, worktreeId);
+  return useMutation({
+    mutationFn: () => api.dockerRestart(projectId, worktreeId),
+    onSettled: invalidate,
+  });
+}
+
 export function useDockerEngineStart(projectId: string, worktreeId?: string | null) {
   const invalidate = useInvalidateDocker(projectId, worktreeId);
   return useMutation({

@@ -304,6 +304,7 @@ async function dispatch(
     if (action === "status" && method === "GET") return dockerController.status(id, url);
     if (action === "up" && method === "POST") return dockerController.up(id, url);
     if (action === "stop" && method === "POST") return dockerController.stop(id, url);
+    if (action === "restart" && method === "POST") return dockerController.restart(id, url);
     if (action === "engine-start" && method === "POST") return dockerController.engineStart(id);
   }
   m = pathname.match(PROJECT_USER_TERMINALS_PATH);
