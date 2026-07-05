@@ -17,6 +17,7 @@ import {
   type FileSelection,
 } from "./ChangedFilesList";
 import { DiffPane } from "./DiffPane";
+import { BranchTypeahead } from "~/components/views/BranchTypeahead";
 
 export function GitDiffView({
   projectId,
@@ -162,31 +163,13 @@ export function GitDiffView({
         >
           {projectPath}
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            color: "var(--text-dim)",
-            fontFamily: "var(--mono)",
-            fontSize: 12,
-            minWidth: 0,
-            flexShrink: 1,
-          }}
-        >
-          <Icon name="git-branch" size={12} />
-          <span
-            title={status?.branch}
-            style={{
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: 220,
-            }}
-          >
-            {status?.branch ?? "…"}
-          </span>
-        </div>
+        {/* Clickable branch switcher: list, checkout, and create branches. */}
+        <BranchTypeahead
+          projectId={projectId}
+          worktreeId={worktreeId ?? null}
+          branch={status?.branch}
+          worktreePath={projectPath}
+        />
       </div>
 
       {error ? (
