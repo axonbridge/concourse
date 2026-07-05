@@ -25,8 +25,11 @@ function useInvalidateShare(projectId: string) {
 export function useShareStart(projectId: string) {
   const invalidate = useInvalidateShare(projectId);
   return useMutation({
-    mutationFn: (body: { port: number; mode: "private" | "public" }) =>
-      api.shareStart(projectId, body),
+    mutationFn: (body: {
+      port: number;
+      mode: "private" | "public";
+      provider?: "tailscale-serve" | "tailscale-funnel" | "ngrok" | "cloudflared";
+    }) => api.shareStart(projectId, body),
     onSettled: invalidate,
   });
 }

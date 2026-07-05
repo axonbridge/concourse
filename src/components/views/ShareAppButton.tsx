@@ -29,6 +29,7 @@ export function ShareAppButton({
   const [open, setOpen] = useState(false);
   const [port, setPort] = useState("");
   const [mode, setMode] = useState<"private" | "public">("public");
+  const [provider, setProvider] = useState<"ngrok" | "tailscale-funnel" | "cloudflared" | null>(null);
   const { data } = useShareStatus(projectId, { enabled: enabled && open });
   const { data: activePill } = useShareStatus(projectId, { enabled });
   const { data: docker } = useDockerStatus(projectId, worktreeId, { enabled: enabled && open });
@@ -59,15 +60,16 @@ export function ShareAppButton({
     return out.filter((p, i) => out.findIndex((q) => q.port === p.port) === i);
   }, [docker]);
 
-  const publicVia = !avail
-    ? null
-    : avail.ngrok.installed && avail.ngrok.configured
-      ? "ngrok"
-      : avail.tailscale.running
-        ? "Tailscale Funnel"
-        : avail.cloudflared.installed
-          ? "cloudflared"
-          : null;
+  // Every public provider that would work right now, in preference order.
+  const publicProviders = !avail
+    ? []
+    : ([
+        avail.cloudflared.installed ? ("cloudflared" as const) : null,
+        avail.ngrok.installed && avail.ngrok.configured ? ("ngrok" as const) : null,
+        avail.tailscale.running ? ("tailscale-funnel" as const) : null,
+      ].filter(Boolean) as Array<"cloudflared" | "ngrok" | "tailscale-funnel">);
+  const selectedProvider = provider && publicProviders.includes(provider) ? provider : publicProviders[0] ?? null;
+  const publicVia = selectedProvider ? PROVIDER_LABEL[selectedProvider] : null;
   const privateReady = avail?.tailscale.running ?? false;
 
   const parsedPort = Number(port.trim());
@@ -76,7 +78,7 @@ export function ShareAppButton({
   const onStart = () => {
     if (!portValid) return;
     startM.mutate(
-      { port: parsedPort, mode },
+      { port: parsedPort, mode, provider: mode === "public" ? (selectedProvider ?? undefined) : undefined },
       {
         onSuccess: (t) => {
           void navigator.clipboard?.writeText(t.url).catch(() => {});
@@ -241,6 +243,47 @@ export function ShareAppButton({
                   </span>
                 </span>
               </label>
+              {mode === "public" && (publicProviders.length > 0 || !avail?.cloudflared.installed) && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingLeft: 22 }}>
+                  {publicProviders.map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setProvider(p)}
+                      title={PROVIDER_HINT[p]}
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 999,
+                        background: selectedProvider === p ? "var(--accent-dim)" : "transparent",
+                        color: selectedProvider === p ? "var(--accent)" : "var(--text-dim)",
+                        cursor: "pointer",
+                        padding: "3px 10px",
+                        fontFamily: "var(--mono)",
+                        fontSize: 11,
+                      }}
+                    >
+                      {PROVIDER_LABEL[p]}
+                    </button>
+                  ))}
+                  {avail && !avail.cloudflared.installed && (
+                    <button
+                      onClick={() => runSetup("cloudflared setup", CLOUDFLARED_SETUP_COMMAND)}
+                      title="Free public links with no account and no interstitial page — installs in ~30s"
+                      style={{
+                        border: "1px dashed var(--border)",
+                        borderRadius: 999,
+                        background: "transparent",
+                        color: "var(--text-faint)",
+                        cursor: "pointer",
+                        padding: "3px 10px",
+                        fontFamily: "var(--mono)",
+                        fontSize: 11,
+                      }}
+                    >
+                      + install cloudflared
+                    </button>
+                  )}
+                </div>
+              )}
               <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
                 <input
                   type="radio"
@@ -335,3 +378,14 @@ export function ShareAppButton({
     </>
   );
 }
+
+const PROVIDER_LABEL: Record<string, string> = {
+  cloudflared: "cloudflared",
+  ngrok: "ngrok",
+  "tailscale-funnel": "Tailscale Funnel",
+};
+const PROVIDER_HINT: Record<string, string> = {
+  cloudflared: "Free, no account, viewers see no warning page",
+  ngrok: "Uses your ngrok account; free tier shows viewers a one-time warning page",
+  "tailscale-funnel": "Public link through your tailnet node (needs Funnel enabled)",
+};
