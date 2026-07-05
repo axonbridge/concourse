@@ -57,11 +57,13 @@ const HARNESS_PROVIDERS: readonly AiProviderInfo[] = TASK_AGENTS.map((id) => ({
     id === "claude-code"
       ? CLAUDE_MODEL_ALIASES.map((alias) => ({ id: alias, label: CLAUDE_MODEL_LABELS[alias] }))
       : id === "codex"
-        ? [
-            { id: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
-            { id: "gpt-5.2", label: "GPT-5.2" },
-            { id: "gpt-5.1-codex", label: "GPT-5.1 Codex" },
-            { id: "gpt-5.1-codex-mini", label: "GPT-5.1 Codex Mini" },
+        ? // Fallback when no OpenAI API key enables live discovery. Source:
+          // developers.openai.com/api/docs/models/all (checked 2026-07-04).
+          [
+            { id: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
+            { id: "gpt-5.5", label: "GPT-5.5" },
+            { id: "gpt-5.4", label: "GPT-5.4" },
+            { id: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
           ]
         : [],
 }));
