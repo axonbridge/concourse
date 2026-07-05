@@ -157,13 +157,30 @@ export const codexChatProvider: ChatProvider = {
       emit({ kind: "status", sessionId: sid, status: "running" });
       const text = inlineSlashCommand(opts.cwd, rawText);
       // `exec resume` rejects --sandbox (the thread keeps its original policy)
-      // but still takes --json/-m/-i; fresh execs set the sandbox explicitly.
+      // but still takes --json/-m/-i/-c; fresh execs set the sandbox explicitly.
+      const fullAccess = opts.dangerouslySkipApprovals === true;
       const args = threadId
         ? ["exec", "resume", threadId, "--json", "--skip-git-repo-check"]
-        : ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write"];
-      // workspace-write protects .git by default, which breaks branch/commit
-      // steps in user workflows; writable_roots re-opens it (config-reference).
-      args.push("-c", 'sandbox_workspace_write.writable_roots=[".git"]');
+        : [
+            "exec",
+            "--json",
+            "--skip-git-repo-check",
+            "--sandbox",
+            fullAccess ? "danger-full-access" : "workspace-write",
+          ];
+      if (fullAccess) {
+        // The shield toggle: no sandbox at all. Resume keeps the thread's
+        // original policy unless overridden via config, so set it every turn.
+        if (threadId) args.push("-c", 'sandbox_mode="danger-full-access"');
+      } else {
+        // workspace-write protects .git by default, which breaks branch/commit
+        // steps in user workflows; writable_roots re-opens it (config-reference).
+        args.push("-c", 'sandbox_workspace_write.writable_roots=[".git"]');
+        // Network is OFF by default in workspace-write — git push/pull, package
+        // installs, and API calls were the most common "blocked by sandbox"
+        // failures, and none of them need writes outside the workspace.
+        args.push("-c", "sandbox_workspace_write.network_access=true");
+      }
       if (opts.model) args.push("-m", opts.model);
       args.push(...imageArgs(text));
       args.push(text);
@@ -199,7 +216,9 @@ export const codexChatProvider: ChatProvider = {
         item: {
           id: randomUUID(),
           type: "notice",
-          text: "Codex runs with pre-set permissions (workspace sandbox) — it can read and edit files in this workspace without asking per action. Network access stays off.",
+          text: opts.dangerouslySkipApprovals
+            ? "Auto-approve is ON — Codex runs with full access (no sandbox): it can read and write anywhere on this machine and use the network, without asking."
+            : "Codex runs in a workspace sandbox — it can edit files in this workspace and use the network without asking per action; files outside the workspace stay protected.",
         },
       });
       if (opts.resume && opts.providerSessionId) {
