@@ -498,6 +498,21 @@ export const api = {
   gitAvailable: () => req<{ available: boolean; version?: string }>("/api/git/available"),
   cloneRepository: (body: { url: string; parentDir: string; folderName?: string }) =>
     req<{ path: string }>("/api/git/clone", { method: "POST", body: JSON.stringify(body) }),
+  gitSshStatus: () =>
+    req<{ exists: boolean; publicKey?: string; keyPath: string }>("/api/git/ssh"),
+  gitSshGenerate: () =>
+    req<{ exists: boolean; publicKey?: string; keyPath: string }>("/api/git/ssh/generate", {
+      method: "POST",
+      body: "{}",
+    }),
+  gitSshTest: () =>
+    req<{ ok: boolean; message: string }>("/api/git/ssh/test", { method: "POST", body: "{}" }),
+  gitIdentity: () => req<{ name: string; email: string }>("/api/git/identity"),
+  setGitIdentity: (identity: { name: string; email: string }) =>
+    req<{ name: string; email: string }>("/api/git/identity", {
+      method: "POST",
+      body: JSON.stringify(identity),
+    }),
   gitPull: (projectId: string, worktreeId?: string | null) =>
     req<{ result: { kind: "pulled" | "up-to-date"; summary: string } }>(
       `/api/projects/${projectId}/git/pull`,

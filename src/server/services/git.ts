@@ -283,6 +283,116 @@ function readUntrackedAsDiff(cwd: string, file: string): GitDiff {
 const CLONE_TIMEOUT_MS = 5 * 60_000;
 const CLONE_URL_RE = /^(https:\/\/|git@|ssh:\/\/)[^\s]+$/;
 
+// ── SSH + identity setup (Settings → Git) ────────────────────────────────────
+// Everything here runs on the host and only ever exposes PUBLIC key material.
+
+function runCmd(
+  bin: string,
+  args: string[],
+  timeoutMs = 15_000,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new GitError(`${bin} timed out`));
+    }, timeoutMs);
+    child.stdout.on("data", (d: Buffer) => out.push(d));
+    child.stderr.on("data", (d: Buffer) => err.push(d));
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({
+        stdout: Buffer.concat(out).toString("utf8"),
+        stderr: Buffer.concat(err).toString("utf8"),
+        code: code ?? 1,
+      });
+    });
+  });
+}
+
+export type SshKeyStatus = { exists: boolean; publicKey?: string; keyPath: string };
+
+const SSH_KEY_NAMES = ["id_ed25519", "id_rsa", "id_ecdsa"] as const;
+
+export async function sshKeyStatus(): Promise<SshKeyStatus> {
+  const sshDir = path.join(os.homedir(), ".ssh");
+  for (const name of SSH_KEY_NAMES) {
+    const pub = path.join(sshDir, `${name}.pub`);
+    try {
+      if (fs.existsSync(pub)) {
+        return { exists: true, publicKey: fs.readFileSync(pub, "utf8").trim(), keyPath: pub };
+      }
+    } catch {
+      /* unreadable — keep looking */
+    }
+  }
+  return { exists: false, keyPath: path.join(sshDir, "id_ed25519.pub") };
+}
+
+/** Generate an ed25519 keypair (no passphrase) if none exists. Never overwrites. */
+export async function generateSshKey(): Promise<SshKeyStatus> {
+  const existing = await sshKeyStatus();
+  if (existing.exists) return existing;
+  const keyPath = path.join(os.homedir(), ".ssh", "id_ed25519");
+  fs.mkdirSync(path.dirname(keyPath), { recursive: true, mode: 0o700 });
+  const comment = `${os.userInfo().username}@${os.hostname()} (concourse)`;
+  const r = await runCmd("ssh-keygen", ["-t", "ed25519", "-N", "", "-C", comment, "-f", keyPath]);
+  if (r.code !== 0) {
+    throw new GitError("ssh-keygen failed", r.stderr.trim().slice(0, 400));
+  }
+  return sshKeyStatus();
+}
+
+export type SshTestResult = { ok: boolean; message: string };
+
+/** Test SSH auth against github.com (fixed host — no user input reaches ssh). */
+export async function testSshConnection(): Promise<SshTestResult> {
+  const r = await runCmd(
+    "ssh",
+    ["-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "git@github.com"],
+    20_000,
+  );
+  const output = `${r.stdout}\n${r.stderr}`.trim();
+  // GitHub closes the connection with exit 1 even on success; the greeting is
+  // the signal: "Hi <user>! You've successfully authenticated…"
+  if (/successfully authenticated/i.test(output)) {
+    const user = output.match(/Hi ([^!]+)!/)?.[1];
+    return { ok: true, message: user ? `Authenticated with GitHub as ${user}.` : "Authenticated with GitHub." };
+  }
+  if (/Permission denied/i.test(output)) {
+    return { ok: false, message: "GitHub rejected the key — make sure the public key is added at github.com/settings/keys." };
+  }
+  return { ok: false, message: output.slice(0, 300) || "Could not reach github.com." };
+}
+
+export type GitIdentity = { name: string; email: string };
+
+export async function getGitIdentity(): Promise<GitIdentity> {
+  const read = async (key: string) => {
+    const r = await runCmd("git", ["config", "--global", "--get", key]);
+    return r.code === 0 ? r.stdout.trim() : "";
+  };
+  return { name: await read("user.name"), email: await read("user.email") };
+}
+
+/** Set the global commit identity (required before commits can be created). */
+export async function setGitIdentity(identity: GitIdentity): Promise<GitIdentity> {
+  const name = identity.name.trim();
+  const email = identity.email.trim();
+  if (!name || !email) throw new GitError("Both name and email are required");
+  for (const [key, value] of [["user.name", name], ["user.email", email]] as const) {
+    const r = await runCmd("git", ["config", "--global", key, value]);
+    if (r.code !== 0) throw new GitError(`git config ${key} failed`, r.stderr.trim());
+  }
+  return getGitIdentity();
+}
+
 /** Whether a usable git binary is on PATH (macOS: CLT installed). */
 export async function isGitAvailable(): Promise<{ available: boolean; version?: string }> {
   try {

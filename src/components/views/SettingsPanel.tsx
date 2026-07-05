@@ -8,6 +8,7 @@ import { useHotkey } from "~/lib/use-hotkey";
 import { BetaSettingsPage } from "./BetaSettingsPage";
 import { AiSettingsPage } from "./AiSettingsPage";
 import { GeneralSettingsPage } from "./GeneralSettingsPage";
+import { GitSettingsPage } from "./GitSettingsPage";
 import { KeybindingsPage } from "./KeybindingsPage";
 import { TerminalSettingsPage } from "./TerminalSettingsPage";
 import { ThemeSettingsPage } from "./ThemeSettingsPage";
@@ -20,6 +21,7 @@ import { VoiceCommandsPage } from "./VoiceCommandsPage";
 export const SETTINGS_PANEL_IDS = [
   "general",
   "ai",
+  "git",
   "terminal",
   "theme",
   "integrations",
@@ -91,6 +93,7 @@ export function SettingsPanel({
   const items: NavItem[] = [
     { id: "general", label: "General", icon: "settings" },
     { id: "ai", label: "AI", icon: "sparkles" },
+    { id: "git", label: "Git", icon: "git-branch" },
     { id: "terminal", label: "Terminal", icon: "terminal" },
     { id: "theme", label: "Theme", icon: "sun" },
     { id: "integrations", label: "Integrations", icon: "globe" },
@@ -290,6 +293,8 @@ export function SettingsPanel({
             <GeneralSettingsPage />
           ) : activePanel === "ai" ? (
             <AiSettingsPage />
+          ) : activePanel === "git" ? (
+            <GitSettingsPage />
           ) : activePanel === "terminal" ? (
             <TerminalSettingsPage />
           ) : activePanel === "theme" ? (

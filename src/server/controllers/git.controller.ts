@@ -5,14 +5,19 @@ import {
   commit as gitCommit,
   createPullRequest as gitCreatePullRequest,
   discardFileChanges,
+  generateSshKey,
   getGitDiff,
+  getGitIdentity,
   getGitStatus,
   gitErrorPayload,
   isGitAvailable,
   listGitBranches,
   pull as gitPull,
   push as gitPush,
+  setGitIdentity,
+  sshKeyStatus,
   stageFiles,
+  testSshConnection,
   unstageFiles,
 } from "../services/git";
 import { handleDomainError, idParam, json, jsonError, notFound, parseJsonBody } from "./_helpers";
@@ -125,6 +130,55 @@ export async function unstage(rawId: string, request: Request): Promise<Response
 /** Whether git is on PATH (macOS: whether the Command Line Tools are installed). */
 export async function available(): Promise<Response> {
   return json(await isGitAvailable());
+}
+
+// ── Settings → Git: SSH key + commit identity (app-level, not project-scoped) ─
+
+export async function sshStatus(): Promise<Response> {
+  try {
+    return json(await sshKeyStatus());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function sshGenerate(): Promise<Response> {
+  try {
+    return json(await generateSshKey());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function sshTest(): Promise<Response> {
+  try {
+    return json(await testSshConnection());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+const identityBody = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: z.string().trim().min(3).max(320),
+});
+
+export async function identityGet(): Promise<Response> {
+  try {
+    return json(await getGitIdentity());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function identitySet(request: Request): Promise<Response> {
+  const parsed = await parseJsonBody(request, identityBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    return json(await setGitIdentity(parsed.data));
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
 }
 
 /** Clone a repository so it can be added as a project. Not project-scoped. */
