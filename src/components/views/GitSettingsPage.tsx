@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 import { Btn } from "~/components/ui/Btn";
 import { TextField } from "~/components/ui/TextField";
 import { api } from "~/lib/api";
+import { requestCloseSettings } from "~/lib/settings-navigation";
+import { useUserTerminals } from "~/lib/user-terminal-store";
+import { GH_CLI_SETUP_COMMAND } from "~/shared/agent-setup-commands";
 import { Field, SettingsSection } from "./SettingsParts";
 
 // Settings → Git: everything a fresh machine needs for full git access
@@ -22,9 +26,19 @@ export function GitSettingsPage() {
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gh, setGh] = useState<{ installed: boolean; authenticated: boolean; account?: string } | null>(null);
+  const [defaultsApplied, setDefaultsApplied] = useState<boolean | null>(null);
+  const [applyingDefaults, setApplyingDefaults] = useState(false);
+  const { createHomeSetupTerminal } = useUserTerminals();
+  const router = useRouter();
 
   useEffect(() => {
     void api.gitAvailable().then(setGitInfo).catch(() => setGitInfo(null));
+    void api.gitGhStatus().then(setGh).catch(() => setGh(null));
+    void api
+      .gitRecommendedConfigStatus()
+      .then((r) => setDefaultsApplied(r.applied))
+      .catch(() => setDefaultsApplied(null));
     void api.gitSshStatus().then(setSsh).catch(() => setSsh(null));
     void api
       .gitIdentity()
@@ -81,6 +95,25 @@ export function GitSettingsPage() {
     }
   };
 
+  const setupGhCli = async () => {
+    await createHomeSetupTerminal("GitHub CLI setup", GH_CLI_SETUP_COMMAND);
+    requestCloseSettings();
+    void router.navigate({ to: "/" });
+  };
+
+  const applyDefaults = async () => {
+    setError(null);
+    setApplyingDefaults(true);
+    try {
+      await api.applyGitRecommendedConfig();
+      setDefaultsApplied(true);
+    } catch (e: any) {
+      setError(e?.message || "Could not apply defaults");
+    } finally {
+      setApplyingDefaults(false);
+    }
+  };
+
   const mono: React.CSSProperties = { fontFamily: "var(--mono)", fontSize: 12 };
   const identityDirty =
     identity !== null && (nameDraft.trim() !== identity.name || emailDraft.trim() !== identity.email);
@@ -98,6 +131,47 @@ export function GitSettingsPage() {
             : gitInfo.available
               ? `✓ ${gitInfo.version ?? "git installed"}`
               : "Git isn't installed — it ships with Apple's Command Line Tools (run `xcode-select --install`)."}
+        </div>
+      </Field>
+
+      <Field label="Recommended defaults">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 560 }}>
+          <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+            One-time global git settings that make pushing just work: new branches publish
+            themselves on first push (<span style={mono}>push.autoSetupRemote</span>), pushes go
+            to the current branch, pulls rebase, and diffs use the patience algorithm.
+          </div>
+          <div>
+            {defaultsApplied ? (
+              <span style={{ fontSize: 12.5, color: "var(--status-done)" }}>✓ Applied</span>
+            ) : (
+              <Btn variant="solid" onClick={() => void applyDefaults()} disabled={applyingDefaults}>
+                {applyingDefaults ? "Applying…" : "Apply recommended defaults"}
+              </Btn>
+            )}
+          </div>
+        </div>
+      </Field>
+
+      <Field label="GitHub CLI (pull requests)">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 560 }}>
+          <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
+            Creating pull requests uses GitHub&apos;s <span style={mono}>gh</span> CLI.
+            {gh === null
+              ? " Checking…"
+              : gh.installed && gh.authenticated
+                ? ` ✓ Installed and signed in${gh.account ? ` as ${gh.account}` : ""}.`
+                : gh.installed
+                  ? " Installed, but not signed in yet."
+                  : " Not installed on this machine yet."}
+          </div>
+          {gh !== null && !(gh.installed && gh.authenticated) && (
+            <div>
+              <Btn variant="solid" icon="terminal" onClick={() => void setupGhCli()}>
+                {gh.installed ? "Sign in to GitHub" : "Install & sign in"}
+              </Btn>
+            </div>
+          )}
         </div>
       </Field>
 

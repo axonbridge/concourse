@@ -393,6 +393,48 @@ export async function setGitIdentity(identity: GitIdentity): Promise<GitIdentity
   return getGitIdentity();
 }
 
+/** The safe subset of "sensible git defaults": makes push/PR flows work on
+ *  fresh machines (auto-upstream on first push, current-branch pushes,
+ *  rebase pulls, nicer diffs). Commit signing is deliberately NOT enabled —
+ *  it adds failure modes unless the key is also uploaded as a signing key. */
+const RECOMMENDED_GIT_CONFIG: ReadonlyArray<readonly [string, string]> = [
+  ["push.autoSetupRemote", "true"],
+  ["push.default", "current"],
+  ["pull.rebase", "true"],
+  ["diff.algorithm", "patience"],
+  ["diff.colorMoved", "default"],
+];
+
+export async function applyRecommendedGitConfig(): Promise<Record<string, string>> {
+  const applied: Record<string, string> = {};
+  for (const [key, value] of RECOMMENDED_GIT_CONFIG) {
+    const r = await runCmd("git", ["config", "--global", key, value]);
+    if (r.code !== 0) throw new GitError(`git config ${key} failed`, r.stderr.trim());
+    applied[key] = value;
+  }
+  return applied;
+}
+
+export async function recommendedGitConfigStatus(): Promise<{ applied: boolean }> {
+  for (const [key, value] of RECOMMENDED_GIT_CONFIG) {
+    const r = await runCmd("git", ["config", "--global", "--get", key]);
+    if (r.code !== 0 || r.stdout.trim() !== value) return { applied: false };
+  }
+  return { applied: true };
+}
+
+export type GhCliStatus = { installed: boolean; authenticated: boolean; account?: string };
+
+/** GitHub CLI presence + auth — required for the app's Create PR flow. */
+export async function ghCliStatus(): Promise<GhCliStatus> {
+  const version = await runCmd("gh", ["--version"], 5_000).catch(() => null);
+  if (!version || version.code !== 0) return { installed: false, authenticated: false };
+  const auth = await runCmd("gh", ["auth", "status"], 10_000).catch(() => null);
+  const output = auth ? `${auth.stdout}\n${auth.stderr}` : "";
+  const account = output.match(/account ([^\s]+)/i)?.[1];
+  return { installed: true, authenticated: auth?.code === 0, account };
+}
+
 /** Whether a usable git binary is on PATH (macOS: CLT installed). */
 export async function isGitAvailable(): Promise<{ available: boolean; version?: string }> {
   try {

@@ -44,3 +44,22 @@ export function agentSetupCommand(agent: TaskAgent, installed: boolean): string 
   if (!setup) return null;
   return installed ? setup.auth : `${setup.install} && ${setup.auth}`;
 }
+
+// GitHub CLI setup for a home terminal: install via brew when available, else
+// download the official release into ~/.local (adding it to PATH + zshrc),
+// then run the interactive browser sign-in with SSH as the git protocol.
+export const GH_CLI_SETUP_COMMAND = [
+  "if ! command -v gh >/dev/null 2>&1; then",
+  "  if command -v brew >/dev/null 2>&1; then brew install gh;",
+  "  else",
+  '    arch=$(uname -m | sed "s/x86_64/amd64/");',
+  "    ver=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | grep -m1 '\"tag_name\"' | cut -d '\"' -f 4);",
+  '    curl -fsSL "https://github.com/cli/cli/releases/download/${ver}/gh_${ver#v}_macOS_${arch}.zip" -o /tmp/gh.zip;',
+  '    mkdir -p "$HOME/.local/ghcli" "$HOME/.local/bin";',
+  '    unzip -oq /tmp/gh.zip -d "$HOME/.local/ghcli";',
+  '    ln -sf "$HOME/.local/ghcli/gh_${ver#v}_macOS_${arch}/bin/gh" "$HOME/.local/bin/gh";',
+  '    export PATH="$HOME/.local/bin:$PATH";',
+  "    grep -q '.local/bin' \"$HOME/.zshrc\" 2>/dev/null || echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> \"$HOME/.zshrc\";",
+  "  fi;",
+  "fi; gh auth login --web --git-protocol ssh",
+].join(" ");

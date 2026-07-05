@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  applyRecommendedGitConfig,
   checkoutGitBranch,
   cloneRepository,
   commit as gitCommit,
@@ -8,12 +9,14 @@ import {
   generateSshKey,
   getGitDiff,
   getGitIdentity,
+  ghCliStatus,
   getGitStatus,
   gitErrorPayload,
   isGitAvailable,
   listGitBranches,
   pull as gitPull,
   push as gitPush,
+  recommendedGitConfigStatus,
   setGitIdentity,
   sshKeyStatus,
   stageFiles,
@@ -162,6 +165,30 @@ const identityBody = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.string().trim().min(3).max(320),
 });
+
+export async function ghStatus(): Promise<Response> {
+  try {
+    return json(await ghCliStatus());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function configStatus(): Promise<Response> {
+  try {
+    return json(await recommendedGitConfigStatus());
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function configApply(): Promise<Response> {
+  try {
+    return json({ applied: await applyRecommendedGitConfig() });
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
 
 export async function identityGet(): Promise<Response> {
   try {

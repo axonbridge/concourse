@@ -268,6 +268,9 @@ async function dispatch(
   if (pathname === "/api/git/ssh" && method === "GET") return gitController.sshStatus();
   if (pathname === "/api/git/ssh/generate" && method === "POST") return gitController.sshGenerate();
   if (pathname === "/api/git/ssh/test" && method === "POST") return gitController.sshTest();
+  if (pathname === "/api/git/gh" && method === "GET") return gitController.ghStatus();
+  if (pathname === "/api/git/config/recommended" && method === "GET") return gitController.configStatus();
+  if (pathname === "/api/git/config/recommended" && method === "POST") return gitController.configApply();
   if (pathname === "/api/git/identity" && method === "GET") return gitController.identityGet();
   if (pathname === "/api/git/identity" && method === "POST") return gitController.identitySet(request);
 

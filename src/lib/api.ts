@@ -507,6 +507,15 @@ export const api = {
     }),
   gitSshTest: () =>
     req<{ ok: boolean; message: string }>("/api/git/ssh/test", { method: "POST", body: "{}" }),
+  gitGhStatus: () =>
+    req<{ installed: boolean; authenticated: boolean; account?: string }>("/api/git/gh"),
+  gitRecommendedConfigStatus: () =>
+    req<{ applied: boolean }>("/api/git/config/recommended"),
+  applyGitRecommendedConfig: () =>
+    req<{ applied: Record<string, string> }>("/api/git/config/recommended", {
+      method: "POST",
+      body: "{}",
+    }),
   gitIdentity: () => req<{ name: string; email: string }>("/api/git/identity"),
   setGitIdentity: (identity: { name: string; email: string }) =>
     req<{ name: string; email: string }>("/api/git/identity", {
