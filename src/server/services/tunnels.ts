@@ -1,5 +1,6 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { newId } from "./_ids";
 import { resolveProjectWorktreeCwd } from "./worktrees";
@@ -23,7 +24,11 @@ const TAILSCALE_CANDIDATES = [
   "/usr/local/bin/tailscale",
   "/opt/homebrew/bin/tailscale",
 ];
-const EXTRA_PATH_DIRS = ["/usr/local/bin", "/opt/homebrew/bin"];
+const EXTRA_PATH_DIRS = [
+  "/usr/local/bin",
+  "/opt/homebrew/bin",
+  path.join(os.homedir(), ".local", "bin"), // where our setup terminals install
+];
 
 function envWithPath(): NodeJS.ProcessEnv {
   const PATH = [process.env.PATH ?? "", ...EXTRA_PATH_DIRS].filter(Boolean).join(":");

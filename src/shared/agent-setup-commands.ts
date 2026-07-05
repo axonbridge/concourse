@@ -63,3 +63,52 @@ export const GH_CLI_SETUP_COMMAND = [
   "  fi;",
   "fi; gh auth login --web --git-protocol ssh",
 ].join(" ");
+
+// Tunnel tools for the project Share feature. cloudflared is the recommended
+// zero-account public option: brew when present, else the official binary
+// into ~/.local/bin (mirrors the gh fallback).
+export const CLOUDFLARED_SETUP_COMMAND = [
+  "if ! command -v cloudflared >/dev/null 2>&1; then",
+  "  if command -v brew >/dev/null 2>&1; then brew install cloudflared;",
+  "  else",
+  '    arch=$(uname -m | sed "s/x86_64/amd64/");',
+  '    curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-${arch}.tgz" -o /tmp/cloudflared.tgz;',
+  '    mkdir -p "$HOME/.local/bin";',
+  '    tar -xzf /tmp/cloudflared.tgz -C "$HOME/.local/bin";',
+  '    export PATH="$HOME/.local/bin:$PATH";',
+  "    grep -q '.local/bin' \"$HOME/.zshrc\" 2>/dev/null || echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> \"$HOME/.zshrc\";",
+  "  fi;",
+  "fi; cloudflared --version && echo && echo \"cloudflared is ready — close this terminal and click Share again.\"",
+].join(" ");
+
+// ngrok needs an account: install, open the dashboard's authtoken page, and
+// prompt for a paste so the config lands without hand-typing commands.
+export const NGROK_SETUP_COMMAND = [
+  "if ! command -v ngrok >/dev/null 2>&1; then",
+  "  if command -v brew >/dev/null 2>&1; then brew install ngrok;",
+  "  else",
+  '    arch=$(uname -m | sed "s/x86_64/amd64/");',
+  '    curl -fsSL "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-darwin-${arch}.zip" -o /tmp/ngrok.zip;',
+  '    mkdir -p "$HOME/.local/bin";',
+  '    unzip -oq /tmp/ngrok.zip -d "$HOME/.local/bin";',
+  '    export PATH="$HOME/.local/bin:$PATH";',
+  "    grep -q '.local/bin' \"$HOME/.zshrc\" 2>/dev/null || echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> \"$HOME/.zshrc\";",
+  "  fi;",
+  "fi;",
+  "if ngrok config check >/dev/null 2>&1; then echo \"ngrok is already set up — close this terminal and click Share.\";",
+  "else",
+  "  open 'https://dashboard.ngrok.com/get-started/your-authtoken';",
+  "  echo 'Sign in (or sign up free) in the browser page that just opened, copy your authtoken, and paste it here:';",
+  "  read -r tok; ngrok config add-authtoken \"$tok\" && echo && echo \"ngrok is ready — close this terminal and click Share again.\";",
+  "fi",
+].join(" ");
+
+// Tailscale is a GUI app; install the cask (or open the download page) and
+// launch it so the user can sign in.
+export const TAILSCALE_SETUP_COMMAND = [
+  "if [ ! -d '/Applications/Tailscale.app' ] && ! command -v tailscale >/dev/null 2>&1; then",
+  "  if command -v brew >/dev/null 2>&1; then brew install --cask tailscale;",
+  "  else open 'https://tailscale.com/download/macos'; echo 'Install Tailscale from the page that just opened, then re-run this.'; fi;",
+  "fi;",
+  "open -a Tailscale 2>/dev/null && echo 'Tailscale launched — sign in from its menu-bar icon, then click Share again.'",
+].join(" ");

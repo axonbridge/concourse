@@ -5,6 +5,12 @@ import { Icon } from "~/components/ui/Icon";
 import { Modal } from "~/components/ui/Modal";
 import { useDockerStatus } from "~/queries/docker";
 import { useShareStart, useShareStatus, useShareStop } from "~/queries/share";
+import { useUserTerminals } from "~/lib/user-terminal-store";
+import {
+  CLOUDFLARED_SETUP_COMMAND,
+  NGROK_SETUP_COMMAND,
+  TAILSCALE_SETUP_COMMAND,
+} from "~/shared/agent-setup-commands";
 
 // Share a locally-running app beyond this machine without deploying it:
 // "Private" = Tailscale serve (devices on your tailnet), "Public" = a tunnel
@@ -28,6 +34,14 @@ export function ShareAppButton({
   const { data: docker } = useDockerStatus(projectId, worktreeId, { enabled: enabled && open });
   const startM = useShareStart(projectId);
   const stopM = useShareStop(projectId);
+  const { createHomeSetupTerminal } = useUserTerminals();
+
+  const runSetup = (name: string, command: string) => {
+    void createHomeSetupTerminal(name, command).then(
+      () => toast.success(`${name} opened in a terminal below — follow it, then come back`),
+      (e) => toast.error(e instanceof Error ? e.message : `Could not open ${name}`),
+    );
+  };
 
   const tunnels = (open ? data : activePill)?.tunnels ?? [];
   const avail = data?.availability;
@@ -255,6 +269,62 @@ export function ShareAppButton({
                 {startM.isPending ? "Starting…" : "Start sharing"}
               </Btn>
             </div>
+            {avail && (!publicVia || !privateReady) && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-1)",
+                }}
+              >
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text)" }}>
+                  Set up sharing tools
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {!publicVia && (
+                    <>
+                      <Btn
+                        variant="ghost"
+                        size="sm"
+                        icon="download"
+                        onClick={() => runSetup("cloudflared setup", CLOUDFLARED_SETUP_COMMAND)}
+                        title="Free public links, no account needed, no interstitial page"
+                      >
+                        Install cloudflared (recommended)
+                      </Btn>
+                      <Btn
+                        variant="ghost"
+                        size="sm"
+                        icon="download"
+                        onClick={() => runSetup("ngrok setup", NGROK_SETUP_COMMAND)}
+                        title="Public links via ngrok — needs a free account authtoken"
+                      >
+                        Install ngrok
+                      </Btn>
+                    </>
+                  )}
+                  {!privateReady && (
+                    <Btn
+                      variant="ghost"
+                      size="sm"
+                      icon="download"
+                      onClick={() => runSetup("Tailscale setup", TAILSCALE_SETUP_COMMAND)}
+                      title={
+                        avail.tailscale.installed
+                          ? "Tailscale is installed but not connected — this opens it to sign in"
+                          : "Install Tailscale for private tailnet sharing"
+                      }
+                    >
+                      {avail.tailscale.installed ? "Open Tailscale to sign in" : "Install Tailscale"}
+                    </Btn>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.5 }}>
               Tunnels last while Concourse is running and can be stopped here any time. The app
               itself keeps running locally — this only exposes the port.
