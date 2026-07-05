@@ -3,7 +3,7 @@ import { CardFrame } from "~/components/ui/CardFrame";
 import { ShimmerBar } from "~/components/ui/ShimmerBar";
 import { Btn } from "~/components/ui/Btn";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
-import { HotkeyTooltip, Tooltip } from "~/components/ui/Tooltip";
+import { HotkeyTooltip } from "~/components/ui/Tooltip";
 import { AgentLogo } from "~/components/ui/AgentLogo";
 import { SessionAvatar } from "~/components/ui/SessionAvatar";
 import { useDiagrams } from "~/lib/use-diagram-events";
@@ -49,7 +49,6 @@ export function TaskCard({
   const [savingTitle, setSavingTitle] = useState(false);
   const savingTitleRef = useRef(false);
   const restoreTitleFocusRef = useRef(false);
-  const renameButtonRef = useRef<HTMLButtonElement>(null);
   const skipNextBlurCommitRef = useRef(false);
   const { hasDiagram, openDiagram } = useDiagrams();
   const taskHasDiagram = hasDiagram(task.id);
@@ -74,7 +73,6 @@ export function TaskCard({
   useEffect(() => {
     if (!editingTitle && restoreTitleFocusRef.current) {
       restoreTitleFocusRef.current = false;
-      renameButtonRef.current?.focus();
     }
   }, [editingTitle]);
 
@@ -300,6 +298,11 @@ export function TaskCard({
               }}
             >
               <div
+                title="Double-click to rename"
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  startTitleEdit();
+                }}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -312,31 +315,11 @@ export function TaskCard({
                   padding: "2px 0",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  pointerEvents: "auto",
                 }}
               >
                 {task.title}
               </div>
-              <Tooltip content="Rename session">
-                <Btn
-                  ref={renameButtonRef}
-                  variant="ghost"
-                  size="sm"
-                  icon="pencil"
-                  aria-label={`Rename session ${task.title}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    startTitleEdit();
-                  }}
-                  style={{
-                    pointerEvents: "auto",
-                    width: 24,
-                    height: 24,
-                    minHeight: 24,
-                    padding: 0,
-                    flexShrink: 0,
-                  }}
-                />
-              </Tooltip>
             </div>
           ) : (
             <div
