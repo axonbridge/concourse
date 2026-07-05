@@ -23,6 +23,9 @@ importers:
       '@anthropic-ai/claude-agent-sdk':
         specifier: 0.3.195
         version: 0.3.195(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(zod@4.4.3)
+      '@catppuccin/codemirror':
+        specifier: 1.0.3
+        version: 1.0.3
       '@codemirror/commands':
         specifier: ^6.10.3
         version: 6.10.3
@@ -397,6 +400,12 @@ packages:
 
   '@braintree/sanitize-url@7.1.2':
     resolution: {integrity: sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA==}
+
+  '@catppuccin/codemirror@1.0.3':
+    resolution: {integrity: sha512-P1ZCj4DZVLqr/TNz28m3aaF2Elrikpb8OOnzN0Vyf95Un4pTWTkCSvhbskbnJbnNJ87Rfvt3fXoaUj4o55X30Q==}
+
+  '@catppuccin/palette@1.8.0':
+    resolution: {integrity: sha512-qXhwKiLzQomUygUJYB36YAFgs+dET5bIocfkiaFIatQF5Pwc7L112TlF9P8J5Oqs3x3XTjYSucG0ncHXSCuk7Q==}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
@@ -5087,6 +5096,16 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@braintree/sanitize-url@7.1.2': {}
+
+  '@catppuccin/codemirror@1.0.3':
+    dependencies:
+      '@catppuccin/palette': 1.8.0
+      '@codemirror/language': 6.12.3
+      '@codemirror/state': 6.6.0
+      '@codemirror/view': 6.43.0
+      '@lezer/highlight': 1.2.3
+
+  '@catppuccin/palette@1.8.0': {}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     dependencies:

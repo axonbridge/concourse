@@ -1,13 +1,12 @@
 import { useCallback, useState } from "react";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { Modal } from "~/components/ui/Modal";
 import { Btn } from "~/components/ui/Btn";
 import { HotkeyTooltip, StaticHotkeyTooltip, EscTooltip } from "~/components/ui/Tooltip";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { useHotkey } from "~/lib/use-hotkey";
 import { languageForFilename } from "~/lib/file-language";
-import { codeEditorExtensions } from "~/lib/code-editor-extensions";
+import { codeEditorExtensions, useEditorTheme } from "~/lib/code-editor-extensions";
 import { useFileEditor, type LoadError } from "~/lib/use-file-editor";
 import { FILE_READ_MAX_BYTES, FILE_READ_MAX_LINES } from "~/shared/file-read-limits";
 
@@ -22,6 +21,7 @@ export function FileEditorDialog({
 }) {
   const open = relPath !== null;
   const [confirmClose, setConfirmClose] = useState(false);
+  const editorTheme = useEditorTheme();
   const {
     loaded,
     content,
@@ -213,7 +213,7 @@ export function FileEditorDialog({
           </div>
         )}
 
-        <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: "#282c34" }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: editorTheme.background }}>
           {loading ? (
             <Status>Loading…</Status>
           ) : loadError ? (
@@ -228,7 +228,7 @@ export function FileEditorDialog({
             <CodeMirror
               ref={cmRef}
               value={content}
-              theme={oneDark}
+              theme={editorTheme.theme}
               extensions={extensions}
               onChange={(v) => setContent(v)}
               basicSetup={{

@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import {
   Decoration,
   EditorView,
@@ -10,24 +11,46 @@ import {
 } from "@uiw/react-codemirror";
 import { bracketMatching, syntaxTree } from "@codemirror/language";
 import { cursorMatchingBracket } from "@codemirror/commands";
+import { catppuccinLatte, catppuccinMocha } from "@catppuccin/codemirror";
+import {
+  getConcourseColorScheme,
+  watchConcourseColorScheme,
+  type ConcourseColorScheme,
+} from "~/lib/mermaid-theme";
 
 // Shared code-editor behavior for every CodeMirror surface in the app:
 // depth-colored "rainbow" brackets, matching-bracket highlight, and a
 // jump-to-matching-bracket keybinding for moving around deeply nested code.
+// Editors follow the app theme with the Catppuccin palette — Mocha when
+// dark, Latte when light (https://github.com/catppuccin/palette).
 
 const RAINBOW_DEPTHS = 6;
 
+// Rainbow colors from the Catppuccin palette: yellow, mauve, sapphire,
+// green, peach, red — Mocha shades under `&dark`, Latte under `&light`
+// (CodeMirror picks the block from the active theme's dark flag).
 const rainbowTheme = EditorView.baseTheme({
-  ".cm-rb-0": { color: "#ffd700" },
-  ".cm-rb-1": { color: "#da70d6" },
-  ".cm-rb-2": { color: "#57b6ff" },
-  ".cm-rb-3": { color: "#5fd7a7" },
-  ".cm-rb-4": { color: "#ff8f5f" },
-  ".cm-rb-5": { color: "#ff6b9d" },
-  ".cm-rb-err": { color: "#ff5555", fontWeight: "bold" },
-  "&.cm-focused .cm-matchingBracket": {
+  "&dark .cm-rb-0": { color: "#f9e2af" },
+  "&dark .cm-rb-1": { color: "#cba6f7" },
+  "&dark .cm-rb-2": { color: "#74c7ec" },
+  "&dark .cm-rb-3": { color: "#a6e3a1" },
+  "&dark .cm-rb-4": { color: "#fab387" },
+  "&dark .cm-rb-5": { color: "#f38ba8" },
+  "&dark .cm-rb-err": { color: "#f38ba8", fontWeight: "bold", textDecoration: "underline" },
+  "&light .cm-rb-0": { color: "#df8e1d" },
+  "&light .cm-rb-1": { color: "#8839ef" },
+  "&light .cm-rb-2": { color: "#209fb5" },
+  "&light .cm-rb-3": { color: "#40a02b" },
+  "&light .cm-rb-4": { color: "#fe640b" },
+  "&light .cm-rb-5": { color: "#d20f39" },
+  "&light .cm-rb-err": { color: "#d20f39", fontWeight: "bold", textDecoration: "underline" },
+  "&dark.cm-focused .cm-matchingBracket": {
     backgroundColor: "rgba(255, 255, 255, 0.14)",
     outline: "1px solid rgba(255, 255, 255, 0.25)",
+  },
+  "&light.cm-focused .cm-matchingBracket": {
+    backgroundColor: "rgba(0, 0, 0, 0.10)",
+    outline: "1px solid rgba(0, 0, 0, 0.22)",
   },
 });
 
@@ -108,4 +131,32 @@ const bracketNavKeymap = keymap.of([
 
 export function codeEditorExtensions(): Extension[] {
   return [rainbowBrackets(), bracketMatching(), bracketNavKeymap];
+}
+
+// Catppuccin editor chrome per app theme. `background` is for the container
+// around the editor so scrollbars/empty space match the flavor's base color.
+const EDITOR_THEMES: Record<
+  ConcourseColorScheme,
+  { theme: Extension; background: string }
+> = {
+  dark: { theme: catppuccinMocha, background: "#1e1e2e" },
+  light: { theme: catppuccinLatte, background: "#eff1f5" },
+};
+
+function subscribeColorScheme(onChange: () => void): () => void {
+  return watchConcourseColorScheme(onChange);
+}
+
+/** The app's light/dark scheme, reactive to the theme toggle. */
+export function useAppColorScheme(): ConcourseColorScheme {
+  return useSyncExternalStore(
+    subscribeColorScheme,
+    getConcourseColorScheme,
+    () => "dark" as const,
+  );
+}
+
+/** Catppuccin CodeMirror theme (Mocha/Latte) matching the app theme. */
+export function useEditorTheme(): { theme: Extension; background: string } {
+  return EDITOR_THEMES[useAppColorScheme()];
 }

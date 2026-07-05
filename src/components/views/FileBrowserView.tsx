@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { Btn } from "~/components/ui/Btn";
 import { Icon } from "~/components/ui/Icon";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { HotkeyTooltip, StaticHotkeyTooltip } from "~/components/ui/Tooltip";
 import { useHotkey } from "~/lib/use-hotkey";
 import { languageForFilename } from "~/lib/file-language";
-import { codeEditorExtensions } from "~/lib/code-editor-extensions";
+import { codeEditorExtensions, useEditorTheme } from "~/lib/code-editor-extensions";
 import { useFileEditor } from "~/lib/use-file-editor";
 import { listProjectFiles } from "~/lib/project-fs";
 import { LoadErrorView } from "~/components/views/FileEditorDialog";
@@ -91,6 +90,7 @@ export function FileBrowserView({
 
   const tree = useMemo(() => buildTree(visibleFiles), [visibleFiles]);
 
+  const editorTheme = useEditorTheme();
   const editor = useFileEditor({
     projectRoot: projectPath,
     relPath: selected,
@@ -415,7 +415,7 @@ export function FileBrowserView({
             </div>
           )}
 
-          <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: selected ? "#282c34" : "var(--surface-0)" }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: selected ? editorTheme.background : "var(--surface-0)" }}>
             {!selected ? (
               <EmptyEditorHint />
             ) : editor.loading ? (
@@ -452,7 +452,7 @@ export function FileBrowserView({
               <CodeMirror
                 ref={editor.cmRef}
                 value={editor.content}
-                theme={oneDark}
+                theme={editorTheme.theme}
                 extensions={extensions}
                 onChange={(v) => editor.setContent(v)}
                 basicSetup={{
