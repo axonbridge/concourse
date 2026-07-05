@@ -80,9 +80,13 @@ export function GitSettingsPage() {
 
   const copyKey = async () => {
     if (!ssh?.publicKey) return;
-    await navigator.clipboard.writeText(ssh.publicKey);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(ssh.publicKey);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError("Couldn't write to the clipboard — select the key text and copy manually.");
+    }
   };
 
   const testConnection = async () => {

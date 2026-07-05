@@ -3,12 +3,14 @@ import {
   MICROPHONE_WEB_PERMISSION,
   NOTIFICATION_WEB_PERMISSION,
   shouldAllowAudioCapture,
+  CLIPBOARD_WRITE_WEB_PERMISSION,
   shouldAllowWebPermission,
 } from "../notification-permissions";
 
 describe("shouldAllowWebPermission", () => {
   it("allows notification permission requests", () => {
     expect(shouldAllowWebPermission(NOTIFICATION_WEB_PERMISSION)).toBe(true);
+    expect(shouldAllowWebPermission(CLIPBOARD_WRITE_WEB_PERMISSION)).toBe(true);
   });
 
   it("denies bare media (microphone is gated separately by media type)", () => {

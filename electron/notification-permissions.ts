@@ -3,8 +3,15 @@ export const NOTIFICATION_WEB_PERMISSION = "notifications";
 // permission — which also covers camera/display. We scope it down to audio only.
 export const MICROPHONE_WEB_PERMISSION = "media";
 
+// Writing TO the clipboard (copy buttons: SSH key, diagram source) is
+// low-risk; reading FROM it stays denied like everything else.
+export const CLIPBOARD_WRITE_WEB_PERMISSION = "clipboard-sanitized-write";
+
 export function shouldAllowWebPermission(permission: string): boolean {
-  return permission === NOTIFICATION_WEB_PERMISSION;
+  return (
+    permission === NOTIFICATION_WEB_PERMISSION ||
+    permission === CLIPBOARD_WRITE_WEB_PERMISSION
+  );
 }
 
 // Gate for the "media" permission: allow only when every requested media type is
