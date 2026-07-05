@@ -126,6 +126,16 @@ export function useGitCommit(projectId: string, worktreeId?: string | null) {
   });
 }
 
+/** Fast-forward pull of the current branch; invalidates all git queries. */
+export function useGitPull(projectId: string, worktreeId?: string | null) {
+  const invalidate = useInvalidateGit(projectId, worktreeId);
+  return useMutation({
+    mutationKey: [...gitKeys.all(projectId, worktreeId), "pull"] as const,
+    mutationFn: () => api.gitPull(projectId, worktreeId),
+    onSettled: invalidate,
+  });
+}
+
 export function useGitPush(projectId: string, worktreeId?: string | null) {
   const invalidate = useInvalidateGit(projectId, worktreeId);
   return useMutation({

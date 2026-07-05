@@ -10,6 +10,7 @@ import {
   gitErrorPayload,
   isGitAvailable,
   listGitBranches,
+  pull as gitPull,
   push as gitPush,
   stageFiles,
   unstageFiles,
@@ -162,6 +163,18 @@ export async function commit(rawId: string, request: Request): Promise<Response>
       worktreeId: parsed.data.worktreeId ?? null,
       message: parsed.data.message,
     }));
+  } catch (e) {
+    return handleDomainError(e) ?? asGitErrorResponse(e);
+  }
+}
+
+export async function pull(rawId: string, request: Request): Promise<Response> {
+  const idParsed = idParam.safeParse(rawId);
+  if (!idParsed.success) return notFound();
+  const parsed = await parseJsonBody(request, stageBody);
+  if (!parsed.ok) return parsed.response;
+  try {
+    return json({ result: await gitPull(idParsed.data, parsed.data.worktreeId ?? null) });
   } catch (e) {
     return handleDomainError(e) ?? asGitErrorResponse(e);
   }

@@ -498,6 +498,11 @@ export const api = {
   gitAvailable: () => req<{ available: boolean; version?: string }>("/api/git/available"),
   cloneRepository: (body: { url: string; parentDir: string; folderName?: string }) =>
     req<{ path: string }>("/api/git/clone", { method: "POST", body: JSON.stringify(body) }),
+  gitPull: (projectId: string, worktreeId?: string | null) =>
+    req<{ result: { kind: "pulled" | "up-to-date"; summary: string } }>(
+      `/api/projects/${projectId}/git/pull`,
+      { method: "POST", body: JSON.stringify({ worktreeId: worktreeId ?? null }) },
+    ),
   discardGitFile: (projectId: string, file: string, worktreeId?: string | null) =>
     req<{ ok: true }>(`/api/projects/${projectId}/git/discard`, {
       method: "POST",

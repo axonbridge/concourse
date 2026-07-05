@@ -3,10 +3,12 @@ import { Btn } from "~/components/ui/Btn";
 import { Icon } from "~/components/ui/Icon";
 import { StaticHotkeyTooltip } from "~/components/ui/Tooltip";
 import { useHotkey } from "~/lib/use-hotkey";
+import { toast } from "sonner";
 import {
   useDeleteProjectFile,
   useDiscardFile,
   useGitDiff,
+  useGitPull,
   useGitStatus,
   useStageFiles,
   useUnstageFiles,
@@ -39,6 +41,7 @@ export function GitDiffView({
   const unstageM = useUnstageFiles(projectId, worktreeId);
   const deleteM = useDeleteProjectFile(projectId, worktreeId);
   const discardM = useDiscardFile(projectId, worktreeId);
+  const pullM = useGitPull(projectId, worktreeId);
 
   const [selection, setSelection] = useState<FileSelection>(null);
   const stagedFiles = useMemo(() => status?.staged ?? [], [status]);
@@ -163,6 +166,20 @@ export function GitDiffView({
         >
           {projectPath}
         </div>
+        <Btn
+          variant="ghost"
+          icon="refresh"
+          disabled={pullM.isPending}
+          title="Pull latest from upstream (fast-forward only)"
+          onClick={() =>
+            pullM.mutate(undefined, {
+              onSuccess: (r) => toast.success(r.result.summary),
+              onError: (e) => toast.error(e instanceof Error ? e.message : "Pull failed"),
+            })
+          }
+        >
+          {pullM.isPending ? "Pulling…" : "Pull"}
+        </Btn>
         {/* Clickable branch switcher: list, checkout, and create branches. */}
         <BranchTypeahead
           projectId={projectId}

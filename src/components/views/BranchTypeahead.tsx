@@ -184,10 +184,14 @@ export function BranchTypeahead({
     const anchor = anchorRef.current;
     if (!anchor) return;
     const rect = anchor.getBoundingClientRect();
+    const width = Math.max(rect.width, 320);
+    // Clamp inside the viewport: a trigger near the right edge (e.g. the diff
+    // header's branch label) would otherwise push the menu off-screen.
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
     setMenuRect({
       top: rect.bottom + 8,
-      left: rect.left,
-      width: Math.max(rect.width, 320),
+      left,
+      width,
     });
   }, []);
 

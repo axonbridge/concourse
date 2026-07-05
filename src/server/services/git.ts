@@ -479,6 +479,33 @@ export type CreatePullRequestResult =
       baseBranch: string;
     };
 
+export type PullResult = { kind: "pulled" | "up-to-date"; summary: string };
+
+/** Fast-forward the current branch from its upstream. Divergent histories are
+ *  refused with a clear error rather than auto-merged. */
+export async function pull(projectId: string, worktreeId?: string | null): Promise<PullResult> {
+  const cwd = projectCwd(projectId, worktreeId);
+  await assertGitRepository(cwd);
+  const r = await runGit(cwd, ["pull", "--ff-only"], { timeoutMs: PUSH_TIMEOUT_MS });
+  if (r.code !== 0) {
+    const stderr = r.stderr.trim();
+    if (/not possible to fast-forward|divergent/i.test(stderr)) {
+      throw new GitError(
+        "Local and remote have diverged — resolve in a terminal (rebase or merge), then pull again.",
+        stderr,
+      );
+    }
+    if (/no tracking information|no such ref|couldn't find remote ref/i.test(stderr)) {
+      throw new GitError("This branch has no upstream to pull from.", stderr);
+    }
+    throw new GitError("git pull failed", stderr || `exit ${r.code}`);
+  }
+  const out = r.stdout.trim();
+  if (/Already up to date/i.test(out)) return { kind: "up-to-date", summary: "Already up to date." };
+  const last = out.split("\n").filter(Boolean).pop() ?? "Pulled latest changes.";
+  return { kind: "pulled", summary: last };
+}
+
 export async function push(projectId: string, worktreeId?: string | null): Promise<PushResult> {
   const cwd = projectCwd(projectId, worktreeId);
   // If an upstream is configured and there are no unpushed commits, surface
