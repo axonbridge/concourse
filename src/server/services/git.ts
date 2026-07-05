@@ -1002,7 +1002,14 @@ function combineStreams(r: RunGitResult): string {
 
 const COMMIT_MESSAGE_PROMPT = `You are generating a git commit message. Read the staged diff that follows the marker and respond with ONLY the commit message — no preamble, no quotes, no code fences.
 
-Format: a single short subject line (50 chars or fewer, imperative mood, no trailing period). If the change is non-trivial, add a blank line and 1–4 short bullet points starting with "- " describing what changed and why. Do not invent details that are not in the diff.
+Format: Conventional Commits — subject line "<type>(<scope>): <description>".
+- type: one of feat, fix, refactor, docs, test, chore, perf, ci, build, style, revert
+- scope: a short lowercase noun for the area the change touches (e.g. auth, sign-up, api, deps) — derive it from the file paths and content in the diff; only omit "(scope)" if no sensible one exists
+- description: imperative mood, lowercase start, no trailing period; keep the whole subject line at 65 chars or fewer
+
+If the change is non-trivial, add a blank line and 1–4 short bullet points starting with "- " describing what changed and why. Do not invent details that are not in the diff.
+
+Example subject lines: "feat(sign-up): add password strength meter", "fix(api): handle empty session token", "docs(readme): document release flow".
 
 --- STAGED DIFF ---
 `;
