@@ -97,9 +97,12 @@ export const codexChatProvider: ChatProvider = {
       busy = true;
       emit({ kind: "status", sessionId: sid, status: "running" });
       const text = inlineSlashCommand(opts.cwd, rawText);
-      const args = ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write"];
+      // `exec resume` rejects --sandbox (the thread keeps its original policy)
+      // but still takes --json/-m/-i; fresh execs set the sandbox explicitly.
+      const args = threadId
+        ? ["exec", "resume", threadId, "--json", "--skip-git-repo-check"]
+        : ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write"];
       if (opts.model) args.push("-m", opts.model);
-      if (threadId) args.splice(1, 0, "resume", threadId);
       args.push(...imageArgs(text));
       args.push(text);
       current = runJsonlTurn("codex", args, opts.cwd, handleEvent, (line) =>
