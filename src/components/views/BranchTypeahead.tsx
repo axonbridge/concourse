@@ -30,6 +30,12 @@ import {
 import { useTasks } from "~/queries";
 import { worktreeScopeKey } from "~/shared/worktrees";
 import type { GitBranch } from "~/lib/api";
+import {
+  BRANCH_TYPES,
+  isConventionalBranchName,
+  slugifyBranchDescription,
+  suggestConventionalBranchName,
+} from "~/shared/branch-naming";
 
 type BranchCheckoutError = {
   title: string;
@@ -177,8 +183,14 @@ export function BranchTypeahead({
     !exactMatch &&
     !trimmedQuery.includes("..") &&
     !trimmedQuery.startsWith("-") &&
-    !trimmedQuery.endsWith("/") &&
-    !trimmedQuery.includes(" ");
+    !trimmedQuery.endsWith("/");
+  // New branches must follow <type>/<description>; free text gets converted
+  // ("fix login bug" -> fix/login-bug, otherwise feature/<slug>).
+  const conventional = canCreateBranch && !trimmedQuery.includes(" ") && isConventionalBranchName(trimmedQuery);
+  const suggestedName = canCreateBranch ? suggestConventionalBranchName(trimmedQuery) : null;
+  const descriptionSlug = slugifyBranchDescription(
+    trimmedQuery.includes("/") ? trimmedQuery.slice(trimmedQuery.indexOf("/") + 1) : trimmedQuery,
+  );
 
   const updateMenuRect = useCallback(() => {
     const anchor = anchorRef.current;
@@ -277,7 +289,8 @@ export function BranchTypeahead({
         return;
       }
       if (canCreateBranch) {
-        requestCheckout(trimmedQuery, true);
+        const target = conventional ? trimmedQuery : suggestedName;
+        if (target) requestCheckout(target, true);
         return;
       }
       if (exactMatch) {
@@ -418,7 +431,7 @@ export function BranchTypeahead({
                     )}
                   </button>
                 ))}
-              {!loadError && canCreateBranch && (
+              {!loadError && canCreateBranch && conventional && (
                 <button
                   type="button"
                   role="option"
@@ -447,6 +460,83 @@ export function BranchTypeahead({
                   <Icon name="plus" size={12} />
                   {checkout.isPending ? "Creating branch…" : `Create "${trimmedQuery}"`}
                 </button>
+              )}
+              {!loadError && canCreateBranch && !conventional && (
+                <div style={{ display: "grid", gap: 6, padding: "6px 4px 4px" }}>
+                  <div
+                    style={{
+                      padding: "0 6px",
+                      color: "var(--text-dim)",
+                      fontFamily: "var(--mono)",
+                      fontSize: 10.5,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Branch names follow{" "}
+                    <span style={{ color: "var(--text)" }}>&lt;type&gt;/&lt;description&gt;</span>
+                    {" — pick a type:"}
+                  </div>
+                  {suggestedName && (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={false}
+                      disabled={checkout.isPending}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => requestCheckout(suggestedName, true)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        minHeight: 32,
+                        border: 0,
+                        borderRadius: 6,
+                        background: "transparent",
+                        color: "var(--accent)",
+                        cursor: checkout.isPending ? "default" : "pointer",
+                        padding: "7px 9px",
+                        textAlign: "left",
+                        fontFamily: "var(--mono)",
+                        fontSize: 11.5,
+                        opacity: checkout.isPending ? 0.65 : 1,
+                      }}
+                    >
+                      <Icon name="plus" size={12} />
+                      {checkout.isPending ? "Creating branch…" : `Create "${suggestedName}"`}
+                    </button>
+                  )}
+                  {descriptionSlug && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: "0 4px" }}>
+                      {BRANCH_TYPES.map(({ type, label }) => {
+                        const name = `${type}/${descriptionSlug}`;
+                        if (name === suggestedName) return null;
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            title={`${label} — create ${name}`}
+                            disabled={checkout.isPending}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => requestCheckout(name, true)}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 999,
+                              background: "transparent",
+                              color: "var(--text-dim)",
+                              cursor: checkout.isPending ? "default" : "pointer",
+                              padding: "3px 9px",
+                              fontFamily: "var(--mono)",
+                              fontSize: 10.5,
+                            }}
+                          >
+                            {type}/
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
               {!loadError &&
                 !branchesQuery.isLoading &&
