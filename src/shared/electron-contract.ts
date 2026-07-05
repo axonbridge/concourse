@@ -207,6 +207,7 @@ export type ElectronBridge = {
   attachments: {
     pick: () => Promise<Array<{ path: string; name: string; dataUrl?: string }>>;
     stage: (cwd: string, paths: string[]) => Promise<Array<{ rel: string; name: string }>>;
+    describe: (paths: string[]) => Promise<Array<{ path: string; name: string; dataUrl?: string }>>;
   };
   saveTextFile: (
     defaultName: string,

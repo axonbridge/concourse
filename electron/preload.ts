@@ -137,6 +137,8 @@ const electronAPI = {
       ipcRenderer.invoke(IPC.dialogPickAttachments),
     stage: (cwd: string, paths: string[]): Promise<Array<{ rel: string; name: string }>> =>
       ipcRenderer.invoke(IPC.attachmentsStage, cwd, paths),
+    describe: (paths: string[]): Promise<Array<{ path: string; name: string; dataUrl?: string }>> =>
+      ipcRenderer.invoke(IPC.attachmentsDescribe, paths),
   },
   saveTextFile: (
     defaultName: string,

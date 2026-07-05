@@ -727,6 +727,24 @@ safeHandle(IPC.dialogImportWorkflow, async () => {
   }
 });
 
+// Turn an absolute path into a chat-attachment descriptor (name + inline
+// image preview). Shared by the picker dialog and drag-and-drop.
+function describeAttachmentPath(p: string): { path: string; name: string; dataUrl?: string } {
+  const name = path.basename(p);
+  let dataUrl: string | undefined;
+  const ext = path.extname(p).toLowerCase();
+  const mime: Record<string, string> = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".webp": "image/webp",
+  };
+  try {
+    if (mime[ext] && fs.statSync(p).size <= 3_000_000) {
+      dataUrl = `data:${mime[ext]};base64,${fs.readFileSync(p).toString("base64")}`;
+    }
+  } catch { /* preview is best-effort */ }
+  return { path: p, name, dataUrl };
+}
+
 // Chat attachments: multi-file picker returning names + image previews…
 safeHandle(IPC.dialogPickAttachments, async () => {
   if (!win) return [];
@@ -735,21 +753,24 @@ safeHandle(IPC.dialogPickAttachments, async () => {
     message: "Attach files to this message",
   });
   if (result.canceled) return [];
-  return result.filePaths.map((p) => {
-    const name = path.basename(p);
-    let dataUrl: string | undefined;
-    const ext = path.extname(p).toLowerCase();
-    const mime: Record<string, string> = {
-      ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-      ".gif": "image/gif", ".webp": "image/webp",
-    };
+  return result.filePaths.map(describeAttachmentPath);
+});
+
+// …drag-and-drop hands us paths directly (via webUtils.getPathForFile) and
+// only needs the descriptors. Skips paths that aren't readable files.
+safeHandle(IPC.attachmentsDescribe, (_evt, paths: string[]) => {
+  if (!Array.isArray(paths)) return [];
+  const out: Array<{ path: string; name: string; dataUrl?: string }> = [];
+  for (const p of paths) {
+    if (typeof p !== "string" || !p) continue;
     try {
-      if (mime[ext] && fs.statSync(p).size <= 3_000_000) {
-        dataUrl = `data:${mime[ext]};base64,${fs.readFileSync(p).toString("base64")}`;
-      }
-    } catch { /* preview is best-effort */ }
-    return { path: p, name, dataUrl };
-  });
+      if (!fs.statSync(p).isFile()) continue;
+    } catch {
+      continue;
+    }
+    out.push(describeAttachmentPath(p));
+  }
+  return out;
 });
 
 // …then staged into <workspace>/.concourse/attachments/ so EVERY engine

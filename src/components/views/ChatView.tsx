@@ -183,6 +183,50 @@ export function ChatView({
     if (picked.length) setPending((cur) => [...cur, ...picked]);
   }, []);
 
+  // Drag & drop anywhere in the chat column attaches files exactly like the
+  // upload button: resolve native paths, build descriptors, queue as pending.
+  const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
+  const hasFileDrag = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types ?? []).includes("Files");
+  const onDragEnter = useCallback((e: React.DragEvent) => {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragOver(true);
+  }, []);
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    if (!hasFileDrag(e)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragOver(false);
+  }, []);
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+  const onDrop = useCallback((e: React.DragEvent) => {
+    if (!hasFileDrag(e)) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragOver(false);
+    const electron = getElectron();
+    if (!electron) return;
+    const paths = Array.from(e.dataTransfer.files)
+      .map((file) => {
+        try {
+          return electron.getPathForFile(file);
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean);
+    if (paths.length === 0) return;
+    void electron.attachments.describe(paths).then((described) => {
+      if (described.length) setPending((cur) => [...cur, ...described]);
+    });
+  }, []);
+
   // Workflow builder: let the user upload a template file mid-interview. We send
   // its contents as a message so the agent saves it as the workflow's output
   // template and wires the command to follow it.
@@ -369,7 +413,34 @@ export function ChatView({
 
       {/* Body: chat column + optional markdown preview panel */}
       <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <div
+        style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative" }}
+        onDragEnter={onDragEnter}
+        onDragLeave={onDragLeave}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
+      {dragOver && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 8,
+            zIndex: 5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "var(--radius-lg)",
+            border: "2px dashed var(--accent)",
+            background: "var(--accent-faint, rgba(0,0,0,0.25))",
+            pointerEvents: "none",
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: "var(--accent)",
+          }}
+        >
+          Drop files to attach
+        </div>
+      )}
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflow: "auto", padding: "18px", display: "flex", flexDirection: "column", gap: 12 }}>
         {intro && items.length === 0 && (

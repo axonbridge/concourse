@@ -8,6 +8,7 @@ export const IPC = {
   dialogPickTemplate: "dialog:pickTemplate",
   dialogPickAttachments: "dialog:pickAttachments",
   attachmentsStage: "attachments:stage",
+  attachmentsDescribe: "attachments:describe",
   fileSaveProjectImage: "file:saveProjectImage",
   shellOpenPath: "shell:openPath",
   shellOpenFile: "shell:openFile",
