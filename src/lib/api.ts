@@ -80,6 +80,7 @@ export type AppSettings = {
 };
 
 import type { DockerComposeStatus } from "~/server/services/docker";
+import type { TunnelAvailability, TunnelInfo, TunnelProvider } from "~/server/services/tunnels";
 
 export class ApiError extends Error {
   constructor(
@@ -552,6 +553,23 @@ export const api = {
       `/api/projects/${projectId}/git/delete-branch`,
       { method: "POST", body: JSON.stringify({ ...body, worktreeId: body.worktreeId ?? null }) },
     ),
+  shareStatus: (projectId: string) =>
+    req<{ availability: TunnelAvailability; tunnels: TunnelInfo[] }>(
+      `/api/projects/${projectId}/share/status`,
+    ),
+  shareStart: (
+    projectId: string,
+    body: { port: number; mode: "private" | "public"; provider?: TunnelProvider },
+  ) =>
+    req<TunnelInfo>(`/api/projects/${projectId}/share/start`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  shareStop: (projectId: string, tunnelId: string) =>
+    req<{ ok: true }>(`/api/projects/${projectId}/share/stop`, {
+      method: "POST",
+      body: JSON.stringify({ tunnelId }),
+    }),
   dockerStatus: (projectId: string, worktreeId?: string | null) =>
     req<DockerComposeStatus>(
       `/api/projects/${projectId}/docker/status${worktreeId ? `?worktreeId=${encodeURIComponent(worktreeId)}` : ""}`,

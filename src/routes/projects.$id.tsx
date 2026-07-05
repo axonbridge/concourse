@@ -118,6 +118,7 @@ import { useGitStatus } from "~/queries/git";
 import { GitDiffView } from "~/components/views/GitDiffView";
 import { CommitPushButton } from "~/components/views/CommitPushButton";
 import { DockerComposeButton } from "~/components/views/DockerComposeButton";
+import { ShareAppButton } from "~/components/views/ShareAppButton";
 import { BranchTypeahead } from "~/components/views/BranchTypeahead";
 import {
   CreatePullRequestDialog,
@@ -2780,6 +2781,11 @@ function ProjectPage() {
           </div>
           {headerActions}
           <DockerComposeButton
+            projectId={id}
+            worktreeId={selectedWorktreeId}
+            enabled={projectPathUsable}
+          />
+          <ShareAppButton
             projectId={id}
             worktreeId={selectedWorktreeId}
             enabled={projectPathUsable}
