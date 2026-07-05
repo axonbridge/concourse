@@ -414,7 +414,10 @@ export function directChatProvider(engine: DirectProvider): ChatProvider {
 
             let result: string;
             if (broker) {
-              const decision = decideAction(broker.action, { autoApproveWrites: opts.autoApproveWrites });
+              const decision = decideAction(broker.action, {
+                autoApproveWrites: opts.autoApproveWrites,
+                dangerouslySkipApprovals: opts.dangerouslySkipApprovals,
+              });
               const allowed = decision === "allow" ? true : await askPermission(name, summary);
               result = allowed ? broker.run(args, opts.cwd) : "The user denied this action.";
             } else if (mcp) {

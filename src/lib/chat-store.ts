@@ -35,6 +35,7 @@ type SessionState = {
   started?: boolean;
   // Auto-approve file writes for this session (the "create a workflow" builder).
   autoApproveWrites?: boolean;
+  dangerouslySkipApprovals?: boolean;
   // Onboarding intro shown before the first message (what the command does +
   // example prompts). Cleared once the user sends.
   intro?: { description: string; examples: string[] };
@@ -168,6 +169,7 @@ export const chatStore = {
       description?: string;
       examples?: string[];
       autoApproveWrites?: boolean;
+      dangerouslySkipApprovals?: boolean;
     },
   ) {
     ensureSubscribed();
@@ -180,6 +182,7 @@ export const chatStore = {
     state.baseUrl = opts.baseUrl;
     state.pendingCommand = opts.command;
     state.autoApproveWrites = opts.autoApproveWrites;
+    state.dangerouslySkipApprovals = opts.dangerouslySkipApprovals;
     state.intro = { description: opts.description ?? "", examples: opts.examples ?? [] };
     sessions.set(sessionId, state);
     notify(sessionId);
@@ -200,6 +203,15 @@ export const chatStore = {
     notify(sessionId);
   },
 
+  // Flip the session-wide "skip all approvals" switch. Only meaningful before
+  // the backend session starts — the flag is fixed at chat.start.
+  setDangerouslySkipApprovals(sessionId: string, value: boolean) {
+    const state = sessions.get(sessionId);
+    if (!state || state.started) return;
+    state.dangerouslySkipApprovals = value;
+    notify(sessionId);
+  },
+
   // Start a chat (idempotent). For a session already live in this store, it's a
   // no-op so the in-memory transcript is preserved. When `resume` is set (e.g.
   // reopening after an app restart), the main process replays the saved Claude
@@ -215,6 +227,8 @@ export const chatStore = {
       model?: string;
       baseUrl?: string;
       resume?: boolean;
+      autoApproveWrites?: boolean;
+      dangerouslySkipApprovals?: boolean;
     },
   ) {
     ensureSubscribed();
@@ -228,6 +242,8 @@ export const chatStore = {
     state.agent = opts.agent;
     state.model = opts.model;
     state.baseUrl = opts.baseUrl;
+    state.autoApproveWrites = opts.autoApproveWrites;
+    state.dangerouslySkipApprovals = opts.dangerouslySkipApprovals;
     sessions.set(sessionId, state);
     notify(sessionId);
     void getElectron()?.chat.start({
@@ -239,6 +255,8 @@ export const chatStore = {
       baseUrl: opts.baseUrl,
       providerSessionId: opts.providerSessionId,
       resume: opts.resume,
+      autoApproveWrites: opts.autoApproveWrites,
+      dangerouslySkipApprovals: opts.dangerouslySkipApprovals,
     });
   },
 
@@ -284,6 +302,7 @@ export const chatStore = {
         providerSessionId: state.providerSessionId,
         resume: !!state.providerSessionId,
         autoApproveWrites: state.autoApproveWrites,
+        dangerouslySkipApprovals: state.dangerouslySkipApprovals,
       });
       return;
     }
@@ -317,6 +336,7 @@ export const chatStore = {
         providerSessionId: state.providerSessionId,
         resume: false,
         autoApproveWrites: state.autoApproveWrites,
+        dangerouslySkipApprovals: state.dangerouslySkipApprovals,
       });
       return;
     }
@@ -346,6 +366,7 @@ export const chatStore = {
         providerSessionId: state.providerSessionId,
         resume: false,
         autoApproveWrites: state.autoApproveWrites,
+        dangerouslySkipApprovals: state.dangerouslySkipApprovals,
       });
       return;
     }

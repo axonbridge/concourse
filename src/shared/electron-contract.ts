@@ -180,6 +180,8 @@ export type ElectronBridge = {
       providerSessionId?: string;
       resume?: boolean;
       autoApproveWrites?: boolean;
+      /** Skip ALL approval cards for this session (chosen at session start). */
+      dangerouslySkipApprovals?: boolean;
       /** OpenAI-compatible endpoint for the "custom" direct engine. */
       baseUrl?: string;
     }) => Promise<{ ok: boolean }>;

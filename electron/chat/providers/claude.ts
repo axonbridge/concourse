@@ -371,6 +371,7 @@ export const claudeChatProvider: ChatProvider = {
       const canUseTool = async (toolName: string, input: unknown) => {
         const decision = decideAction(classifyClaudeTool(toolName), {
           autoApproveWrites: opts.autoApproveWrites,
+          dangerouslySkipApprovals: opts.dangerouslySkipApprovals,
         });
         if (decision === "allow") return { behavior: "allow" as const, updatedInput: input };
         const requestId = randomUUID();

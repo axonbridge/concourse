@@ -706,6 +706,30 @@ export function ChatView({
         <Btn variant="ghost" icon="upload" onClick={() => void attach()} aria-label="Attach files" title="Attach files">
           {""}
         </Btn>
+        <Btn
+          variant="ghost"
+          icon="shield"
+          onClick={() =>
+            chatStore.setDangerouslySkipApprovals(sessionId, !session?.dangerouslySkipApprovals)
+          }
+          disabled={session?.started ?? false}
+          aria-label="Toggle auto-approve (dangerously skip all approvals)"
+          aria-pressed={session?.dangerouslySkipApprovals ?? false}
+          title={
+            session?.started
+              ? session?.dangerouslySkipApprovals
+                ? "Auto-approve is ON for this session (locked once started)"
+                : "Approvals are ON for this session (locked once started)"
+              : "Dangerously skip approvals: the agent runs writes, commands, and external actions without stopping to ask. Locks in when the session starts."
+          }
+          style={
+            session?.dangerouslySkipApprovals
+              ? { color: "var(--status-needs, #e0a04d)" }
+              : undefined
+          }
+        >
+          {session?.dangerouslySkipApprovals ? "Auto" : ""}
+        </Btn>
         {providerModels.length > 0 && (
           <ModelPicker
             models={providerModels}

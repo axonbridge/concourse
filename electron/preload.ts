@@ -95,6 +95,7 @@ const electronAPI = {
       providerSessionId?: string;
       resume?: boolean;
       autoApproveWrites?: boolean;
+      dangerouslySkipApprovals?: boolean;
       baseUrl?: string;
     }): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.chatStart, opts),
     send: (sessionId: string, text: string): Promise<{ ok: boolean }> =>

@@ -21,6 +21,7 @@ export type ChatStartOptions = {
   resume?: boolean;
   /** Auto-approve file writes (the workflow builder). Scoped per adapter. */
   autoApproveWrites?: boolean;
+  dangerouslySkipApprovals?: boolean;
   /** Model id from the provider's models list (src/shared/ai-providers.ts). */
   model?: string;
   /** OpenAI-compatible endpoint for the "custom" direct engine (settings). */

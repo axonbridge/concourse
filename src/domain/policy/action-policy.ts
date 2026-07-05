@@ -16,9 +16,14 @@ export type ActionPolicyConfig = {
   /** The workflow-builder flow: local file writes flow without per-file cards.
    *  Scoped to `write` only — execute and external writes still gate. */
   autoApproveWrites?: boolean;
+  /** The user opted this session out of ALL approval cards (the "dangerously
+   *  skip" toggle): every action class flows, including execute and external
+   *  writes. Consent happens at session start. */
+  dangerouslySkipApprovals?: boolean;
 };
 
 export function decideAction(cls: ActionClass, cfg: ActionPolicyConfig = {}): ActionDecision {
+  if (cfg.dangerouslySkipApprovals) return "allow";
   switch (cls) {
     case "read":
     case "external-read":

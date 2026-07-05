@@ -21,6 +21,7 @@ export type ChatStartRequest = {
   providerSessionId?: string;
   resume?: boolean;
   autoApproveWrites?: boolean;
+  dangerouslySkipApprovals?: boolean;
   /** OpenAI-compatible endpoint for the "custom" direct engine. */
   baseUrl?: string;
 };
@@ -130,6 +131,7 @@ export function registerChatHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
           providerSessionId: req.providerSessionId,
           resume: req.resume,
           autoApproveWrites: req.autoApproveWrites,
+          dangerouslySkipApprovals: req.dangerouslySkipApprovals,
           model: req.model,
           baseUrl: req.baseUrl,
         },

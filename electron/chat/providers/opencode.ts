@@ -161,6 +161,7 @@ export const opencodeChatProvider: ChatProvider = {
         // only asks for things ITS ruleset gates, so most asks are write-class.
         const decision = decideAction(classifyClaudeTool(toolName), {
           autoApproveWrites: opts.autoApproveWrites,
+          dangerouslySkipApprovals: opts.dangerouslySkipApprovals,
         });
         if (decision === "allow") {
           await api("POST", `/session/${ocSessionId}/permissions/${req.id}`, dir, { response: "once" }).catch(() => {});
