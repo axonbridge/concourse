@@ -10,7 +10,8 @@ import * as path from "node:path";
 
 export type RunRecordInput = {
   workspaceDir: string;
-  command: string;
+  /** Slash command that ran, or null for a plain chat turn that wrote files. */
+  command: string | null;
   engine: string;
   model?: string;
   startedAt: Date;
@@ -67,9 +68,9 @@ function isoLocal(d: Date): string {
   return d.toISOString();
 }
 
-/** knowledge/runs/<date>-<command>.md, suffixed -2, -3… on same-day reruns. */
-function runRecordPath(workspaceDir: string, command: string, startedAt: Date): string {
-  const base = `${dateStamp(startedAt)}-${command.replace(/[^\w-]/g, "-")}`;
+/** knowledge/runs/<date>-<command|chat>.md, suffixed -2, -3… on same-day reruns. */
+function runRecordPath(workspaceDir: string, command: string | null, startedAt: Date): string {
+  const base = `${dateStamp(startedAt)}-${(command ?? "chat").replace(/[^\w-]/g, "-")}`;
   let candidate = path.join(workspaceDir, RUNS_DIR, `${base}.md`);
   for (let i = 2; fs.existsSync(candidate); i++) {
     candidate = path.join(workspaceDir, RUNS_DIR, `${base}-${i}.md`);
@@ -92,7 +93,8 @@ description: Entry point for this workspace's knowledge graph — curated facts 
 
 - [Run log](log.md) — every workflow run, newest last
 - \`facts/\` — durable facts agents have learned (field ids, gotchas, conventions)
-- \`runs/\` — one record per workflow run
+- \`notes/\` — conversational knowledge: meeting notes, 1:1s, decisions
+- \`runs/\` — one record per workflow or file-writing chat
 `,
     "utf8",
   );
@@ -112,19 +114,19 @@ export function recordRun(input: RunRecordInput): string {
   const durationLabel = durationS >= 60 ? `${Math.floor(durationS / 60)}m ${durationS % 60}s` : `${durationS}s`;
 
   const outputLinks = input.outputs.map((o) => `- [${o}](/${o})`).join("\n");
+  const label = input.command ? `/${input.command}` : "Chat";
   const record = `---
 type: run-record
-title: /${input.command} — ${timeStamp(input.startedAt)}
-description: Workflow run of /${input.command} on ${input.engine}${input.model ? ` (${input.model})` : ""}.
+title: ${label} — ${timeStamp(input.startedAt)}
+description: ${input.command ? `Workflow run of /${input.command}` : "Chat session that wrote files,"} on ${input.engine}${input.model ? ` (${input.model})` : ""}.
 timestamp: ${isoLocal(input.finishedAt)}
-command: /commands/${input.command}.md
-engine: ${input.engine}
+${input.command ? `command: /commands/${input.command}.md\n` : ""}engine: ${input.engine}
 ${input.model ? `model: ${input.model}\n` : ""}status: ${input.status}
 duration: ${durationLabel}
-tags: [run]
+tags: [run${input.command ? "" : ", chat"}]
 ---
 
-# /${input.command} — ${timeStamp(input.startedAt)}
+# ${label} — ${timeStamp(input.startedAt)}
 
 Ran on **${input.engine}**${input.model ? ` (\`${input.model}\`)` : ""} in ${durationLabel} — ${input.status}.
 
@@ -151,7 +153,7 @@ description: Append-only log of workflow runs in this workspace.
   const outputsNote = input.outputs.length ? ` → ${input.outputs.join(", ")}` : "";
   fs.appendFileSync(
     logAbs,
-    `\n- ${timeStamp(input.startedAt)} — [/${input.command}](/${recordRel}) on ${input.engine} (${durationLabel}, ${input.status})${outputsNote}`,
+    `\n- ${timeStamp(input.startedAt)} — [${label}](/${recordRel}) on ${input.engine} (${durationLabel}, ${input.status})${outputsNote}`,
     "utf8",
   );
 

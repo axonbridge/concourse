@@ -32,7 +32,7 @@ export type ChatStartRequest = {
 // engine-agnostic seam) so every engine gets it for free.
 type RunTrace = {
   workspaceDir: string;
-  command: string;
+  command: string | null;
   engine: string;
   model?: string;
   startedAt: Date;
@@ -47,11 +47,15 @@ export function registerChatHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
   const generations = new Map<string, number>();
   const runs = new Map<string, RunTrace>(); // sessionId → in-flight workflow run
 
+  // Per-session context so send() can start traces for later chat turns.
+  const sessionMeta = new Map<string, { cwd: string; agent?: EngineId; model?: string }>();
+
   const beginRunTrace = (sessionId: string, cwd: string, text: string, agent?: EngineId, model?: string) => {
-    const command = text.trim().match(/^\/([\w-]+)/)?.[1];
+    const command = text.trim().match(/^\/([\w-]+)/)?.[1] ?? null;
     // Every project gets run records — CWF workspaces in knowledge/, everything
     // else in the machine-local .concourse/ overlay (see runRecordRoot).
-    if (!command) return;
+    // Plain chats are traced too, but only settle to disk when they wrote
+    // files (see settleRunTrace) — Q&A turns leave no record.
     runs.set(sessionId, {
       workspaceDir: cwd,
       command,
@@ -66,6 +70,7 @@ export function registerChatHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
     const run = runs.get(sessionId);
     if (!run) return;
     runs.delete(sessionId);
+    if (!run.command && run.outputs.size === 0) return; // chat turn, nothing written
     try {
       recordRun({
         workspaceDir: run.workspaceDir,
@@ -121,7 +126,8 @@ export function registerChatHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
       }
       const gen = (generations.get(req.sessionId) ?? 0) + 1;
       generations.set(req.sessionId, gen);
-      if (!req.resume) beginRunTrace(req.sessionId, req.cwd, req.initialText, req.agent, req.model);
+      sessionMeta.set(req.sessionId, { cwd: req.cwd, agent: req.agent, model: req.model });
+      if (req.initialText.trim()) beginRunTrace(req.sessionId, req.cwd, req.initialText, req.agent, req.model);
       const provider = getChatProvider(req.agent);
       const handle = provider.start(
         {
@@ -158,6 +164,12 @@ export function registerChatHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
     (_e, { sessionId, text }: { sessionId: string; text: string }) => {
       const s = sessions.get(sessionId);
       if (!s) return { ok: false };
+      // Later turns get their own trace so a chat that writes files leaves a
+      // run record even when the conversation started as plain Q&A.
+      const meta = sessionMeta.get(sessionId);
+      if (!runs.has(sessionId) && meta) {
+        beginRunTrace(sessionId, meta.cwd, text, meta.agent, meta.model);
+      }
       // The renderer store already appends the user's bubble optimistically
       // (chat-store.send) — the adapter must not echo it back.
       s.send(text);

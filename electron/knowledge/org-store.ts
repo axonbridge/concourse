@@ -85,5 +85,15 @@ When you learn a durable fact, save it to the right scope: true org-wide
 only meaningful in this workspace → workspace facts. One file per topic —
 update, never duplicate. Point-in-time numbers are never served from
 knowledge. When citing an org fact in a reply, link its FULL absolute path so
-the file opens when clicked.`;
+the file opens when clicked.
+
+Conversational knowledge (OKF): when the user shares meeting notes, a 1:1,
+a decision, or similar knowledge-worthy content in ANY chat, save it as an
+OKF concept file under the workspace's \`knowledge/notes/<yyyy-mm-dd>-<slug>.md\`
+(in a plain repo, \`.concourse/knowledge/notes/\`): YAML frontmatter with a
+required \`type\` (meeting-notes | one-on-one | decision | note) plus title,
+description, tags, and an ISO timestamp; structured markdown body; markdown
+links to related facts/notes as the graph's edges. Extract durable facts into
+their own fact files and link them. Then add the note to that knowledge
+folder's \`index.md\` and append a dated entry to its \`log.md\`.`;
 }

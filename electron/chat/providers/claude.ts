@@ -160,7 +160,7 @@ function ensureLocalSessionSetup(cwd: string): void {
   const isCwfWs = fs.existsSync(path.join(cwd, "workspace.md"));
   const overlayNote = isCwfWs
     ? ""
-    : `\n\n## Machine-local overlay\n\nThis repo's Concourse layer lives in \`.concourse/\` (locally git-excluded): repo-scoped facts in \`.concourse/knowledge/facts/\`, deliverables in \`.concourse/outputs/<command>/\`. Never write outputs to the repo root.\n`;
+    : `\n\n## Machine-local overlay\n\nThis repo's Concourse layer lives in \`.concourse/\` (locally git-excluded): repo-scoped facts in \`.concourse/knowledge/facts/\`, conversational notes (meetings, 1:1s, decisions) in \`.concourse/knowledge/notes/\`, deliverables in \`.concourse/outputs/<command>/\`. Never write outputs to the repo root.\n`;
   const desired = `${CLAUDE_LOCAL_SENTINEL}\n\n${orgKnowledgePrompt()}${overlayNote}\n`;
   let current: string | null = null;
   try {

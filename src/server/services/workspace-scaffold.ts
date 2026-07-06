@@ -106,6 +106,26 @@ tags: [knowledge, protocol]
 3. On miss or staleness, fetch live and UPDATE the fact file.
 4. Save durable discoveries back to the right scope (org-wide → org facts;
    workspace-only → here). Writes go through the normal approval.
+
+## Conversational knowledge (OKF)
+
+When the user shares knowledge-worthy content in ANY conversation — meeting
+notes, a 1:1, a decision, a retro, a plan — capture it as an OKF concept
+document, don't let it evaporate with the chat:
+
+1. Write it to \`knowledge/notes/<yyyy-mm-dd>-<slug>.md\` with YAML
+   frontmatter: \`type\` (meeting-notes | one-on-one | decision | note —
+   required), plus \`title\`, \`description\` (one sentence), \`tags\`,
+   \`timestamp\` (ISO 8601), and any useful extensions (participants, date).
+2. Body: structural markdown (headings, lists, tables) over prose. Keep the
+   user's content faithful; add an \`# Actions\` section when there are
+   follow-ups and \`# Citations\` for external claims.
+3. Link related concepts as normal markdown links — other notes, facts,
+   commands — links are the graph's edges.
+4. Extract durable facts into \`knowledge/facts/\` (or org facts) as their
+   own concept files and link them from the note; don't bury facts in notes.
+5. Add the note to \`knowledge/index.md\` under a Notes section and append a
+   dated entry to \`knowledge/log.md\`.
 `;
 
 export function scaffoldWorkspace(dir: string, name: string): void {
@@ -165,6 +185,7 @@ This workspace keeps a knowledge graph in \`knowledge/\` — plain markdown, lin
   fs.mkdirSync(path.join(dir, "outputs"), { recursive: true });
   fs.mkdirSync(path.join(dir, ".scripts"), { recursive: true });
   fs.mkdirSync(path.join(dir, "knowledge/facts"), { recursive: true });
+  fs.mkdirSync(path.join(dir, "knowledge/notes"), { recursive: true });
   if (!fs.existsSync(path.join(dir, "knowledge/index.md")))
   fs.writeFileSync(
     path.join(dir, "knowledge/index.md"),
