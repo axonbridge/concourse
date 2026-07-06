@@ -2,6 +2,11 @@
 
 All notable changes to this project, newest first.
 
+## 0.2.0
+
+- ✨ Troubleshooting (Settings → General): "Export support bundle" zips all logs + version/OS info to the Desktop for bug reports; "Reveal log file" opens the log directory
+- ✨ error capture across every surface: packaged server output, renderer crashes, and main-process exceptions all land in the local log (auto-rotated at ~1 MB, ~2 MB cap)
+
 ## 0.1.0 — the foundation release
 
 Concourse's new starting point: version reset from the POC-era 0.x line.
