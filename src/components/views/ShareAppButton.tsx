@@ -31,6 +31,7 @@ export function ShareAppButton({
   const [port, setPort] = useState("");
   const [mode, setMode] = useState<"private" | "public">("public");
   const [provider, setProvider] = useState<"ngrok" | "tailscale-funnel" | "cloudflared" | null>(null);
+  const [startError, setStartError] = useState<{ message: string; enableUrl?: string } | null>(null);
   const [pendingSetup, setPendingSetup] = useState<{
     cloudflared?: boolean;
     ngrok?: boolean;
@@ -121,6 +122,7 @@ export function ShareAppButton({
 
   const onStart = () => {
     if (!portValid) return;
+    setStartError(null);
     startM.mutate(
       { port: parsedPort, mode, provider: mode === "public" ? (selectedProvider ?? undefined) : undefined },
       {
@@ -131,19 +133,14 @@ export function ShareAppButton({
         onError: (e) => {
           const message = e instanceof Error ? e.message : "Could not start tunnel";
           // Tailnet features (serve/funnel) need a one-time admin opt-in; the
-          // server surfaces the enable link — make it a clickable action.
+          // server surfaces the enable link — render it as an inline action.
           const enableUrl = message.match(/https:\/\/login\.tailscale\.com\/\S+/)?.[0];
-          if (enableUrl) {
-            toast.error(message.slice(0, message.indexOf("https://")).trim() || "Tailscale needs a one-time opt-in", {
-              duration: 12_000,
-              action: {
-                label: "Open enable page",
-                onClick: () => openExternal(enableUrl),
-              },
-            });
-            return;
-          }
-          toast.error(message);
+          setStartError({
+            message: enableUrl
+              ? `${mode === "private" ? "Tailscale serve" : "Tailscale Funnel"} needs a one-time opt-in for your tailnet. Enable it in the admin page, then try again.`
+              : message,
+            enableUrl,
+          });
         },
       },
     );
@@ -291,7 +288,10 @@ export function ShareAppButton({
                 <input
                   type="radio"
                   checked={mode === "public"}
-                  onChange={() => setMode("public")}
+                  onChange={() => {
+                    setMode("public");
+                    setStartError(null);
+                  }}
                   disabled={!publicVia}
                   style={{ marginTop: 3 }}
                 />
@@ -308,7 +308,10 @@ export function ShareAppButton({
                   {publicProviders.map((p) => (
                     <button
                       key={p}
-                      onClick={() => setProvider(p)}
+                      onClick={() => {
+                        setProvider(p);
+                        setStartError(null);
+                      }}
                       title={PROVIDER_HINT[p]}
                       style={{
                         border: "1px solid var(--border)",
@@ -348,7 +351,10 @@ export function ShareAppButton({
                 <input
                   type="radio"
                   checked={mode === "private"}
-                  onChange={() => setMode("private")}
+                  onChange={() => {
+                    setMode("private");
+                    setStartError(null);
+                  }}
                   disabled={!privateReady}
                   style={{ marginTop: 3 }}
                 />
@@ -377,6 +383,34 @@ export function ShareAppButton({
               )}
             </div>
 
+            {startError && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--status-failed)",
+                  fontSize: 12,
+                  color: "var(--text)",
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>{startError.message}</span>
+                {startError.enableUrl && (
+                  <Btn
+                    variant="ghost"
+                    size="sm"
+                    icon="globe"
+                    onClick={() => openExternal(startError.enableUrl!)}
+                    style={{ flexShrink: 0 }}
+                  >
+                    Open enable page
+                  </Btn>
+                )}
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <Btn
                 variant="primary"
