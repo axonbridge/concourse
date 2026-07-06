@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Btn } from "~/components/ui/Btn";
 import { Icon } from "~/components/ui/Icon";
@@ -30,7 +30,11 @@ export function ShareAppButton({
   const [port, setPort] = useState("");
   const [mode, setMode] = useState<"private" | "public">("public");
   const [provider, setProvider] = useState<"ngrok" | "tailscale-funnel" | "cloudflared" | null>(null);
-  const { data } = useShareStatus(projectId, { enabled: enabled && open });
+  const [installingCloudflared, setInstallingCloudflared] = useState(false);
+  const { data } = useShareStatus(projectId, {
+    enabled: enabled && open,
+    fast: installingCloudflared,
+  });
   const { data: activePill } = useShareStatus(projectId, { enabled });
   const { data: docker } = useDockerStatus(projectId, worktreeId, { enabled: enabled && open });
   const startM = useShareStart(projectId);
@@ -46,6 +50,17 @@ export function ShareAppButton({
 
   const tunnels = (open ? data : activePill)?.tunnels ?? [];
   const avail = data?.availability;
+
+  // Flip the chip from "installing…" to selected the moment detection sees
+  // the binary (the setup terminal runs outside the modal, so this is the
+  // only in-dialog signal the user gets).
+  useEffect(() => {
+    if (installingCloudflared && avail?.cloudflared.installed) {
+      setInstallingCloudflared(false);
+      setProvider("cloudflared");
+      toast.success("cloudflared is ready — selected as the public provider");
+    }
+  }, [installingCloudflared, avail?.cloudflared.installed]);
 
   // Suggest ports from the compose stack's published ports.
   const suggestedPorts = useMemo(() => {
@@ -266,20 +281,45 @@ export function ShareAppButton({
                   ))}
                   {avail && !avail.cloudflared.installed && (
                     <button
-                      onClick={() => runSetup("cloudflared setup", CLOUDFLARED_SETUP_COMMAND)}
-                      title="Free public links with no account and no interstitial page — installs in ~30s"
+                      onClick={() => {
+                        if (installingCloudflared) return;
+                        setInstallingCloudflared(true);
+                        runSetup("cloudflared setup", CLOUDFLARED_SETUP_COMMAND);
+                      }}
+                      disabled={installingCloudflared}
+                      title={
+                        installingCloudflared
+                          ? "Installing in the terminal below — this chip activates when it finishes"
+                          : "Free public links with no account and no interstitial page — installs in ~30s"
+                      }
                       style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
                         border: "1px dashed var(--border)",
                         borderRadius: 999,
                         background: "transparent",
-                        color: "var(--text-faint)",
-                        cursor: "pointer",
+                        color: installingCloudflared ? "var(--text-dim)" : "var(--text-faint)",
+                        cursor: installingCloudflared ? "default" : "pointer",
                         padding: "3px 10px",
                         fontFamily: "var(--mono)",
                         fontSize: 11,
                       }}
                     >
-                      + install cloudflared
+                      {installingCloudflared && (
+                        <span
+                          aria-hidden
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: "var(--status-running)",
+                            animation: "pulse-dot 1.4s ease-in-out infinite",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                      {installingCloudflared ? "installing cloudflared…" : "+ install cloudflared"}
                     </button>
                   )}
                 </div>

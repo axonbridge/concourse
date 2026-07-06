@@ -5,13 +5,17 @@ export const shareKeys = {
   status: (projectId: string) => ["projects", projectId, "share"] as const,
 };
 
-/** Tunnel availability + active tunnels; polled while the dialog is open. */
-export function useShareStatus(projectId: string, opts: { enabled?: boolean } = {}) {
+/** Tunnel availability + active tunnels; polled while the dialog is open.
+ *  `fast` tightens the poll (e.g. while a tool install is in flight). */
+export function useShareStatus(
+  projectId: string,
+  opts: { enabled?: boolean; fast?: boolean } = {},
+) {
   return useQuery({
     queryKey: shareKeys.status(projectId),
     queryFn: () => api.shareStatus(projectId),
     enabled: !!projectId && (opts.enabled ?? true),
-    refetchInterval: 20_000,
+    refetchInterval: opts.fast ? 4_000 : 20_000,
     refetchIntervalInBackground: false,
     retry: 1,
   });
