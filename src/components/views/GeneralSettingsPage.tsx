@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { openExternal } from "~/lib/open-external";
+import { toast } from "sonner";
 import { Btn } from "~/components/ui/Btn";
 import { Field, SettingsSection, ToggleRow } from "~/components/views/SettingsParts";
 import { getElectron } from "~/lib/electron";
@@ -32,6 +33,7 @@ import { isElectron } from "~/lib/electron";
 import { emptyVoiceCommandAliases } from "~/shared/voice-command-aliases";
 
 export function GeneralSettingsPage() {
+  const [exportingLogs, setExportingLogs] = useState(false);
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
   const mouseGradientEnabled = !(settings?.mouseGradientDisabled ?? false);
@@ -279,6 +281,49 @@ export function GeneralSettingsPage() {
               onChange={setAutomaticUpdateInstallOnQuitEnabled}
               label="Enable install on quit"
             />
+          </div>
+        </Field>
+      </SettingsSection>
+      <SettingsSection
+        title="Troubleshooting"
+        subtitle="Something broke? Export a support bundle and send it over."
+      >
+        <Field label="Logs">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 12.5, color: "var(--text-dim)", lineHeight: 1.55 }}>
+              Concourse keeps a local log of errors from the app, its server, and AI sessions.
+              The support bundle zips those logs plus version info to your Desktop — attach it
+              when reporting a problem. Logs never include API keys or tokens.
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Btn
+                variant="primary"
+                icon="download"
+                disabled={exportingLogs}
+                onClick={() => {
+                  setExportingLogs(true);
+                  void getElectron()
+                    ?.logs.exportBundle()
+                    .then((r) => {
+                      if (r.ok) toast.success("Support bundle saved to your Desktop");
+                      else toast.error(r.error || "Could not export the support bundle");
+                    })
+                    .catch((e) =>
+                      toast.error(e instanceof Error ? e.message : "Could not export the support bundle"),
+                    )
+                    .finally(() => setExportingLogs(false));
+                }}
+              >
+                {exportingLogs ? "Exporting…" : "Export support bundle"}
+              </Btn>
+              <Btn
+                variant="ghost"
+                icon="folder"
+                onClick={() => void getElectron()?.logs.reveal()}
+              >
+                Reveal log file
+              </Btn>
+            </div>
           </div>
         </Field>
       </SettingsSection>

@@ -144,6 +144,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
 });
 
+// Forward renderer crashes into the main-process log file so the support
+// bundle captures them. Module-level: installs once per window.
+if (typeof window !== "undefined") {
+  const forward = (source: string, message: string, stack?: string) => {
+    try {
+      getElectron()?.logs.rendererError({ source, message, stack });
+    } catch {
+      /* preload not ready */
+    }
+  };
+  window.addEventListener("error", (e) => {
+    forward("window.onerror", String(e.message ?? e.error ?? "unknown"), e.error?.stack);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const reason = e.reason;
+    forward(
+      "unhandledrejection",
+      reason instanceof Error ? reason.message : String(reason),
+      reason instanceof Error ? reason.stack : undefined,
+    );
+  });
+}
+
 function RootComponent() {
   return (
     <html suppressHydrationWarning>

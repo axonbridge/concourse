@@ -18,7 +18,7 @@ import * as fs from "node:fs";
 import * as http from "node:http";
 import * as nodeNet from "node:net";
 import * as os from "node:os";
-import { spawn, ChildProcess, spawnSync } from "node:child_process";
+import { spawn, ChildProcess, spawnSync, execFile } from "node:child_process";
 import { registerPtyHandlers, killAllPtys } from "./pty-manager";
 import { registerChatHandlers } from "./chat/ipc";
 import { credentialStatus, setCredential, deleteCredential } from "./credentials/store";
@@ -109,6 +109,9 @@ const concourseUserDataDir = configureUserDataDir();
 log.initialize();
 log.transports.file.level = "info";
 log.transports.console.level = "debug";
+// Crashes land in the log file instead of vanishing — the support bundle
+// (Settings → General → Troubleshooting) is built from these files.
+log.errorHandler.startCatching();
 
 function ignoreBrokenPipe(stream: NodeJS.WriteStream | undefined): void {
   stream?.on("error", (err: NodeJS.ErrnoException) => {
@@ -273,8 +276,27 @@ async function startProductionServer(): Promise<string> {
       ELECTRON_RUN_AS_NODE: "1",
       CONCOURSE_USER_DATA_DIR: concourseUserDataDir,
     },
-    stdio: ["ignore", "inherit", "inherit"],
+    // Piped (not inherited): a GUI-launched app has no terminal, so inherited
+    // server output was lost — forward it into the electron-log file where
+    // the support bundle can pick it up.
+    stdio: ["ignore", "pipe", "pipe"],
   });
+  const forwardServerOutput = (stream: NodeJS.ReadableStream | null, isErr: boolean) => {
+    if (!stream) return;
+    let pending = "";
+    stream.on("data", (chunk: Buffer) => {
+      pending += chunk.toString();
+      const lines = pending.split("\n");
+      pending = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (isErr) log.error("[server]", line);
+        else log.info("[server]", line);
+      }
+    });
+  };
+  forwardServerOutput(serverProcess.stdout, false);
+  forwardServerOutput(serverProcess.stderr, true);
 
   serverProcess.on("exit", (code) => {
     console.error(`[server] exited with code ${code}`);
@@ -794,6 +816,63 @@ safeHandle(IPC.attachmentsStage, (_evt, cwd: string, paths: string[]) => {
     }
   }
   return out;
+});
+
+// Troubleshooting: reveal the log file, export a support bundle, and accept
+// renderer-side errors so window crashes land in the same file.
+safeHandle(IPC.logsReveal, () => {
+  const file = log.transports.file.getFile().path;
+  shell.showItemInFolder(file);
+  return { ok: true, path: file };
+});
+
+safeHandle(IPC.logsExportBundle, async () => {
+  const logFile = log.transports.file.getFile().path;
+  const logDir = path.dirname(logFile);
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+  const staging = path.join(app.getPath("temp"), `concourse-support-${stamp}`);
+  fs.mkdirSync(staging, { recursive: true });
+  try {
+    for (const f of fs.readdirSync(logDir)) {
+      if (f.endsWith(".log")) {
+        try {
+          fs.copyFileSync(path.join(logDir, f), path.join(staging, f));
+        } catch {
+          /* rotated file mid-write; skip */
+        }
+      }
+    }
+    const info = [
+      `Concourse ${app.getVersion()}`,
+      `Electron ${process.versions.electron} · Node ${process.versions.node}`,
+      `${os.type()} ${os.release()} (${os.arch()})`,
+      `Exported ${new Date().toISOString()}`,
+    ].join("\n");
+    fs.writeFileSync(path.join(staging, "info.txt"), info, "utf8");
+    const dest = path.join(app.getPath("desktop"), `concourse-support-${stamp}.zip`);
+    await new Promise<void>((resolve, reject) => {
+      execFile("ditto", ["-c", "-k", "--sequesterRsrc", staging, dest], (error) =>
+        error ? reject(error) : resolve(),
+      );
+    });
+    shell.showItemInFolder(dest);
+    return { ok: true as const, path: dest };
+  } catch (e) {
+    log.error("[support-bundle] export failed", e);
+    return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true });
+  }
+});
+
+ipcMain.on(IPC.logsRendererError, (_evt, payload: { message?: string; stack?: string; source?: string }) => {
+  if (!payload || typeof payload !== "object") return;
+  log.error(
+    "[renderer]",
+    String(payload.source ?? "error"),
+    String(payload.message ?? "").slice(0, 2000),
+    String(payload.stack ?? "").slice(0, 4000),
+  );
 });
 
 // Pick a template file (markdown/text) to attach to a workflow; returns its text.

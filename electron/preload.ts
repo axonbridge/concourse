@@ -141,6 +141,13 @@ const electronAPI = {
     describe: (paths: string[]): Promise<Array<{ path: string; name: string; dataUrl?: string }>> =>
       ipcRenderer.invoke(IPC.attachmentsDescribe, paths),
   },
+  logs: {
+    reveal: (): Promise<{ ok: boolean; path: string }> => ipcRenderer.invoke(IPC.logsReveal),
+    exportBundle: (): Promise<{ ok: true; path: string } | { ok: false; error: string }> =>
+      ipcRenderer.invoke(IPC.logsExportBundle),
+    rendererError: (payload: { message?: string; stack?: string; source?: string }): void =>
+      ipcRenderer.send(IPC.logsRendererError, payload),
+  },
   saveTextFile: (
     defaultName: string,
     content: string,

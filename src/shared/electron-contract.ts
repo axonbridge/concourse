@@ -211,6 +211,11 @@ export type ElectronBridge = {
     stage: (cwd: string, paths: string[]) => Promise<Array<{ rel: string; name: string }>>;
     describe: (paths: string[]) => Promise<Array<{ path: string; name: string; dataUrl?: string }>>;
   };
+  logs: {
+    reveal: () => Promise<{ ok: boolean; path: string }>;
+    exportBundle: () => Promise<{ ok: true; path: string } | { ok: false; error: string }>;
+    rendererError: (payload: { message?: string; stack?: string; source?: string }) => void;
+  };
   saveTextFile: (
     defaultName: string,
     content: string,
