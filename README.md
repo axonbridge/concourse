@@ -26,10 +26,13 @@ OKF-aligned), not any vendor's convention. `.claude/`, `AGENTS.md`, and
   `.mcp.json` (remote HTTP or local stdio); sign in once (built-in OAuth,
   tokens in the OS keychain) and the integration works on every engine —
   including Jira/Confluence on a GPT model.
-- **Knowledge graph**: every run leaves a record; agents check workspace facts
-  → global facts → live sources (never serving stale point-in-time numbers),
-  and save durable discoveries back behind approvals. `/curate-knowledge` is
-  the janitor.
+- **Knowledge graph (OKF)**: knowledge follows the Open Knowledge Format —
+  markdown concept files with typed frontmatter, linked into a graph. Every
+  command run (and any chat that writes files) leaves a run record; meeting
+  notes, 1:1s, and decisions shared in chat are captured as concept notes;
+  agents check workspace facts → org facts → live sources (never serving
+  stale point-in-time numbers) and save durable discoveries back behind
+  approvals. `/curate-knowledge` is the janitor.
 - **Adopt any folder — or clone one**: adding an empty folder scaffolds a
   ready workspace; adding an existing repo (local or cloned by URL from the
   Add Project dialog) offers an additive-only "Prepare for Concourse" chat
@@ -67,6 +70,10 @@ OKF-aligned), not any vendor's convention. `.claude/`, `AGENTS.md`, and
   (experimental).
 
 ## Architecture in one screen
+
+The full picture — layers, CWF projections, the OKF knowledge flow, approval
+policy, and runtime topology, with diagrams — lives in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```
 renderer (React, TanStack Start)      — speaks ChatEvent only
