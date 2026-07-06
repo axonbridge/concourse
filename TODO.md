@@ -22,6 +22,16 @@ The Cursor status line shows live session token usage, but Concourse still lacks
 
 ---
 
+## Sharing & deploys
+
+Local tunnel sharing shipped (Share button: Tailscale serve / cloudflared / ngrok / Funnel). Next step is real deploys.
+
+- [ ] **Dokploy integration** — deploy per-branch from a project (we already run Dokploy); surface it as a third option next to private/public in the Share dialog, with deploy status and the deployed URL
+- [ ] **Tunnel persistence** — optionally re-establish tunnels after an app restart (registry is in-memory today)
+- [ ] **Windows/Linux tunnel-tool installs** — setup commands are macOS-shaped (brew/official binaries)
+
+---
+
 ## Workflow pipelines (exploratory)
 
 Idea: n8n-style visual task flows for repeatable agent workflows — define, visualize, and run consistently. May overlap with GitHub/GitLab/Codeberg/Forgejo CI; evaluate whether the overhead is worth it vs. delegating to existing CI.
