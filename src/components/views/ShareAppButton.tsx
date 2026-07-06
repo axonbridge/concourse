@@ -6,6 +6,7 @@ import { Modal } from "~/components/ui/Modal";
 import { useDockerStatus } from "~/queries/docker";
 import { useShareStart, useShareStatus, useShareStop } from "~/queries/share";
 import { useUserTerminals } from "~/lib/user-terminal-store";
+import { openExternal } from "~/lib/open-external";
 import {
   CLOUDFLARED_SETUP_COMMAND,
   NGROK_SETUP_COMMAND,
@@ -127,7 +128,23 @@ export function ShareAppButton({
           void navigator.clipboard?.writeText(t.url).catch(() => {});
           toast.success("Tunnel started — link copied to clipboard");
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : "Could not start tunnel"),
+        onError: (e) => {
+          const message = e instanceof Error ? e.message : "Could not start tunnel";
+          // Tailnet features (serve/funnel) need a one-time admin opt-in; the
+          // server surfaces the enable link — make it a clickable action.
+          const enableUrl = message.match(/https:\/\/login\.tailscale\.com\/\S+/)?.[0];
+          if (enableUrl) {
+            toast.error(message.slice(0, message.indexOf("https://")).trim() || "Tailscale needs a one-time opt-in", {
+              duration: 12_000,
+              action: {
+                label: "Open enable page",
+                onClick: () => openExternal(enableUrl),
+              },
+            });
+            return;
+          }
+          toast.error(message);
+        },
       },
     );
   };
