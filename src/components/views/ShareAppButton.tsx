@@ -44,18 +44,23 @@ export function ShareAppButton({
   const { data: docker } = useDockerStatus(projectId, worktreeId, { enabled: enabled && open });
   const startM = useShareStart(projectId);
   const stopM = useShareStop(projectId);
-  const { createHomeSetupTerminal } = useUserTerminals();
+  const { createTerminal, createHomeSetupTerminal } = useUserTerminals();
 
   const runSetup = (tool: "cloudflared" | "ngrok" | "tailscale", name: string, command: string) => {
     if (pendingSetup[tool]) return;
     setPendingSetup((cur) => ({ ...cur, [tool]: true }));
-    void createHomeSetupTerminal(name, command).then(
-      () => toast.success(`${name} opened in a terminal below — follow it, then come back`),
-      (e) => {
-        setPendingSetup((cur) => ({ ...cur, [tool]: false }));
-        toast.error(e instanceof Error ? e.message : `Could not open ${name}`);
-      },
-    );
+    // Run in the CURRENT PROJECT's terminal drawer so it's visible from this
+    // page — home-scope terminals only spawn on the dashboard, which left the
+    // command never executing (and the chip pending forever).
+    void createTerminal({ name, startCommand: command })
+      .then((t) => t ?? createHomeSetupTerminal(name, command))
+      .then(
+        () => toast.success(`${name} is running in the terminal panel below`),
+        (e) => {
+          setPendingSetup((cur) => ({ ...cur, [tool]: false }));
+          toast.error(e instanceof Error ? e.message : `Could not open ${name}`);
+        },
+      );
   };
 
   const tunnels = (open ? data : activePill)?.tunnels ?? [];
