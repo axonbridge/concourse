@@ -41,3 +41,15 @@ test-results/
 .concourse/
 CLAUDE.local.md
 .opencode/
+
+# --- pre-publish additions ---
+coverage/
+*.tsbuildinfo
+.eslintcache
+# Concourse-managed worktrees when this repo is itself added as a project
+.worktree/
+# OS noise beyond .DS_Store
+Thumbs.db
+# ad-hoc scratch dirs
+tmp/
+scratch/
