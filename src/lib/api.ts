@@ -41,7 +41,6 @@ export type AppSettings = {
   sessionFinishOsNotificationEnabled: boolean;
   /** Ding when a session-finish or diagram-ready notification arrives. */
   notificationSoundEnabled: boolean;
-  launchOverlayEnabled: boolean;
   automaticUpdateDownloadsEnabled: boolean;
   automaticUpdateInstallOnQuitEnabled: boolean;
   /** Beta: git worktrees per project (off by default). */
@@ -442,7 +441,6 @@ export const api = {
         | "sessionFinishToastEnabled"
         | "sessionFinishOsNotificationEnabled"
         | "notificationSoundEnabled"
-        | "launchOverlayEnabled"
         | "automaticUpdateDownloadsEnabled"
         | "automaticUpdateInstallOnQuitEnabled"
         | "worktreesEnabled"

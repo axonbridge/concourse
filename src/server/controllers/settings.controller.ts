@@ -85,7 +85,6 @@ const updateSettingsBody = z
     sessionFinishToastEnabled: z.boolean(),
     sessionFinishOsNotificationEnabled: z.boolean(),
     notificationSoundEnabled: z.boolean(),
-    launchOverlayEnabled: z.boolean(),
     automaticUpdateDownloadsEnabled: z.boolean(),
     automaticUpdateInstallOnQuitEnabled: z.boolean(),
     worktreesEnabled: z.boolean(),
@@ -189,7 +188,6 @@ function settingsPayload() {
       false,
     ),
     notificationSoundEnabled: getBooleanSetting("notification_sound_enabled", true),
-    launchOverlayEnabled: getBooleanSetting("launch_overlay_enabled", false),
     automaticUpdateDownloadsEnabled: getBooleanSetting(
       "automatic_update_downloads_enabled",
       false,
@@ -246,9 +244,6 @@ export async function update(request: Request): Promise<Response> {
   }
   if (body.notificationSoundEnabled !== undefined) {
     setBooleanSetting("notification_sound_enabled", body.notificationSoundEnabled);
-  }
-  if (body.launchOverlayEnabled !== undefined) {
-    setBooleanSetting("launch_overlay_enabled", body.launchOverlayEnabled);
   }
   if (body.automaticUpdateDownloadsEnabled !== undefined) {
     setBooleanSetting(

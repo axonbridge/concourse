@@ -73,18 +73,10 @@ import {
   TERMINAL_ZOOM_OUT_EVENT,
 } from "~/lib/design-meta";
 import {
-  LAUNCH_INTRO_CACHE_KEY,
-  hasCachedLaunchIntroPreference,
-  readCachedLaunchIntroEnabled,
-  setDocumentLaunchIntroActive,
-  writeCachedLaunchIntroEnabled,
-} from "~/lib/launch-intro";
-import {
   writeCachedWorktreesEnabled,
 } from "~/lib/worktrees-preference";
 import "~/styles.css";
 
-const LAUNCH_OVERLAY_DURATION_MS = 2700;
 const MINIMAL_CACHE_KEY = "mc:minimal";
 const WINDOW_DRAG_LAYER_Z_INDEX = 30;
 const useThemeLayoutEffect =
@@ -100,7 +92,6 @@ const PRE_HYDRATION_THEME_SCRIPT = `(function(){try{
 var d=document.documentElement;
 d.setAttribute("data-theme", localStorage.getItem("mc.theme")==="light"?"light":"dark");
 d.setAttribute("data-minimal","true");
-if(localStorage.getItem(${JSON.stringify(LAUNCH_INTRO_CACHE_KEY)})==="1"){d.setAttribute("data-launch-intro","true");}
 var t=${JSON.stringify(
   Object.fromEntries(ACCENT_COLORS.map((c) => [c.id, { v: c.value, r: c.rgb }])),
 )};
@@ -119,8 +110,6 @@ if(c&&a&&a!==${JSON.stringify(DEFAULT_ACCENT_COLOR)}){
   s.setProperty("--mc-shell-image",'url("/borders/shell_'+a+'.png")');
 }
 }catch(e){}})();`;
-const LAUNCH_AIRLOCK_AUDIO_MS = 1440;
-const LAUNCH_WELCOME_AUDIO_OFFSET_SECONDS = 0.1;
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -177,7 +166,6 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body>
-        <LaunchIntroOverlayController />
         <KeybindingsProvider>
           <TerminalProvider>
             <UserTerminalProvider>
@@ -210,31 +198,6 @@ function RootComponent() {
       </body>
     </html>
   );
-}
-
-function LaunchIntroOverlayController() {
-  const [active, setActive] = useState(false);
-  const finish = useCallback(() => {
-    setDocumentLaunchIntroActive(false);
-    setActive(false);
-  }, []);
-
-  useThemeLayoutEffect(() => {
-    if (!readCachedLaunchIntroEnabled()) {
-      finish();
-      return;
-    }
-    setDocumentLaunchIntroActive(true);
-    setActive(true);
-  }, [finish]);
-
-  useEffect(() => {
-    if (!active) return;
-    const timeout = window.setTimeout(finish, LAUNCH_OVERLAY_DURATION_MS);
-    return () => window.clearTimeout(timeout);
-  }, [active, finish]);
-
-  return <LaunchOverlay active={active} onDone={finish} />;
 }
 
 function Shell() {
@@ -381,15 +344,6 @@ function Shell() {
   useEffect(() => {
     applyAccentColor(settings?.accentColor ?? DEFAULT_ACCENT_COLOR);
   }, [settings?.accentColor]);
-
-  const launchOverlayEnabled = settings?.launchOverlayEnabled;
-
-  useThemeLayoutEffect(() => {
-    if (typeof launchOverlayEnabled !== "boolean") return;
-    if (launchOverlayEnabled || !hasCachedLaunchIntroPreference()) {
-      writeCachedLaunchIntroEnabled(launchOverlayEnabled);
-    }
-  }, [launchOverlayEnabled]);
 
   useThemeLayoutEffect(() => {
     if (typeof settings?.worktreesEnabled !== "boolean") return;
@@ -649,70 +603,3 @@ function Shell() {
   );
 }
 
-function LaunchOverlay({
-  active,
-  onDone,
-}: {
-  active: boolean;
-  onDone: () => void;
-}) {
-  useEffect(() => {
-    if (!active) return;
-    const audioElements: HTMLAudioElement[] = [];
-    const playAudio = (src: string, volume: number, startAtSeconds = 0) => {
-      const audio = new Audio(src);
-      audioElements.push(audio);
-      audio.preload = "auto";
-      audio.volume = volume;
-      if (startAtSeconds > 0) {
-        audio.currentTime = startAtSeconds;
-      }
-      void audio.play().catch(() => {
-        // Browsers may block startup audio until the first user gesture.
-      });
-    };
-
-    playAudio("/audio/welcome.mp3", 0.2, LAUNCH_WELCOME_AUDIO_OFFSET_SECONDS);
-
-    const slideTimeout = window.setTimeout(
-      () => playAudio("/audio/slide.ogg", 0.2),
-      LAUNCH_AIRLOCK_AUDIO_MS,
-    );
-
-    return () => {
-      window.clearTimeout(slideTimeout);
-      for (const audio of audioElements) {
-        audio.pause();
-      }
-    };
-  }, [active]);
-
-  return (
-    <div
-      className="launch-overlay"
-      data-active={active ? "true" : undefined}
-      role="status"
-      aria-label="Concourse loading"
-      onAnimationEnd={(event) => {
-        if (event.currentTarget === event.target) onDone();
-      }}
-    >
-      <div className="launch-overlay__doors" aria-hidden="true">
-        <div className="launch-overlay__door launch-overlay__door--left">
-          <img src="/images/doors.png" alt="" />
-        </div>
-        <div className="launch-overlay__door launch-overlay__door--right">
-          <img src="/images/doors.png" alt="" />
-        </div>
-      </div>
-      <div className="launch-overlay__fog" aria-hidden="true">
-        <span className="launch-overlay__fog-plume launch-overlay__fog-plume--top launch-overlay__fog-plume--left" />
-        <span className="launch-overlay__fog-plume launch-overlay__fog-plume--top launch-overlay__fog-plume--right" />
-        <span className="launch-overlay__fog-plume launch-overlay__fog-plume--bottom launch-overlay__fog-plume--left" />
-        <span className="launch-overlay__fog-plume launch-overlay__fog-plume--bottom launch-overlay__fog-plume--right" />
-        <span className="launch-overlay__fog-floor launch-overlay__fog-floor--top" />
-        <span className="launch-overlay__fog-floor launch-overlay__fog-floor--bottom" />
-      </div>
-    </div>
-  );
-}

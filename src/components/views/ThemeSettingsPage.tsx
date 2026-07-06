@@ -11,10 +11,6 @@ import {
 } from "~/lib/accent-colors";
 import { api, type AppSettings } from "~/lib/api";
 import { queryKeys, useSettings } from "~/queries";
-import {
-  hasCachedLaunchIntroPreference,
-  readCachedLaunchIntroEnabled,
-} from "~/lib/launch-intro";
 import { DEFAULT_TERMINAL_ZOOM_LEVEL } from "~/shared/terminal-zoom";
 import { emptyVoiceCommandAliases } from "~/shared/voice-command-aliases";
 import { useTheme } from "~/lib/use-theme";
@@ -29,11 +25,6 @@ export function ThemeSettingsPage() {
   const { data: settings } = useSettings();
   const accentColor = settings?.accentColor ?? DEFAULT_ACCENT_COLOR;
   const minimalTheme = settings?.minimalTheme ?? false;
-  const launchOverlayEnabled = typeof settings?.launchOverlayEnabled === "boolean"
-    ? settings.launchOverlayEnabled
-    : hasCachedLaunchIntroPreference()
-      ? readCachedLaunchIntroEnabled()
-      : false;
 
   const optimisticSettings = (
     patch: Partial<Pick<AppSettings, "accentColor" | "minimalTheme">>,
@@ -46,7 +37,6 @@ export function ThemeSettingsPage() {
     sessionFinishOsNotificationEnabled:
       settings?.sessionFinishOsNotificationEnabled ?? false,
     notificationSoundEnabled: settings?.notificationSoundEnabled ?? true,
-    launchOverlayEnabled,
     automaticUpdateDownloadsEnabled:
       settings?.automaticUpdateDownloadsEnabled ?? false,
     automaticUpdateInstallOnQuitEnabled:

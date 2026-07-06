@@ -32,7 +32,6 @@ export function TerminalSettingsPage() {
     sessionFinishOsNotificationEnabled:
       settings?.sessionFinishOsNotificationEnabled ?? false,
     notificationSoundEnabled: settings?.notificationSoundEnabled ?? true,
-    launchOverlayEnabled: settings?.launchOverlayEnabled ?? false,
     automaticUpdateDownloadsEnabled: settings?.automaticUpdateDownloadsEnabled ?? false,
     automaticUpdateInstallOnQuitEnabled:
       settings?.automaticUpdateInstallOnQuitEnabled ?? false,

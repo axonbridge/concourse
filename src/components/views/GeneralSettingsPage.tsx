@@ -19,10 +19,6 @@ import {
   useAutoUpdaterState,
 } from "~/queries/mc-auto-updater";
 import { DEFAULT_ACCENT_COLOR } from "~/lib/accent-colors";
-import {
-  readCachedLaunchIntroEnabled,
-  writeCachedLaunchIntroEnabled,
-} from "~/lib/launch-intro";
 import { DEFAULT_TERMINAL_ZOOM_LEVEL } from "~/shared/terminal-zoom";
 import {
   readOsNotificationPermission,
@@ -45,9 +41,6 @@ export function GeneralSettingsPage() {
     settings?.automaticUpdateDownloadsEnabled ?? false;
   const automaticUpdateInstallOnQuitEnabled =
     settings?.automaticUpdateInstallOnQuitEnabled ?? false;
-  const [launchOverlayEnabled, setLaunchOverlayEnabledState] = useState(
-    () => readCachedLaunchIntroEnabled(),
-  );
   const [permission, setPermission] = useState<OsNotificationPermission>("default");
   const [permissionHint, setPermissionHint] = useState<string | null>(null);
 
@@ -64,12 +57,6 @@ export function GeneralSettingsPage() {
     return () => window.removeEventListener("focus", refreshPermission);
   }, []);
 
-  useEffect(() => {
-    if (typeof settings?.launchOverlayEnabled !== "boolean") return;
-    setLaunchOverlayEnabledState(settings.launchOverlayEnabled);
-    writeCachedLaunchIntroEnabled(settings.launchOverlayEnabled);
-  }, [settings?.launchOverlayEnabled]);
-
   const optimisticSettings = (
     patch: Partial<
       Pick<
@@ -79,7 +66,6 @@ export function GeneralSettingsPage() {
         | "sessionFinishToastEnabled"
         | "sessionFinishOsNotificationEnabled"
         | "notificationSoundEnabled"
-        | "launchOverlayEnabled"
         | "automaticUpdateDownloadsEnabled"
         | "automaticUpdateInstallOnQuitEnabled"
       >
@@ -92,7 +78,6 @@ export function GeneralSettingsPage() {
     sessionFinishToastEnabled: toastEnabled,
     sessionFinishOsNotificationEnabled: osNotificationEnabled,
     notificationSoundEnabled,
-    launchOverlayEnabled,
     automaticUpdateDownloadsEnabled,
     automaticUpdateInstallOnQuitEnabled,
     gitDiffChangedFilesView: settings?.gitDiffChangedFilesView ?? null,
@@ -125,7 +110,6 @@ export function GeneralSettingsPage() {
         | "sessionFinishToastEnabled"
         | "sessionFinishOsNotificationEnabled"
         | "notificationSoundEnabled"
-        | "launchOverlayEnabled"
         | "automaticUpdateDownloadsEnabled"
         | "automaticUpdateInstallOnQuitEnabled"
       >
@@ -153,29 +137,6 @@ export function GeneralSettingsPage() {
 
   const setNotificationSoundEnabled = async (enabled: boolean) => {
     await updateSettings({ notificationSoundEnabled: enabled });
-  };
-
-  const setLaunchOverlayEnabled = (enabled: boolean) => {
-    setLaunchOverlayEnabledState(enabled);
-    writeCachedLaunchIntroEnabled(enabled);
-    queryClient.setQueryData<AppSettings>(queryKeys.settings, (current) =>
-      current ? { ...current, launchOverlayEnabled: enabled } : current,
-    );
-    void api
-      .updateSettings({ launchOverlayEnabled: enabled })
-      .then((next) => {
-        queryClient.setQueryData<AppSettings>(queryKeys.settings, (current) => ({
-          ...(current ?? optimisticSettings({})),
-          ...next,
-          launchOverlayEnabled: enabled,
-        }));
-      })
-      .catch((error) => {
-        console.error("[settings] failed to sync launch intro preference:", error);
-        queryClient.setQueryData<AppSettings>(queryKeys.settings, (current) =>
-          current ? { ...current, launchOverlayEnabled: enabled } : current,
-        );
-      });
   };
 
   const setAutomaticUpdateDownloadsEnabled = async (enabled: boolean) => {
@@ -253,15 +214,6 @@ export function GeneralSettingsPage() {
             description="Cursor and card gradients follow the pointer across the workspace."
             checked={mouseGradientEnabled}
             onChange={setMouseGradientEnabled}
-            label="Enable"
-          />
-        </Field>
-        <Field label="Startup loading screen">
-          <ToggleRow
-            title="Show launch intro"
-            description="Sliding doors, voice, and sound effects play the next time Concourse loads."
-            checked={launchOverlayEnabled}
-            onChange={setLaunchOverlayEnabled}
             label="Enable"
           />
         </Field>
