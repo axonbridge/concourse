@@ -2,6 +2,11 @@
 
 All notable changes to this project, newest first.
 
+## 0.1.0 — the foundation release
+
+Concourse's new starting point: version reset from the POC-era 0.x line.
+Everything below is what the foundation ships with.
+
 - ✨ Share dialog: expose a locally-running port as a private tailnet URL (Tailscale serve) or public link (cloudflared / ngrok / Tailscale Funnel) — provider picker chips with one-click tool installs and live install state, inline errors with the tailnet enable link as a button
 - ✨ Docker compose control: header pill with service health, start/stop/restart for the stack, engine detection and launch (Docker/Rancher/OrbStack); stopped containers read as "stopped", not errors
 - ✨ Codex sandbox: network access enabled in workspace-write (git push/pull, installs, APIs, Docker daemon all work); the chat shield toggle lifts the sandbox entirely (fresh + resumed turns)
