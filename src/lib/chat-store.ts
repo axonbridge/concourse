@@ -35,6 +35,7 @@ type SessionState = {
   started?: boolean;
   // Auto-approve file writes for this session (the "create a workflow" builder).
   autoApproveWrites?: boolean;
+  privateKnowledge?: boolean;
   dangerouslySkipApprovals?: boolean;
   // Onboarding intro shown before the first message (what the command does +
   // example prompts). Cleared once the user sends.
@@ -169,6 +170,7 @@ export const chatStore = {
       description?: string;
       examples?: string[];
       autoApproveWrites?: boolean;
+      privateKnowledge?: boolean;
       dangerouslySkipApprovals?: boolean;
     },
   ) {
@@ -182,6 +184,7 @@ export const chatStore = {
     state.baseUrl = opts.baseUrl;
     state.pendingCommand = opts.command;
     state.autoApproveWrites = opts.autoApproveWrites;
+    state.privateKnowledge = opts.privateKnowledge;
     state.dangerouslySkipApprovals = opts.dangerouslySkipApprovals;
     state.intro = { description: opts.description ?? "", examples: opts.examples ?? [] };
     sessions.set(sessionId, state);
@@ -196,19 +199,35 @@ export const chatStore = {
     if (!state) return;
     if (state.started) {
       const engine = resolveChatAgent((state.agent as EngineId | undefined) ?? null);
-      if (aiProviderInfo(engine).kind !== "direct") return;
-      void getElectron()?.chat.setModel(sessionId, model);
+      if (aiProviderInfo(engine).kind === "direct") {
+        void getElectron()?.chat.setModel(sessionId, model);
+      } else if (state.providerSessionId) {
+        // Harness engines pin their model per CONNECTION, not per conversation:
+        // end the backend session; the next message resumes the same provider
+        // conversation with the new model (the Stop-button machinery).
+        state.interrupted = true;
+        state.activity = undefined;
+        void getElectron()?.chat.stop(sessionId);
+      } else {
+        return; // live but no provider session yet — nothing to reconnect
+      }
     }
     state.model = model;
+    // Persist per session so reopening after an app restart keeps the model.
+    void api.updateTask(sessionId, { model: model ?? null }).catch(() => {});
     notify(sessionId);
   },
 
-  // Flip the session-wide "skip all approvals" switch. Only meaningful before
-  // the backend session starts — the flag is fixed at chat.start.
+  // Flip the session-wide "skip all approvals" switch — live: the engine
+  // consults it per action, so it applies to the next tool call. Persisted on
+  // the task so reopening after a restart keeps the choice. Ungranted
+  // credential commands still require approval regardless.
   setDangerouslySkipApprovals(sessionId: string, value: boolean) {
     const state = sessions.get(sessionId);
-    if (!state || state.started) return;
+    if (!state) return;
     state.dangerouslySkipApprovals = value;
+    if (state.started) void getElectron()?.chat.setSkipApprovals(sessionId, value);
+    void api.updateTask(sessionId, { claudeSkipPermissions: value }).catch(() => {});
     notify(sessionId);
   },
 
@@ -228,6 +247,8 @@ export const chatStore = {
       baseUrl?: string;
       resume?: boolean;
       autoApproveWrites?: boolean;
+      disallowShell?: boolean;
+      privateKnowledge?: boolean;
       dangerouslySkipApprovals?: boolean;
     },
   ) {
@@ -243,6 +264,7 @@ export const chatStore = {
     state.model = opts.model;
     state.baseUrl = opts.baseUrl;
     state.autoApproveWrites = opts.autoApproveWrites;
+    state.privateKnowledge = opts.privateKnowledge;
     state.dangerouslySkipApprovals = opts.dangerouslySkipApprovals;
     sessions.set(sessionId, state);
     notify(sessionId);
@@ -256,6 +278,8 @@ export const chatStore = {
       providerSessionId: opts.providerSessionId,
       resume: opts.resume,
       autoApproveWrites: opts.autoApproveWrites,
+      disallowShell: opts.disallowShell,
+      privateKnowledge: opts.privateKnowledge,
       dangerouslySkipApprovals: opts.dangerouslySkipApprovals,
     });
   },
@@ -285,6 +309,13 @@ export const chatStore = {
   ) {
     const state = sessions.get(sessionId);
     if (!state) return;
+    // A friendly display substitute (Handoff button, attachments) only exists
+    // in this renderer's memory — embed it in the ENGINE text inside a marker
+    // so a post-restart replay can recover it instead of showing the raw
+    // prompt (which reads like the conversation was rewritten).
+    const engineText = opts?.displayText
+      ? `<concourse-display>${opts.displayText}</concourse-display>\n\n${text}`
+      : text;
     if (state.interrupted) {
       // Restart the ended backend session, continuing the same provider
       // conversation. Replay repopulates the transcript, so clear our copy.
@@ -295,13 +326,14 @@ export const chatStore = {
       void getElectron()?.chat.start({
         sessionId,
         cwd: state.cwd,
-        initialText: text,
+        initialText: engineText,
         agent: state.agent,
         model: state.model,
         baseUrl: state.baseUrl,
         providerSessionId: state.providerSessionId,
         resume: !!state.providerSessionId,
         autoApproveWrites: state.autoApproveWrites,
+        privateKnowledge: state.privateKnowledge,
         dangerouslySkipApprovals: state.dangerouslySkipApprovals,
       });
       return;
@@ -336,6 +368,7 @@ export const chatStore = {
         providerSessionId: state.providerSessionId,
         resume: false,
         autoApproveWrites: state.autoApproveWrites,
+        privateKnowledge: state.privateKnowledge,
         dangerouslySkipApprovals: state.dangerouslySkipApprovals,
       });
       return;
@@ -359,20 +392,21 @@ export const chatStore = {
       void getElectron()?.chat.start({
         sessionId,
         cwd: state.cwd,
-        initialText: text,
+        initialText: engineText,
         agent: state.agent,
         model: state.model,
         baseUrl: state.baseUrl,
         providerSessionId: state.providerSessionId,
         resume: false,
         autoApproveWrites: state.autoApproveWrites,
+        privateKnowledge: state.privateKnowledge,
         dangerouslySkipApprovals: state.dangerouslySkipApprovals,
       });
       return;
     }
 
     notify(sessionId);
-    void getElectron()?.chat.send(sessionId, text);
+    void getElectron()?.chat.send(sessionId, engineText);
   },
 
   respondPermission(sessionId: string, requestId: string, allow: boolean) {

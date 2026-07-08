@@ -101,11 +101,21 @@ tags: [knowledge, protocol]
 1. Check this workspace's \`knowledge/facts/\` AND the org facts folder (your
    context states its location) before querying external sources.
 2. Judge freshness by kind: stable facts (field ids, conventions) are served
-   with citation + date and a "refresh" escape hatch; point-in-time numbers are
-   NEVER served from knowledge.
-3. On miss or staleness, fetch live and UPDATE the fact file.
+   with citation + date and a "refresh" escape hatch; point-in-time numbers
+   only from facts marked \`kind: point-in-time\` with a \`captured\` datetime
+   within the last 4 hours — labeled "as of <time>" — otherwise fetch live.
+3. On miss or staleness, fetch live and UPDATE the fact file. When an answer
+   mixes knowledge with reasoning, always label which parts are verified
+   (cited) and which are inference — never present deduction as known fact.
 4. Save durable discoveries back to the right scope (org-wide → org facts;
    workspace-only → here). Writes go through the normal approval.
+5. Multi-session efforts keep ONE living initiative note in
+   \`knowledge/projects/<initiative>.md\` (goal, status, owner, links);
+   retire stale material to \`knowledge/archive/\` instead of deleting.
+6. Handoffs: when the user must pass work to someone else, write
+   \`knowledge/notes/<yyyy-mm-dd>-<topic>-handoff.md\` (goal, evidence, ruled
+   out + why, hypothesis, next steps, linked files/facts) and point them at
+   project menu → Share knowledge to export it.
 
 ## Conversational knowledge (OKF)
 
@@ -167,7 +177,7 @@ This workspace keeps a knowledge graph in \`knowledge/\` — plain markdown, lin
 
 ## Conventions
 
-- Workflow deliverables are written to \`outputs/<command>/\` — never to the workspace root.
+- Workflow deliverables — documents and assets of ANY kind — are written straight to \`outputs/<command>/\` (ad-hoc chat deliverables: \`outputs/<topic>/\`). Never to the workspace root, and never ask where or whether to save — write it, then cite the path. For Word/PDF versions of markdown, point the user at Outputs panel → click the file → Export (native) instead of installing converters.
 - Agent-authored helper scripts live in \`.scripts/\`.
 - Every claim cites its source. Never invent numbers; if data is missing, say so.
 - Outputs are decision-oriented — lead with what changed and what needs attention.

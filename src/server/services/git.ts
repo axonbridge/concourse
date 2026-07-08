@@ -775,16 +775,41 @@ export type CreatePullRequestResult =
       baseBranch: string;
     };
 
-export type PullResult = { kind: "pulled" | "up-to-date"; summary: string };
+export type PullResult = {
+  kind: "pulled" | "up-to-date" | "needs-stash" | "stash-conflict";
+  summary: string;
+};
 
 /** Fast-forward the current branch from its upstream. Divergent histories are
- *  refused with a clear error rather than auto-merged. */
-export async function pull(projectId: string, worktreeId?: string | null): Promise<PullResult> {
+ *  refused with a clear error rather than auto-merged. When local changes
+ *  block the pull we return `needs-stash` so the UI can offer stash → pull →
+ *  pop; with `opts.stash` we do exactly that, restoring the stash even when
+ *  the pull itself fails. */
+export async function pull(
+  projectId: string,
+  worktreeId?: string | null,
+  opts: { stash?: boolean } = {},
+): Promise<PullResult> {
   const cwd = projectCwd(projectId, worktreeId);
   await assertGitRepository(cwd);
+
+  let stashed = false;
+  if (opts.stash) {
+    const st = await runGit(
+      cwd,
+      ["stash", "push", "--include-untracked", "-m", "Concourse: auto-stash before pull"],
+      { timeoutMs: PUSH_TIMEOUT_MS },
+    );
+    if (st.code !== 0) {
+      throw new GitError("Could not stash local changes", st.stderr.trim() || `exit ${st.code}`);
+    }
+    stashed = !/No local changes to save/i.test(`${st.stdout}\n${st.stderr}`);
+  }
+
   const r = await runGit(cwd, ["pull", "--ff-only"], { timeoutMs: PUSH_TIMEOUT_MS });
   if (r.code !== 0) {
     const stderr = r.stderr.trim();
+    if (stashed) await runGit(cwd, ["stash", "pop"]);
     if (/not possible to fast-forward|divergent/i.test(stderr)) {
       throw new GitError(
         "Local and remote have diverged — resolve in a terminal (rebase or merge), then pull again.",
@@ -794,12 +819,37 @@ export async function pull(projectId: string, worktreeId?: string | null): Promi
     if (/no tracking information|no such ref|couldn't find remote ref/i.test(stderr)) {
       throw new GitError("This branch has no upstream to pull from.", stderr);
     }
+    if (
+      !opts.stash &&
+      /would be overwritten|commit your changes or stash them|cannot pull with rebase|unstaged changes|uncommitted changes|cannot rebase/i.test(
+        stderr,
+      )
+    ) {
+      return { kind: "needs-stash", summary: "Local changes block the pull." };
+    }
     throw new GitError("git pull failed", stderr || `exit ${r.code}`);
   }
+
   const out = r.stdout.trim();
-  if (/Already up to date/i.test(out)) return { kind: "up-to-date", summary: "Already up to date." };
-  const last = out.split("\n").filter(Boolean).pop() ?? "Pulled latest changes.";
-  return { kind: "pulled", summary: last };
+  const upToDate = /Already up to date/i.test(out);
+  let summary = upToDate
+    ? "Already up to date."
+    : (out.split("\n").filter(Boolean).pop() ?? "Pulled latest changes.");
+
+  if (stashed) {
+    const pop = await runGit(cwd, ["stash", "pop"], { timeoutMs: PUSH_TIMEOUT_MS });
+    if (pop.code !== 0) {
+      // git keeps the stash entry when pop conflicts, so nothing is lost.
+      return {
+        kind: "stash-conflict",
+        summary:
+          "Pulled, but restoring your changes hit conflicts. Resolve the conflicted files, then run `git stash drop` — your changes are still safe in the stash.",
+      };
+    }
+    summary += " Your local changes were stashed and restored.";
+  }
+
+  return { kind: upToDate ? "up-to-date" : "pulled", summary };
 }
 
 export async function push(projectId: string, worktreeId?: string | null): Promise<PushResult> {

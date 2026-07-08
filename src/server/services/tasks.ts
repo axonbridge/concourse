@@ -27,7 +27,8 @@ export function listTasksForProject(
   projectId: string,
   scopeId: string | null = LOCAL_SCOPE_ID,
 ): Task[] {
-  return findTasksByProjectId(projectId, normalizeScopeId(scopeId));
+  // System tasks (background jobs) never appear in session lists.
+  return findTasksByProjectId(projectId, normalizeScopeId(scopeId)).filter((t) => !t.system);
 }
 
 export function listTasksForProjectWorktree(
@@ -39,7 +40,7 @@ export function listTasksForProjectWorktree(
     projectId,
     worktreeId,
     normalizeScopeId(scopeId),
-  );
+  ).filter((t) => !t.system);
 }
 
 export function getTask(id: string): Task | null {
@@ -59,6 +60,8 @@ export function createTask(input: {
   claudeSessionId?: string | null;
   claudeSkipPermissions?: boolean;
   claudeBareSession?: boolean;
+  model?: string | null;
+  system?: boolean;
   mode?: "terminal" | "chat";
 }): Task {
   if (!input.projectId) throw new Error("projectId required");
@@ -91,7 +94,9 @@ export function createTask(input: {
     pinned: false,
     claudeSessionId: input.claudeSessionId ?? null,
     claudeSkipPermissions: input.claudeSkipPermissions ?? false,
+    model: input.model ?? null,
     claudeBareSession: input.claudeBareSession ?? false,
+    system: input.system ?? false,
     createdAt: now,
     updatedAt: now,
   };
@@ -152,6 +157,7 @@ export function updateTask(
       | "pinned"
       | "description"
       | "claudeSessionId"
+      | "model"
       | "claudeSkipPermissions"
       | "claudeBareSession"
     >

@@ -11,6 +11,9 @@ import {
   updateCustomCommand,
   readCommandBundle,
   importCommandBundle,
+  readKnowledgeManifest,
+  readKnowledgeBundle,
+  importKnowledgeBundle,
   refreshBranch,
   togglePin,
   updateProject,
@@ -73,6 +76,7 @@ const updateProjectBody = z
     pinned: z.boolean(),
     branch: z.string(),
     gitEnabled: z.boolean(),
+    private: z.boolean(),
     launchUrl: z.string().nullable(),
     worktreeSetupCommand: z.string().max(500).nullable(),
     rememberAgentSettings: z.boolean(),
@@ -270,6 +274,64 @@ export async function importCommand(rawId: string, request: Request): Promise<Re
   if (!body.ok) return body.response;
   try {
     return json({ imported: importCommandBundle(parsed.data, body.data.bundle) });
+  } catch (e) {
+    return jsonError(HTTP_BAD_REQUEST, e instanceof Error ? e.message : "Import failed");
+  }
+}
+
+// ── Knowledge handoff bundles ──────────────────────────────────────────────
+
+export async function knowledgeManifest(rawId: string): Promise<Response> {
+  const parsed = idParam.safeParse(rawId);
+  if (!parsed.success) return notFound();
+  try {
+    return json({ manifest: readKnowledgeManifest(parsed.data) });
+  } catch (e) {
+    return jsonError(HTTP_BAD_REQUEST, e instanceof Error ? e.message : "Manifest failed");
+  }
+}
+
+const knowledgeSelectionBody = z.object({
+  facts: z.array(z.string()),
+  notes: z.array(z.string()),
+  workflows: z.array(z.string()),
+  documents: z.array(z.string()).optional(),
+  attachments: z.array(z.string()).optional(),
+});
+
+export async function knowledgeBundle(rawId: string, request: Request): Promise<Response> {
+  const parsed = idParam.safeParse(rawId);
+  if (!parsed.success) return notFound();
+  const body = await parseJsonBody(request, knowledgeSelectionBody);
+  if (!body.ok) return body.response;
+  try {
+    return json({ bundle: readKnowledgeBundle(parsed.data, body.data) });
+  } catch (e) {
+    return handleDomainError(e) ?? jsonError(HTTP_BAD_REQUEST, e instanceof Error ? e.message : "Export failed");
+  }
+}
+
+const namedContent = z.object({ name: z.string(), content: z.string() });
+const importKnowledgeBody = z.object({
+  bundle: z.object({
+    version: z.literal(1),
+    kind: z.literal("knowledge"),
+    title: z.string(),
+    facts: z.array(namedContent),
+    notes: z.array(namedContent),
+    workflows: z.array(importBundleBody.shape.bundle),
+    documents: z.array(namedContent).optional(),
+    assets: z.array(z.object({ name: z.string(), base64: z.string() })).optional(),
+  }),
+});
+
+export async function importKnowledge(rawId: string, request: Request): Promise<Response> {
+  const parsed = idParam.safeParse(rawId);
+  if (!parsed.success) return notFound();
+  const body = await parseJsonBody(request, importKnowledgeBody);
+  if (!body.ok) return body.response;
+  try {
+    return json({ report: importKnowledgeBundle(parsed.data, body.data.bundle) });
   } catch (e) {
     return jsonError(HTTP_BAD_REQUEST, e instanceof Error ? e.message : "Import failed");
   }

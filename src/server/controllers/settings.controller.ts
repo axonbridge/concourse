@@ -106,6 +106,9 @@ const updateSettingsBody = z
     aiCredentialByProvider: z.record(z.string(), z.enum(AI_CREDENTIAL_MODES)),
     aiCustomBaseUrl: z.string().max(500),
     voiceCommandAliases: voiceCommandAliasesBody,
+    onboardingCompleted: z.boolean(),
+    orgCurationEnabled: z.boolean(),
+    orgCurationLastRunAt: z.number().int().nullable(),
   })
   .partial();
 
@@ -210,6 +213,13 @@ function settingsPayload() {
     aiCredentialByProvider: getAiCredentialByProviderSetting(),
     aiCustomBaseUrl: getSetting(AI_CUSTOM_BASE_URL_SETTING_KEY) ?? "",
     voiceCommandAliases: getVoiceCommandAliasesSetting(),
+    onboardingCompleted: getBooleanSetting("onboarding_completed"),
+    orgCurationEnabled: getBooleanSetting("org_curation_enabled", true),
+    orgCurationLastRunAt: (() => {
+      const raw = getSetting("org_curation_last_run_at");
+      const n = raw ? Number(raw) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
   };
 }
 
@@ -324,6 +334,16 @@ export async function update(request: Request): Promise<Response> {
   }
   if (body.voiceCommandAliases !== undefined) {
     setSetting(VOICE_COMMAND_ALIASES_KEY, JSON.stringify(body.voiceCommandAliases));
+  }
+  if (body.onboardingCompleted !== undefined) {
+    setBooleanSetting("onboarding_completed", body.onboardingCompleted);
+  }
+  if (body.orgCurationEnabled !== undefined) {
+    setBooleanSetting("org_curation_enabled", body.orgCurationEnabled);
+  }
+  if (body.orgCurationLastRunAt !== undefined) {
+    if (body.orgCurationLastRunAt === null) deleteSetting("org_curation_last_run_at");
+    else setSetting("org_curation_last_run_at", String(body.orgCurationLastRunAt));
   }
   return json(settingsPayload());
 }

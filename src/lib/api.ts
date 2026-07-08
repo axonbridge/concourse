@@ -1,7 +1,15 @@
 import type { Group, Project, Task, UserTerminal } from "~/db/schema";
 import type { TaskStatus } from "~/shared/domain";
 import type { EngineId } from "~/shared/ai-providers";
-import type { CommandBundle, ProjectCommand, ProjectPathStatus, ProjectWithCounts } from "~/shared/projects";
+import type {
+  CommandBundle,
+  KnowledgeBundleWire,
+  KnowledgeImportReport,
+  KnowledgeManifest,
+  ProjectCommand,
+  ProjectPathStatus,
+  ProjectWithCounts,
+} from "~/shared/projects";
 import { DEV_SERVER_ORIGIN } from "~/shared/dev-server";
 import type {
   CommitResult,
@@ -76,6 +84,12 @@ export type AppSettings = {
   aiCustomBaseUrl: string;
   /** User-defined phrases that map to built-in voice commands. */
   voiceCommandAliases: VoiceCommandAliases;
+  /** First-run onboarding wizard was completed (or skipped). */
+  onboardingCompleted: boolean;
+  /** Background org-knowledge curation (weekly, auto-applied, audit-logged). */
+  orgCurationEnabled: boolean;
+  /** Epoch ms of the last background curation run (null = never). */
+  orgCurationLastRunAt: number | null;
 };
 
 import type { DockerComposeStatus } from "~/server/services/docker";
@@ -218,6 +232,27 @@ export const api = {
       `/api/projects/${id}/commands/import`,
       { method: "POST", body: JSON.stringify({ bundle }) },
     ),
+  knowledgeManifest: (id: string) =>
+    req<{ manifest: KnowledgeManifest }>(`/api/projects/${id}/knowledge/manifest`),
+  knowledgeBundle: (
+    id: string,
+    selection: {
+      facts: string[];
+      notes: string[];
+      workflows: string[];
+      documents?: string[];
+      attachments?: string[];
+    },
+  ) =>
+    req<{ bundle: KnowledgeBundleWire }>(`/api/projects/${id}/knowledge/bundle`, {
+      method: "POST",
+      body: JSON.stringify(selection),
+    }),
+  importKnowledge: (id: string, bundle: KnowledgeBundleWire) =>
+    req<{ report: KnowledgeImportReport }>(`/api/projects/${id}/knowledge/import`, {
+      method: "POST",
+      body: JSON.stringify({ bundle }),
+    }),
   classifyFolder: (path: string) =>
     req<{ kind: "missing" | "empty" | "cwf" | "legacy-claude" | "plain"; isGit: boolean }>(
       `/api/folders/classify?path=${encodeURIComponent(path)}`,
@@ -330,6 +365,7 @@ export const api = {
       claudeSessionId?: string | null;
       claudeSkipPermissions?: boolean;
       claudeBareSession?: boolean;
+      system?: boolean;
       mode?: "terminal" | "chat";
       worktreeId?: string | null;
       scopeId?: string | null;
@@ -350,6 +386,7 @@ export const api = {
       pinned?: boolean;
       description?: string;
       claudeSessionId?: string | null;
+      model?: string | null;
       claudeSkipPermissions?: boolean;
       claudeBareSession?: boolean;
     }
@@ -457,6 +494,9 @@ export const api = {
         | "aiCredentialByProvider"
         | "aiCustomBaseUrl"
         | "voiceCommandAliases"
+        | "onboardingCompleted"
+        | "orgCurationEnabled"
+        | "orgCurationLastRunAt"
       >
     >,
   ) =>
@@ -591,11 +631,16 @@ export const api = {
     req<{ ok: boolean; app: string | null }>(`/api/projects/${projectId}/docker/engine-start`, {
       method: "POST",
     }),
-  gitPull: (projectId: string, worktreeId?: string | null) =>
-    req<{ result: { kind: "pulled" | "up-to-date"; summary: string } }>(
-      `/api/projects/${projectId}/git/pull`,
-      { method: "POST", body: JSON.stringify({ worktreeId: worktreeId ?? null }) },
-    ),
+  gitPull: (projectId: string, worktreeId?: string | null, opts: { stash?: boolean } = {}) =>
+    req<{
+      result: {
+        kind: "pulled" | "up-to-date" | "needs-stash" | "stash-conflict";
+        summary: string;
+      };
+    }>(`/api/projects/${projectId}/git/pull`, {
+      method: "POST",
+      body: JSON.stringify({ worktreeId: worktreeId ?? null, stash: opts.stash ?? false }),
+    }),
   discardGitFile: (projectId: string, file: string, worktreeId?: string | null) =>
     req<{ ok: true }>(`/api/projects/${projectId}/git/discard`, {
       method: "POST",

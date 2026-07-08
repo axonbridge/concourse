@@ -34,6 +34,7 @@ function makeProject(
     savedSkipPermissions: false,
     savedBareSession: false,
     gitEnabled: true,
+    private: false,
     createdAt: 1_000,
     updatedAt: 1_000,
     taskCounts: {

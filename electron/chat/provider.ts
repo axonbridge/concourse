@@ -21,6 +21,10 @@ export type ChatStartOptions = {
   resume?: boolean;
   /** Auto-approve file writes (the workflow builder). Scoped per adapter. */
   autoApproveWrites?: boolean;
+  /** Block shell entirely (background knowledge-curation sessions: file tools only). */
+  disallowShell?: boolean;
+  /** Private project: org knowledge is READ-ONLY — writes to it are denied. */
+  privateKnowledge?: boolean;
   dangerouslySkipApprovals?: boolean;
   /** Model id from the provider's models list (src/shared/ai-providers.ts). */
   model?: string;
@@ -34,6 +38,9 @@ export interface ChatSessionHandle {
   /** Switch the model mid-session. Only stateless-per-request engines (direct)
    *  implement this; harness sessions have their model fixed at start. */
   setModel?(model: string | undefined): void;
+  /** Flip the session's "skip all approvals" switch live (no longer fixed at
+   *  start). Ungranted credential commands still require approval. */
+  setSkipApprovals?(value: boolean): void;
   /** Tear the session down; the adapter emits a final "ended" status. */
   stop(): void;
 }

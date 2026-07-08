@@ -62,6 +62,16 @@ export function TaskCard({
   // The top-right actions swap delete → restore + permanent delete.
   const archived = task.archived;
 
+  // The top-right actions overlay the card, so the title row must reserve
+  // exactly their footprint (30px buttons + 6px gaps) or icons land on text.
+  const actionCount =
+    (onEdit ? 1 : 0) +
+    (!archived && onTogglePinned ? 1 : 0) +
+    (archived && onRestore ? 1 : 0) +
+    (!archived && onArchive ? 1 : 0) +
+    (onDelete ? 1 : 0);
+  const actionsWidth = actionCount ? actionCount * 30 + (actionCount - 1) * 6 + 8 : 0;
+
   const sentinel = isSentinelTitle(task.title);
   const updated = formatRelative(task.updatedAt);
   const toggleTask = () => onToggle(task.id);
@@ -272,7 +282,7 @@ export function TaskCard({
               }}
               style={{
                 pointerEvents: "auto",
-                width: "calc(100% - 36px)",
+                width: `calc(100% - ${actionsWidth}px)`,
                 minWidth: 0,
                 border: "1px solid var(--accent)",
                 borderRadius: 7,
@@ -292,7 +302,7 @@ export function TaskCard({
                 display: "flex",
                 alignItems: "center",
                 gap: 4,
-                width: "calc(100% - 36px)",
+                width: `calc(100% - ${actionsWidth}px)`,
                 minHeight: 24,
                 minWidth: 0,
               }}
@@ -332,7 +342,7 @@ export function TaskCard({
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-                paddingRight: 36,
+                paddingRight: actionsWidth,
               }}
             >
               {task.title}

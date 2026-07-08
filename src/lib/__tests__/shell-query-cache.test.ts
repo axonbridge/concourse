@@ -52,6 +52,7 @@ function makeProject(overrides: Partial<ProjectWithCounts> = {}): ProjectWithCou
     savedSkipPermissions: false,
     savedBareSession: false,
     gitEnabled: true,
+    private: false,
     createdAt: 1,
     updatedAt: 1,
     taskCounts: {

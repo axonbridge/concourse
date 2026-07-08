@@ -36,6 +36,7 @@ const createTaskBody = z.object({
   preview: z.string().optional(),
   claudeSessionId: z.string().nullable().optional(),
   claudeSkipPermissions: z.boolean().optional(),
+  system: z.boolean().optional(),
   claudeBareSession: z.boolean().optional(),
   mode: z.enum(["terminal", "chat"]).optional(),
   worktreeId: z.string().nullable().optional(),
@@ -52,6 +53,7 @@ const updateTaskBody = z
     pinned: z.boolean(),
     description: z.string().max(300),
     claudeSessionId: z.string().nullable(),
+    model: z.string().max(120).nullable(),
     claudeSkipPermissions: z.boolean(),
     claudeBareSession: z.boolean(),
   })

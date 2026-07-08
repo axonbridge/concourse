@@ -31,8 +31,10 @@ const baseTask = {
   archived: false,
   pinned: false,
   claudeSessionId: "00000000-0000-4000-8000-000000000000",
+  model: null,
   claudeSkipPermissions: false,
   claudeBareSession: false,
+  system: false,
   createdAt: 1,
   updatedAt: 1,
 } satisfies Omit<Task, "agent">;

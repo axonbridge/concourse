@@ -180,6 +180,10 @@ export type ElectronBridge = {
       providerSessionId?: string;
       resume?: boolean;
       autoApproveWrites?: boolean;
+      /** Background curation: block shell; file tools only. */
+      disallowShell?: boolean;
+      /** Private project: org knowledge read-only (writes denied). */
+      privateKnowledge?: boolean;
       /** Skip ALL approval cards for this session (chosen at session start). */
       dangerouslySkipApprovals?: boolean;
       /** OpenAI-compatible endpoint for the "custom" direct engine. */
@@ -188,6 +192,7 @@ export type ElectronBridge = {
     send: (sessionId: string, text: string) => Promise<{ ok: boolean }>;
     /** Mid-session model switch — only direct engines honor it (ok: false otherwise). */
     setModel: (sessionId: string, model?: string) => Promise<{ ok: boolean }>;
+    setSkipApprovals: (sessionId: string, value: boolean) => Promise<{ ok: boolean }>;
     respondPermission: (sessionId: string, requestId: string, allow: boolean) => Promise<{ ok: boolean }>;
     stop: (sessionId: string) => Promise<{ ok: boolean }>;
     onEvent: (cb: (event: ChatEvent) => void) => () => void;
@@ -204,11 +209,19 @@ export type ElectronBridge = {
     defaultName: string,
     content: string,
   ) => Promise<{ ok: true; path: string } | { ok: false; error?: string }>;
-  importWorkflowFile: () => Promise<{ name: string; content: string } | null>;
+  importWorkflowFile: () => Promise<{ name: string; content: string; error?: string } | null>;
+  saveKnowledgeBundleFile: (
+    defaultName: string,
+    content: string,
+  ) => Promise<{ ok: true; path: string } | { ok: false; error?: string }>;
   pickTemplateFile: () => Promise<{ name: string; content: string } | null>;
   attachments: {
     pick: () => Promise<Array<{ path: string; name: string; dataUrl?: string }>>;
-    stage: (cwd: string, paths: string[]) => Promise<Array<{ rel: string; name: string }>>;
+    stage: (
+      cwd: string,
+      paths: string[],
+      sessionTitle?: string
+    ) => Promise<Array<{ rel: string; name: string }>>;
     describe: (paths: string[]) => Promise<Array<{ path: string; name: string; dataUrl?: string }>>;
   };
   logs: {
@@ -225,7 +238,9 @@ export type ElectronBridge = {
     defaultName: string,
     html: string,
   ) => Promise<{ ok: true; path: string } | { ok: false; error?: string }>;
+  openPreviewWindow: (cwd: string, relPath: string) => Promise<{ ok: boolean }>;
   openPath: (path: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  revealPath: (path: string) => Promise<{ ok: boolean }>;
   openFile: (path: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   openExternal: (url: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   clipboard: {
@@ -287,6 +302,13 @@ export type ElectronBridge = {
   onCloseIntent: (cb: () => void) => () => void;
   files: {
     list: (projectRoot: string) => Promise<FileListResult>;
+    stat: (
+      projectRoot: string,
+      relPaths: string[]
+    ) => Promise<
+      | { ok: true; mtimes: Record<string, number>; btimes: Record<string, number> }
+      | { ok: false; error: string }
+    >;
     read: (projectRoot: string, relPath: string) => Promise<FileReadResult>;
     write: (
       projectRoot: string,

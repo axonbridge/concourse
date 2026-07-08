@@ -53,3 +53,7 @@ Thumbs.db
 # ad-hoc scratch dirs
 tmp/
 scratch/
+
+# Per-machine app artifacts inside registered projects (never tracked).
+.concourse/
+CLAUDE.local.md

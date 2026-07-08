@@ -43,6 +43,9 @@ export const projects = sqliteTable(
     // project. Off for non-code "business" workspaces whose output is
     // documents, not commits/PRs.
     gitEnabled: integer("git_enabled", { mode: "boolean" }).notNull().default(true),
+    // Private project: sessions here never see the org knowledge store —
+    // reads and writes stay strictly local to this project.
+    private: integer("private", { mode: "boolean" }).notNull().default(false),
     launchCommands: text("launch_commands"),
     customScripts: text("custom_scripts"),
     launchUrl: text("launch_url"),
@@ -119,8 +122,13 @@ export const tasks = sqliteTable(
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
     claudeSessionId: text("claude_session_id"),
+    // Chat sessions: the model chosen in the picker, restored on reopen.
+    model: text("model"),
     claudeSkipPermissions: integer("claude_skip_permissions", { mode: "boolean" }).notNull().default(false),
     claudeBareSession: integer("claude_bare_session", { mode: "boolean" }).notNull().default(false),
+    // System tasks (background jobs like knowledge curation): invisible in
+    // every session list; surfaced only through their own UI (log view).
+    system: integer("system", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },

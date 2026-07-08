@@ -37,6 +37,9 @@ const PROJECT_TASKS_PATH = /^\/api\/projects\/([^/]+)\/tasks$/;
 const PROJECT_COMMANDS_PATH = /^\/api\/projects\/([^/]+)\/commands$/;
 const PROJECT_WORKFLOW_BUILDER_PATH = /^\/api\/projects\/([^/]+)\/workflow-builder$/;
 const PROJECT_COMMANDS_IMPORT_PATH = /^\/api\/projects\/([^/]+)\/commands\/import$/;
+const PROJECT_KNOWLEDGE_MANIFEST_PATH = /^\/api\/projects\/([^/]+)\/knowledge\/manifest$/;
+const PROJECT_KNOWLEDGE_BUNDLE_PATH = /^\/api\/projects\/([^/]+)\/knowledge\/bundle$/;
+const PROJECT_KNOWLEDGE_IMPORT_PATH = /^\/api\/projects\/([^/]+)\/knowledge\/import$/;
 const PROJECT_COMMAND_BUNDLE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+)\/bundle$/;
 const PROJECT_COMMAND_ONE_PATH = /^\/api\/projects\/([^/]+)\/commands\/([^/]+)$/;
 const PROJECT_FILE_PATH = /^\/api\/projects\/([^/]+)\/file$/;
@@ -225,6 +228,21 @@ async function dispatch(
   if (m) {
     const id = decode(m[1]);
     if (method === "POST") return projectsController.importCommand(id, request);
+  }
+  m = pathname.match(PROJECT_KNOWLEDGE_MANIFEST_PATH);
+  if (m) {
+    const id = decode(m[1]);
+    if (method === "GET") return projectsController.knowledgeManifest(id);
+  }
+  m = pathname.match(PROJECT_KNOWLEDGE_BUNDLE_PATH);
+  if (m) {
+    const id = decode(m[1]);
+    if (method === "POST") return projectsController.knowledgeBundle(id, request);
+  }
+  m = pathname.match(PROJECT_KNOWLEDGE_IMPORT_PATH);
+  if (m) {
+    const id = decode(m[1]);
+    if (method === "POST") return projectsController.importKnowledge(id, request);
   }
   m = pathname.match(PROJECT_COMMAND_BUNDLE_PATH);
   if (m) {

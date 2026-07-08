@@ -25,7 +25,13 @@ import { credentialStatus, setCredential, deleteCredential } from "./credentials
 import { listModels, invalidateModelCache } from "./models/catalog";
 import { workspaceServerStatus, authenticateServer, logoutServer } from "./mcp/client";
 import { readGlobalMcpConfig, writeGlobalMcpConfig } from "./mcp/global-config";
-import { bundleToFiles, filesToBundle } from "../src/domain/workspace/okf-bundle";
+import {
+  bundleToFiles,
+  filesToBundle,
+  filesToKnowledgeBundle,
+  knowledgeBundleToFiles,
+  looksLikeKnowledgeBundle,
+} from "../src/domain/workspace/okf-bundle";
 import { isEngineId } from "../src/shared/ai-providers";
 import { registerMcpHandlers } from "./mcp-manager";
 import {
@@ -143,6 +149,9 @@ const TRAFFIC_LIGHT_POSITION_DARWIN = { x: 48, y: 16 } as const;
 augmentProcessEnv();
 
 let win: BrowserWindow | null = null;
+// The URL the renderer is served from — document pop-out windows load the
+// same origin (so the IPC allow-list admits them) on the /preview route.
+let rendererUrl: string | null = null;
 let serverProcess: ChildProcess | null = null;
 let runtimePort: number | null = null;
 
@@ -321,6 +330,7 @@ async function bootDevServer(): Promise<string> {
 
 async function createWindow() {
   const url = isDev ? await bootDevServer() : await startProductionServer();
+  rendererUrl = url;
   // The renderer is only ever loaded from this URL — pin the IPC allow-list
   // to that origin so a future renderer compromise (XSS in markdown, agent
   // output rendered as HTML, an added webview) can't reach the IPC surface.
@@ -679,6 +689,44 @@ safeHandle(
   },
 );
 
+// Pop a document out of the chat side panel into its own app window: a second
+// BrowserWindow on the same origin (IPC allow-list admits it) loading the
+// shell-less /preview route — full-size reading, live mermaid, exports.
+safeHandle(IPC.previewOpenWindow, (_evt, cwd: string, relPath: string) => {
+  if (!rendererUrl || typeof cwd !== "string" || typeof relPath !== "string") {
+    return { ok: false as const };
+  }
+  const target = new URL(rendererUrl);
+  target.pathname = "/preview";
+  target.search = `?cwd=${encodeURIComponent(cwd)}&rel=${encodeURIComponent(relPath)}`;
+  const docWin = new BrowserWindow({
+    width: 1040,
+    height: 860,
+    minWidth: 480,
+    minHeight: 360,
+    backgroundColor: "#000000",
+    title: relPath.split("/").pop(),
+    autoHideMenuBar: true,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+  docWin.once("ready-to-show", () => docWin.show());
+  docWin.webContents.setWindowOpenHandler(({ url: openUrl }) => {
+    void openExternalHttpUrl(openUrl);
+    return { action: "deny" };
+  });
+  docWin.webContents.on("will-navigate", (event, navUrl) => {
+    if (navUrl !== target.toString()) event.preventDefault();
+  });
+  void docWin.loadURL(target.toString());
+  return { ok: true as const };
+});
+
 // Render HTML (our own generated report markup — no scripts) in a hidden window
 // and save it as a PDF via Chromium's built-in printToPDF. No converter deps.
 safeHandle(IPC.dialogExportPdf, async (_evt, defaultName: string, html: string) => {
@@ -717,8 +765,9 @@ safeHandle(IPC.dialogImportWorkflow, async () => {
   const result = await dialog.showOpenDialog(win, {
     // macOS supports picking either a file or a folder from one dialog.
     properties: ["openFile", "openDirectory"],
-    filters: [{ name: "Workflow bundle", extensions: ["md", "json"] }],
-    message: "Pick a workflow bundle folder (or its index.md, or a legacy .json export).",
+    filters: [{ name: "Workflow bundle", extensions: ["zip", "md", "json"] }],
+    message:
+      "Pick a bundle — a .zip export, a bundle folder, its index.md, or a legacy .json export.",
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   let p = result.filePaths[0]!;
@@ -727,6 +776,37 @@ safeHandle(IPC.dialogImportWorkflow, async () => {
     if (!stat.isDirectory() && /\.json$/i.test(p)) {
       // Legacy single-file export — already CommandBundle JSON.
       return { name: path.basename(p), content: fs.readFileSync(p, "utf8") };
+    }
+    if (!stat.isDirectory() && /\.zip$/i.test(p)) {
+      // Zip export — same OKF folder inside; a manual zip may wrap everything
+      // in one top-level folder, so strip a common leading dir when present.
+      const AdmZip = (await import("adm-zip")).default;
+      const entries = new AdmZip(p)
+        .getEntries()
+        .filter((e) => !e.isDirectory && !path.basename(e.entryName).startsWith("."));
+      const names = entries.map((e) => e.entryName.split("/").filter(Boolean));
+      const wrapper =
+        names.length > 0 && names.every((seg) => seg.length > 1 && seg[0] === names[0]![0])
+          ? `${names[0]![0]}/`
+          : "";
+      const files: Record<string, string> = {};
+      const assets: Array<{ name: string; base64: string }> = [];
+      for (const e of entries) {
+        const rel = e.entryName.slice(wrapper.length);
+        if (!rel || rel.split("/").some((s) => s.startsWith("."))) continue;
+        if (rel.startsWith("attachments/")) {
+          assets.push({ name: rel.slice("attachments/".length), base64: e.getData().toString("base64") });
+        } else if (rel.endsWith(".md") || (rel.startsWith("outputs/") && /\.(markdown|txt|csv|json|html)$/i.test(rel))) {
+          files[rel] = e.getData().toString("utf8");
+        }
+      }
+      const bundle = looksLikeKnowledgeBundle(files)
+        ? filesToKnowledgeBundle(files)
+        : filesToBundle(files);
+      if ("kind" in bundle && bundle.kind === "knowledge" && assets.length > 0) {
+        bundle.assets = assets;
+      }
+      return { name: path.basename(p), content: JSON.stringify(bundle) };
     }
     if (!stat.isDirectory()) p = path.dirname(p); // picked index.md → its folder
     const files: Record<string, string> = {};
@@ -737,15 +817,73 @@ safeHandle(IPC.dialogImportWorkflow, async () => {
         const abs = path.join(dir, e.name);
         const rel = prefix ? `${prefix}/${e.name}` : e.name;
         if (e.isDirectory()) collect(abs, rel, depth + 1);
-        else if (e.name.endsWith(".md")) files[rel] = fs.readFileSync(abs, "utf8");
+        else if (
+          e.name.endsWith(".md") ||
+          // Bundle documents (outputs/) travel in any text format.
+          (rel.startsWith("outputs/") && /\.(markdown|txt|csv|json|html)$/i.test(e.name))
+        )
+          files[rel] = fs.readFileSync(abs, "utf8");
       }
     };
     collect(p, "", 0);
-    const bundle = filesToBundle(files);
+    // Knowledge handoff bundles (knowledge/facts + attached workflows) share
+    // this picker: the renderer branches on the JSON's `kind`.
+    const bundle = looksLikeKnowledgeBundle(files)
+      ? filesToKnowledgeBundle(files)
+      : filesToBundle(files);
+    // Binary attachments ride alongside the text map as base64.
+    if ("kind" in bundle && bundle.kind === "knowledge") {
+      const attachDir = path.join(p, "attachments");
+      try {
+        bundle.assets = fs
+          .readdirSync(attachDir, { withFileTypes: true })
+          .filter((e) => e.isFile() && !e.name.startsWith("."))
+          .map((e) => ({
+            name: e.name,
+            base64: fs.readFileSync(path.join(attachDir, e.name)).toString("base64"),
+          }));
+      } catch {
+        /* no attachments folder */
+      }
+    }
     return { name: path.basename(p), content: JSON.stringify(bundle) };
   } catch (e) {
     log.warn("[workflow-import] could not read bundle", e);
-    return null;
+    // Distinct from cancel (null): the renderer surfaces this as an error
+    // toast instead of doing nothing.
+    return { name: path.basename(p), content: "", error: e instanceof Error ? e.message : String(e) };
+  }
+});
+
+// Export a knowledge handoff bundle (facts + notes + documents + attachments +
+// workflows) as ONE .zip — a single shareable artifact. Inside is the same
+// plain OKF folder (index.md + files): unzip it anywhere and it's readable
+// without Concourse.
+safeHandle(IPC.dialogSaveKnowledgeBundle, async (_evt, defaultName: string, content: string) => {
+  if (!win) return { ok: false as const };
+  const result = await dialog.showSaveDialog(win, {
+    defaultPath: defaultName.endsWith(".zip") ? defaultName : `${defaultName}.zip`,
+    buttonLabel: "Export bundle",
+    filters: [{ name: "Concourse bundle", extensions: ["zip"] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false as const };
+  try {
+    const bundle = JSON.parse(content) as import("../src/domain/workspace/okf-bundle").KnowledgeBundle;
+    const AdmZip = (await import("adm-zip")).default;
+    const zip = new AdmZip();
+    for (const [rel, body] of Object.entries(knowledgeBundleToFiles(bundle))) {
+      zip.addFile(rel, Buffer.from(body, "utf8"));
+    }
+    // Attachments are binary (screenshots, xlsx) — real bytes inside the zip.
+    for (const a of bundle.assets ?? []) {
+      const safe = path.basename(a.name);
+      if (!safe || safe.startsWith(".")) continue;
+      zip.addFile(`attachments/${safe}`, Buffer.from(a.base64, "base64"));
+    }
+    zip.writeZip(result.filePath);
+    return { ok: true as const, path: result.filePath };
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
   }
 });
 
@@ -797,7 +935,7 @@ safeHandle(IPC.attachmentsDescribe, (_evt, paths: string[]) => {
 
 // …then staged into <workspace>/.concourse/attachments/ so EVERY engine
 // (Claude, direct, OpenCode) can read them from inside its workspace jail.
-safeHandle(IPC.attachmentsStage, (_evt, cwd: string, paths: string[]) => {
+safeHandle(IPC.attachmentsStage, (_evt, cwd: string, paths: string[], sessionTitle?: string) => {
   if (typeof cwd !== "string" || !Array.isArray(paths)) return [];
   const dir = path.join(cwd, ".concourse", "attachments");
   fs.mkdirSync(dir, { recursive: true });
@@ -815,7 +953,36 @@ safeHandle(IPC.attachmentsStage, (_evt, cwd: string, paths: string[]) => {
       log.warn("[attachments] stage failed", e);
     }
   }
+  // Provenance: which conversation attached what. Engine-readable markdown so
+  // "the screenshot from the pods conversation" is answerable in any session.
+  if (out.length > 0 && typeof sessionTitle === "string" && sessionTitle) {
+    try {
+      const logFile = path.join(dir, "attachments-log.md");
+      if (!fs.existsSync(logFile)) {
+        fs.writeFileSync(
+          logFile,
+          `---\ntype: log\ntitle: Attachments log\ndescription: Which conversation attached which file — newest last.\n---\n\n# Attachments log\n\n`,
+          "utf8",
+        );
+      }
+      const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+      const lines = out
+        .map((a) => `- ${a.rel.split("/").pop()} — attached ${stamp} · session "${sessionTitle}"`)
+        .join("\n");
+      fs.appendFileSync(logFile, `${lines}\n`, "utf8");
+    } catch (e) {
+      log.warn("[attachments] log append failed", e);
+    }
+  }
   return out;
+});
+
+// Reveal any file in Finder/Explorer with the file selected (e.g. "Show in
+// folder" from the document preview's export menu).
+safeHandle(IPC.shellRevealPath, (_evt, p: string) => {
+  if (typeof p !== "string" || !p) return { ok: false as const };
+  shell.showItemInFolder(p);
+  return { ok: true as const };
 });
 
 // Troubleshooting: reveal the log file, export a support bundle, and accept

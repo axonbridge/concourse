@@ -37,6 +37,7 @@ import { AgentUpdateRequiredDialog } from "~/components/views/AgentUpdateRequire
 import { ProjectDialog } from "~/components/views/ProjectDialog";
 import { FileFinderDialog } from "~/components/views/FileFinderDialog";
 import { FileEditorDialog } from "~/components/views/FileEditorDialog";
+import { ShareKnowledgeDialog } from "~/components/views/ShareKnowledgeDialog";
 import { LaunchCommandsDialog } from "~/components/views/LaunchCommandsDialog";
 import { CustomScriptsDialog } from "~/components/views/CustomScriptsDialog";
 import { CustomScriptsButton } from "~/components/views/CustomScriptsButton";
@@ -161,6 +162,7 @@ import { useSyncProjectDiagrams } from "~/lib/use-diagram-events";
 import { useGitDiffViewOpen } from "~/lib/git-diff-view-store";
 import { useFileBrowserViewOpen } from "~/lib/file-browser-view-store";
 import { FileBrowserView } from "~/components/views/FileBrowserView";
+import { KnowledgeOutputsView } from "~/components/views/KnowledgeOutputsView";
 
 export const Route = createFileRoute("/projects/$id")({
   component: ProjectPage,
@@ -468,7 +470,19 @@ function ProjectPage() {
     enabled: projectPathUsable && gitEnabled,
   });
   const gitStatus = gitStatusIsError ? undefined : gitStatusData;
-  const gitUnavailable = projectPathReady && gitStatusIsError;
+  // Latch "not a git repo" across refetch cycles: the status query polls, and
+  // each refetch passes through a non-error loading state — without the latch
+  // the header's git UI flickers in ("Checking…"/Ship) and back out every
+  // interval. Only a SUCCESSFUL status clears the latch (e.g. after git init).
+  const [gitBrokenLatch, setGitBrokenLatch] = useState(false);
+  useEffect(() => {
+    setGitBrokenLatch(false);
+  }, [id, selectedWorktreeId]);
+  useEffect(() => {
+    if (projectPathReady && gitStatusIsError) setGitBrokenLatch(true);
+    else if (gitStatusData) setGitBrokenLatch(false);
+  }, [projectPathReady, gitStatusIsError, gitStatusData]);
+  const gitUnavailable = gitBrokenLatch || (projectPathReady && gitStatusIsError);
   const gitUnavailableMessage = gitUnavailable ? gitUnavailableTitle(gitStatusError) : null;
   const createPullRequest = useCreatePullRequestAction({
     projectId: id,
@@ -481,18 +495,18 @@ function ProjectPage() {
   const { open: showFileBrowser, toggle: toggleFileBrowser, close: closeFileBrowser } =
     useFileBrowserViewOpen(id);
   const onToggleDiffView = useCallback(() => {
-    if (!projectPathReady || !gitEnabled) return;
+    if (!projectPathReady || !gitEnabled || gitUnavailable) return;
     closeFileBrowser();
     toggleDiffView();
-  }, [projectPathReady, gitEnabled, toggleDiffView, closeFileBrowser]);
+  }, [projectPathReady, gitEnabled, gitUnavailable, toggleDiffView, closeFileBrowser]);
   const onToggleFileBrowser = useCallback(() => {
     if (!projectPathReady) return;
     closeDiffView();
     toggleFileBrowser();
   }, [projectPathReady, toggleFileBrowser, closeDiffView]);
   useEffect(() => {
-    if (projectPathBlocked || !gitEnabled) closeDiffView();
-  }, [projectPathBlocked, gitEnabled, closeDiffView]);
+    if (projectPathBlocked || !gitEnabled || gitUnavailable) closeDiffView();
+  }, [projectPathBlocked, gitEnabled, gitUnavailable, closeDiffView]);
   useEffect(() => {
     if (projectPathBlocked) closeFileBrowser();
   }, [projectPathBlocked, closeFileBrowser]);
@@ -513,6 +527,7 @@ function ProjectPage() {
       resume?: boolean;
       autoApproveWrites?: boolean;
       autoStartText?: string;
+      dangerouslySkipApprovals?: boolean;
     } | null
   >(null);
   const [showEdit, setShowEdit] = useState(false);
@@ -540,6 +555,21 @@ function ProjectPage() {
   const [fileFinderOpen, setFileFinderOpen] = useState(false);
   const [openFileRel, setOpenFileRel] = useState<string | null>(null);
   const [showLaunchConfig, setShowLaunchConfig] = useState(false);
+  const [showShareKnowledge, setShowShareKnowledge] = useState(false);
+  const [showKnowledgeOutputs, setShowKnowledgeOutputs] = useState(false);
+  // The route component is REUSED when the header dropdown switches projects
+  // (same route, new param) — without this reset the open chat overlay follows
+  // the user into the next project wearing its breadcrumb (observed live: a
+  // pivot-health-js conversation labeled "Project Team", and messages typed
+  // into a session the user didn't think they were in). Close every
+  // project-scoped overlay when the project changes.
+  useEffect(() => {
+    setChatSession(null);
+    setShowCommandPicker(false);
+    setShowShareKnowledge(false);
+    setShowKnowledgeOutputs(false);
+    setShowLaunchConfig(false);
+  }, [id]);
   const [showCustomScriptsConfig, setShowCustomScriptsConfig] = useState(false);
   const [showWorktreeSetupConfig, setShowWorktreeSetupConfig] = useState(false);
   const [showLaunchEmpty, setShowLaunchEmpty] = useState(false);
@@ -1617,14 +1647,42 @@ function ProjectPage() {
     [project],
   );
 
-  // Import a workflow bundle: pick a file, then write it into this workspace.
+  // Import a bundle: pick a file/folder, then write it into this workspace.
+  // The same picker accepts workflow bundles AND knowledge handoff bundles —
+  // the JSON's `kind` decides which import runs.
   const onImportWorkflow = useCallback(async () => {
     if (!project) return;
     setShowCommandPicker(false);
     const picked = await getElectron()?.importWorkflowFile();
-    if (!picked) return;
+    if (!picked) return; // cancelled
+    if (picked.error) {
+      toast.error(`Could not read the bundle: ${picked.error}`);
+      return;
+    }
     try {
       const bundle = JSON.parse(picked.content);
+      if (bundle?.kind === "knowledge") {
+        const { report } = await api.importKnowledge(project.id, bundle);
+        invalidateCommands();
+        const parts = [
+          `${report.factsAdded} facts added`,
+          ...(report.factsUpdated ? [`${report.factsUpdated} updated`] : []),
+          ...(report.factsSkipped.length
+            ? [`${report.factsSkipped.length} skipped (yours were newer)`]
+            : []),
+          ...(report.notesAdded ? [`${report.notesAdded} notes`] : []),
+          ...(report.documentsAdded ? [`${report.documentsAdded} documents`] : []),
+          ...(report.attachmentsAdded ? [`${report.attachmentsAdded} attachments`] : []),
+          ...(report.documentsSkipped?.length
+            ? [`${report.documentsSkipped.length} documents skipped (already exist)`]
+            : []),
+          ...(report.workflows.length
+            ? [`workflows: ${report.workflows.map((w) => `/${w}`).join(" ")}`]
+            : []),
+        ];
+        toast.success(`Knowledge imported — ${parts.join(", ")}.`, { duration: 10000 });
+        return;
+      }
       const { imported } = await api.importCommand(project.id, bundle);
       invalidateCommands();
       toast.success(
@@ -2040,8 +2098,10 @@ function ProjectPage() {
           title: task.title,
           providerSessionId: task.claudeSessionId ?? undefined,
           agent: task.agent,
+          model: task.model ?? undefined,
           baseUrl: task.agent === "custom" ? settings?.aiCustomBaseUrl : undefined,
           resume: true,
+          dangerouslySkipApprovals: task.claudeSkipPermissions,
         });
       }
       return;
@@ -2440,6 +2500,7 @@ function ProjectPage() {
           project.launchUrl && window.electronAPI?.openExternal(project.launchUrl)
         }
         onStop={stopLaunch}
+        onEdit={() => setShowLaunchConfig(true)}
       />
       {worktreesEnabled && gitEnabled && (
         <>
@@ -2523,7 +2584,7 @@ function ProjectPage() {
     </HeaderActions>
   );
 
-  const fullBleedView = showDiffView || showFileBrowser;
+  const fullBleedView = showDiffView || showFileBrowser || showKnowledgeOutputs;
 
   return (
     <>
@@ -2670,6 +2731,38 @@ function ProjectPage() {
                 >
                   Reveal in Finder
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon="upload"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    setShowShareKnowledge(true);
+                  }}
+                  disabled={projectPathBlocked}
+                >
+                  Share knowledge…
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon="download"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    void onImportWorkflow();
+                  }}
+                  disabled={projectPathBlocked}
+                >
+                  Import knowledge or workflow…
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon="archive"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    closeDiffView();
+                    closeFileBrowser();
+                    setShowKnowledgeOutputs(true);
+                  }}
+                  disabled={projectPathBlocked}
+                >
+                  Knowledge &amp; outputs
+                </DropdownMenuItem>
                 <HotkeyTooltip action="file.finder">
                   <DropdownMenuItem
                     icon="search"
@@ -2703,7 +2796,7 @@ function ProjectPage() {
                     Open GitHub
                   </DropdownMenuItem>
                 ) : null}
-                {gitEnabled && (
+                {gitEnabled && !gitUnavailable && (
                   <>
                     <DropdownMenuSeparator />
                     <HotkeyTooltip action="git.diff">
@@ -2795,7 +2888,7 @@ function ProjectPage() {
             onRun={runScript}
             disabled={!projectPathUsable}
           />
-          {gitEnabled && (
+          {gitEnabled && !gitUnavailable && (
             <div
               role="group"
               aria-label="Review changes and commit"
@@ -2941,7 +3034,12 @@ function ProjectPage() {
             overflow: fullBleedView ? "hidden" : undefined,
           }}
         >
-          {showFileBrowser ? (
+          {showKnowledgeOutputs ? (
+            <KnowledgeOutputsView
+              cwd={selectedWorktreePath || project.path}
+              onBack={() => setShowKnowledgeOutputs(false)}
+            />
+          ) : showFileBrowser ? (
             <FileBrowserView
               projectPath={selectedWorktreePath || project.path}
               enabled={projectPathReady}
@@ -3289,6 +3387,9 @@ function ProjectPage() {
             autoStartText={chatSession.autoStartText}
             resume={chatSession.resume}
             autoApproveWrites={chatSession.autoApproveWrites}
+            sessionCreatedAt={tasks.find((t) => t.id === chatSession.id)?.createdAt}
+            initialSkipApprovals={chatSession.dangerouslySkipApprovals}
+            privateKnowledge={project.private}
             onClose={() => {
               // A workflow-builder session may have written new command files —
               // refresh the picker list so they show up.
@@ -3574,6 +3675,13 @@ function ProjectPage() {
           await api.updateProject(project.id, { launchCommands: next });
           await refresh();
         }}
+      />
+
+      <ShareKnowledgeDialog
+        open={showShareKnowledge}
+        projectId={project.id}
+        projectName={project.name}
+        onClose={() => setShowShareKnowledge(false)}
       />
 
       <ScriptArgsModal
@@ -4106,6 +4214,7 @@ function RunStatusPill({
   onStart,
   onOpenUrl,
   onStop,
+  onEdit,
 }: {
   running: boolean;
   launching: boolean;
@@ -4116,7 +4225,36 @@ function RunStatusPill({
   onStart: () => void;
   onOpenUrl: () => void;
   onStop: () => void;
+  onEdit: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number } | null>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (groupRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  const toggleMenu = () => {
+    const rect = groupRef.current?.getBoundingClientRect();
+    if (rect) setMenuRect({ top: rect.bottom + 6, left: rect.left });
+    setMenuOpen((v) => !v);
+  };
   const busy = launching || stopping;
   const label = disabled
     ? disabledLabel
@@ -4186,16 +4324,70 @@ function RunStatusPill({
 
   if (!running && !busy) {
     return (
-      <HotkeyTooltip action="project.runToggle" label={title}>
+      <div
+        ref={groupRef}
+        role="group"
+        aria-label="Project launch"
+        style={{ display: "inline-flex", alignItems: "center" }}
+      >
+        <HotkeyTooltip action="project.runToggle" label={title}>
+          <Btn
+            variant="ghost"
+            icon="play"
+            onClick={disabled ? undefined : onStart}
+            disabled={disabled}
+            aria-label={title}
+            style={{ ...activeFrameIconStyle, width: 36, minWidth: 36 }}
+          />
+        </HotkeyTooltip>
         <Btn
           variant="ghost"
-          icon="play"
-          onClick={disabled || busy ? undefined : onStart}
-          disabled={disabled || busy}
-          aria-label={title}
-          style={activeFrameIconStyle}
+          icon="chevron-down"
+          onClick={disabled ? undefined : toggleMenu}
+          disabled={disabled}
+          aria-label="Launch command options"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          style={{ width: 22, minWidth: 22, paddingInline: 0 }}
         />
-      </HotkeyTooltip>
+        {menuOpen &&
+          menuRect &&
+          createPortal(
+            <CardFrame
+              ref={menuRef}
+              role="menu"
+              solid
+              style={{
+                position: "fixed",
+                top: menuRect.top,
+                left: menuRect.left,
+                minWidth: 220,
+                boxShadow: "0 14px 32px rgba(0,0,0,0.42)",
+                zIndex: Z_INDEX.popover,
+              }}
+            >
+              <DropdownMenuItem
+                icon="play"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onStart();
+                }}
+              >
+                Run launch commands
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                icon="settings"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit();
+                }}
+              >
+                Edit launch commands…
+              </DropdownMenuItem>
+            </CardFrame>,
+            document.body,
+          )}
+      </div>
     );
   }
 

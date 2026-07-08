@@ -45,6 +45,49 @@ export type CommandBundle = {
   template?: { name: string; content: string };
 };
 
+/** Portable knowledge handoff: a project's knowledge facts (+optional notes)
+ *  with workflows attached, so a teammate starts from the same foundation. */
+export type KnowledgeBundleWire = {
+  version: 1;
+  kind: "knowledge";
+  title: string;
+  facts: { name: string; content: string }[];
+  notes: { name: string; content: string }[];
+  workflows: CommandBundle[];
+  documents?: { name: string; content: string }[];
+  assets?: { name: string; base64: string }[];
+};
+
+/** What the Share-knowledge dialog shows: every shareable file with the flags
+ *  that make it unshareable (secret / machine-path / point-in-time). */
+export type KnowledgeManifest = {
+  facts: { name: string; description: string; flags: { kind: string; detail: string }[] }[];
+  notes: { name: string; description: string; flags: { kind: string; detail: string }[] }[];
+  workflows: { name: string; title: string }[];
+  /** Deliverables under outputs/ (text files). `suggested` = referenced by a
+   *  handoff note, so the dialog pre-checks it. */
+  documents: {
+    name: string;
+    flags: { kind: string; detail: string }[];
+    suggested: boolean;
+  }[];
+  /** Chat attachments (.concourse/attachments) — opt-in, binary-safe. */
+  attachments: { name: string; suggested: boolean }[];
+};
+
+export type KnowledgeImportReport = {
+  factsAdded: number;
+  factsUpdated: number;
+  factsSkipped: string[];
+  notesAdded: number;
+  notesSkipped: string[];
+  workflows: string[];
+  documentsAdded: number;
+  documentsSkipped: string[];
+  attachmentsAdded: number;
+  attachmentsSkipped: string[];
+};
+
 export type ProjectActivityState =
   | "offline"
   | "launch-running"

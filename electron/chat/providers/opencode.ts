@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
+import { scrubEnv } from "../../../src/domain/policy/secret-rules";
 import log from "electron-log/main";
 import type { ChatEvent } from "../../../src/shared/chat";
 import { decideAction } from "../../../src/domain/policy/action-policy";
@@ -36,9 +37,12 @@ export function ensureOpencodeServer(): Promise<boolean> {
   serverReady = (async () => {
     if (await healthy()) return true;
     try {
+      // Credential guardrail: the opencode server executes tools for every
+      // project, so it gets a scrubbed env with no per-project grants.
       serverProc = spawn("opencode", ["serve", "--port", String(PORT)], {
         stdio: "ignore",
         detached: false,
+        env: scrubEnv(process.env).env,
       });
       serverProc.on("exit", () => {
         serverProc = null;

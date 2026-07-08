@@ -30,6 +30,9 @@ import { getPinnedProjects, nextPinnedOrder, validatePinnedReorder } from "~/lib
 import { isCwfWorkspace, loadWorkspace } from "~/domain/workspace/fs-loader";
 import { projectClaudeWorkspace } from "~/domain/workspace/projectors/claude";
 import { ensureWorkflowBuilderCommand } from "./workspace-scaffold";
+import { isKnowledgeBundle, type KnowledgeBundle } from "~/domain/workspace/okf-bundle";
+import { factTimestampMs, flagForExport, stampImported } from "~/domain/workspace/bundle-guard";
+import type { KnowledgeImportReport, KnowledgeManifest } from "~/shared/projects";
 
 export type { ProjectWithCounts } from "~/shared/projects";
 
@@ -158,7 +161,7 @@ export function getProject(id: string): ProjectWithCounts | null {
 }
 
 function decorate(p: Project, ts: Task[]): ProjectWithCounts {
-  const active = ts.filter((t) => !t.archived);
+  const active = ts.filter((t) => !t.archived && !t.system);
   const counts = TASK_STATUSES.reduce(
     (acc, s) => {
       acc[s] = 0;
@@ -207,6 +210,7 @@ export function createProject(input: {
     pinnedOrder: null,
     branch,
     gitEnabled: true,
+    private: false,
     launchCommands: null,
     customScripts: null,
     launchUrl: null,
@@ -238,6 +242,7 @@ export function updateProject(
       | "pinnedOrder"
       | "branch"
       | "gitEnabled"
+      | "private"
       | "launchUrl"
       | "worktreeSetupCommand"
       | "rememberAgentSettings"
@@ -834,6 +839,317 @@ export function importCommandBundle(
   }
   fs.writeFileSync(cmdFile, cmdContent, "utf8");
   return { command: finalCmd, agents, skills };
+}
+
+// ── Knowledge handoff bundles (share project knowledge + attached workflows) ──
+// Agreed rules (2026-07-06): point-in-time facts, secrets, and machine paths
+// never ship (guarded here server-side, not just in the dialog); on import,
+// facts are skip-or-keep-newer — NEVER collision-renamed (one file per topic);
+// org-scope facts are out of scope by construction (they live in userData, not
+// the project).
+
+function knowledgeRoot(projectPath: string): string {
+  return isCwfWorkspace(projectPath)
+    ? path.join(projectPath, "knowledge")
+    : path.join(projectPath, ".concourse", "knowledge");
+}
+
+function outputsRoot(projectPath: string): string {
+  return isCwfWorkspace(projectPath)
+    ? path.join(projectPath, "outputs")
+    : path.join(projectPath, ".concourse", "outputs");
+}
+
+// Documents that can travel in a knowledge bundle: text formats only (the
+// bundle is a rel-path → string map), size-capped, no hidden files.
+const DOCUMENT_EXT_RE = /\.(md|markdown|txt|csv|json|html)$/i;
+const DOCUMENT_MAX_BYTES = 512 * 1024;
+
+/** Walk outputs/ (2 levels: outputs/<topic>/<file>) for shareable text docs.
+ *  Names are rel paths under outputs/ WITH extension. */
+function listOutputDocuments(projectPath: string): { name: string; content: string }[] {
+  const root = outputsRoot(projectPath);
+  const out: { name: string; content: string }[] = [];
+  const walk = (dir: string, prefix: string, depth: number) => {
+    if (depth > 2) return;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith(".")) continue;
+      const rel = prefix ? `${prefix}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        walk(path.join(dir, e.name), rel, depth + 1);
+        continue;
+      }
+      if (!DOCUMENT_EXT_RE.test(e.name)) continue;
+      try {
+        const abs = path.join(dir, e.name);
+        if (fs.statSync(abs).size > DOCUMENT_MAX_BYTES) continue;
+        out.push({ name: rel, content: fs.readFileSync(abs, "utf8") });
+      } catch {
+        /* unreadable — skip */
+      }
+    }
+  };
+  walk(root, "", 0);
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Attachments always live in .concourse/attachments (flat), even in CWF
+// workspaces — see the staging IPC. Binary-safe: names only here; content is
+// read as base64 at export time. The provenance log is excluded (it's local
+// history, not an asset).
+const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+
+function attachmentsDir(projectPath: string): string {
+  return path.join(projectPath, ".concourse", "attachments");
+}
+
+function listAttachmentNames(projectPath: string): string[] {
+  try {
+    return fs
+      .readdirSync(attachmentsDir(projectPath), { withFileTypes: true })
+      .filter(
+        (e) =>
+          e.isFile() &&
+          !e.name.startsWith(".") &&
+          e.name !== "attachments-log.md" &&
+          (() => {
+            try {
+              return fs.statSync(path.join(attachmentsDir(projectPath), e.name)).size <=
+                ATTACHMENT_MAX_BYTES;
+            } catch {
+              return false;
+            }
+          })(),
+      )
+      .map((e) => e.name)
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+function listKnowledgeDir(dir: string): { name: string; content: string }[] {
+  try {
+    return fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith(".md"))
+      .sort()
+      .map((f) => ({
+        name: f.slice(0, -3),
+        content: fs.readFileSync(path.join(dir, f), "utf8"),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export function readKnowledgeManifest(projectId: string): KnowledgeManifest {
+  const project = findProjectById(projectId);
+  if (!project) throw new Error("Project not found");
+  const root = knowledgeRoot(project.path);
+  const toEntry = (f: { name: string; content: string }) => ({
+    name: f.name,
+    description: parseFmScalar(f.content, "description"),
+    flags: flagForExport(f.content),
+  });
+  // A document is "suggested" when a handoff note mentions it by filename —
+  // the deliverable the note tells the teammate to read should travel with it.
+  const handoffNotes = listKnowledgeDir(path.join(root, "notes")).filter((n) =>
+    n.name.endsWith("-handoff"),
+  );
+  return {
+    facts: listKnowledgeDir(path.join(root, "facts")).map(toEntry),
+    notes: listKnowledgeDir(path.join(root, "notes")).map(toEntry),
+    workflows: listProjectCommands(projectId)
+      .filter((c) => c.custom)
+      .map((c) => ({ name: c.name, title: c.title })),
+    documents: listOutputDocuments(project.path).map((d) => ({
+      name: d.name,
+      flags: flagForExport(d.content),
+      suggested: handoffNotes.some((n) => n.content.includes(path.basename(d.name))),
+    })),
+    attachments: listAttachmentNames(project.path).map((name) => ({
+      name,
+      suggested: handoffNotes.some((n) => n.content.includes(name)),
+    })),
+  };
+}
+
+export function readKnowledgeBundle(
+  projectId: string,
+  selection: {
+    facts: string[];
+    notes: string[];
+    workflows: string[];
+    documents?: string[];
+    attachments?: string[];
+  },
+): KnowledgeBundle {
+  const project = findProjectById(projectId);
+  if (!project) throw new Error("Project not found");
+  const root = knowledgeRoot(project.path);
+  const pick = (sub: "facts" | "notes", names: string[]) =>
+    listKnowledgeDir(path.join(root, sub)).filter((f) => names.includes(f.name));
+  const facts = pick("facts", selection.facts);
+  const notes = pick("notes", selection.notes);
+  const documents = listOutputDocuments(project.path).filter((d) =>
+    (selection.documents ?? []).includes(d.name),
+  );
+  for (const f of [...facts, ...notes, ...documents]) {
+    const flags = flagForExport(f.content);
+    if (flags.length > 0) {
+      throw new ValidationError(
+        `"${f.name}" cannot be shared: ${flags.map((x) => `${x.kind} (${x.detail})`).join(", ")}`,
+      );
+    }
+  }
+  // Attachments export binary-safe; names come from the real dir listing so a
+  // crafted selection can't escape it.
+  const attachable = new Set(listAttachmentNames(project.path));
+  const assets = (selection.attachments ?? [])
+    .filter((name) => attachable.has(name))
+    .map((name) => ({
+      name,
+      base64: fs.readFileSync(path.join(attachmentsDir(project.path), name)).toString("base64"),
+    }));
+  return {
+    version: 1,
+    kind: "knowledge",
+    title: `${project.name} knowledge handoff`,
+    facts,
+    notes,
+    workflows: selection.workflows.map((name) => readCommandBundle(projectId, name)),
+    documents,
+    assets,
+  };
+}
+
+export function importKnowledgeBundle(
+  projectId: string,
+  bundle: KnowledgeBundle,
+): KnowledgeImportReport {
+  const project = findProjectById(projectId);
+  if (!project) throw new Error("Project not found");
+  if (!isKnowledgeBundle(bundle)) throw new ValidationError("Not a valid knowledge bundle");
+  const root = knowledgeRoot(project.path);
+  const isoDate = new Date().toISOString().slice(0, 10);
+  const report: KnowledgeImportReport = {
+    factsAdded: 0,
+    factsUpdated: 0,
+    factsSkipped: [],
+    notesAdded: 0,
+    notesSkipped: [],
+    workflows: [],
+    documentsAdded: 0,
+    documentsSkipped: [],
+    attachmentsAdded: 0,
+    attachmentsSkipped: [],
+  };
+
+  const place = (
+    sub: "facts" | "notes",
+    item: { name: string; content: string },
+    policy: "keep-newer" | "skip-existing",
+  ): "added" | "updated" | "skipped" => {
+    const slug = safeSlug(item.name);
+    if (!slug) return "skipped";
+    const dir = path.join(root, sub);
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `${slug}.md`);
+    const stamped = stampImported(item.content, bundle.title, isoDate);
+    if (!fs.existsSync(file)) {
+      fs.writeFileSync(file, stamped, "utf8");
+      return "added";
+    }
+    if (policy === "skip-existing") return "skipped";
+    const existing = fs.readFileSync(file, "utf8");
+    const mineTs = factTimestampMs(existing) ?? 0;
+    const theirsTs = factTimestampMs(item.content) ?? 0;
+    if (theirsTs > mineTs) {
+      fs.writeFileSync(file, stamped, "utf8");
+      return "updated";
+    }
+    return "skipped";
+  };
+
+  for (const f of bundle.facts) {
+    const r = place("facts", f, "keep-newer");
+    if (r === "added") report.factsAdded++;
+    else if (r === "updated") report.factsUpdated++;
+    else report.factsSkipped.push(f.name);
+  }
+  // Notes are records of moments (meetings, decisions) — never overwritten.
+  for (const n of bundle.notes ?? []) {
+    const r = place("notes", n, "skip-existing");
+    if (r === "added") report.notesAdded++;
+    else report.notesSkipped.push(n.name);
+  }
+  for (const w of bundle.workflows ?? []) {
+    try {
+      report.workflows.push(importCommandBundle(projectId, w).command);
+    } catch {
+      /* one bad workflow shouldn't sink the knowledge import */
+    }
+  }
+  // Documents land under outputs/ and are never overwritten — a deliverable
+  // already on disk wins. Path segments are sanitized (no dotfiles, no "..").
+  // Attachments (binary, base64 in the bundle) land in .concourse/attachments,
+  // never overwriting — the log stays untouched (it's local history).
+  const attachDir = attachmentsDir(project.path);
+  for (const a of bundle.assets ?? []) {
+    const safe = path.basename(a.name);
+    if (!safe || safe.startsWith(".") || safe === "attachments-log.md" || !/^[\w.\- ]+$/.test(safe)) {
+      report.attachmentsSkipped.push(a.name);
+      continue;
+    }
+    const file = path.join(attachDir, safe);
+    if (fs.existsSync(file)) {
+      report.attachmentsSkipped.push(a.name);
+      continue;
+    }
+    fs.mkdirSync(attachDir, { recursive: true });
+    fs.writeFileSync(file, Buffer.from(a.base64, "base64"));
+    report.attachmentsAdded++;
+  }
+  const outRoot = outputsRoot(project.path);
+  for (const d of bundle.documents ?? []) {
+    const segments = d.name.split("/").filter(Boolean);
+    const unsafe =
+      segments.length === 0 ||
+      segments.some((s) => s === ".." || s.startsWith(".") || !/^[\w.\- ]+$/.test(s));
+    if (unsafe) {
+      report.documentsSkipped.push(d.name);
+      continue;
+    }
+    const file = path.join(outRoot, ...segments);
+    if (fs.existsSync(file)) {
+      report.documentsSkipped.push(d.name);
+      continue;
+    }
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, d.content, "utf8");
+    report.documentsAdded++;
+  }
+  // Plain repos: keep the overlay invisible to the team's git status.
+  if (!isCwfWorkspace(project.path)) {
+    try {
+      const excludeFile = path.join(project.path, ".git", "info", "exclude");
+      const current = fs.existsSync(excludeFile) ? fs.readFileSync(excludeFile, "utf8") : "";
+      if (!current.split("\n").some((l) => l.trim() === ".concourse/")) {
+        fs.mkdirSync(path.dirname(excludeFile), { recursive: true });
+        fs.writeFileSync(excludeFile, `${current.replace(/\n$/, "")}\n.concourse/\n`, "utf8");
+      }
+    } catch {
+      /* not a git repo — nothing to exclude */
+    }
+  }
+  return report;
 }
 
 export function refreshBranch(id: string): string | null {

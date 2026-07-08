@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Btn } from "~/components/ui/Btn";
+import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { Icon } from "~/components/ui/Icon";
 import { StaticHotkeyTooltip } from "~/components/ui/Tooltip";
 import { useHotkey } from "~/lib/use-hotkey";
@@ -45,7 +46,27 @@ export function GitDiffView({
   const discardM = useDiscardFile(projectId, worktreeId);
   const discardAllM = useDiscardAllChanges(projectId, worktreeId);
   const [branchManagerOpen, setBranchManagerOpen] = useState(false);
+  const [stashPromptOpen, setStashPromptOpen] = useState(false);
   const pullM = useGitPull(projectId, worktreeId);
+
+  const runPull = useCallback(
+    (opts?: { stash?: boolean }) =>
+      pullM.mutate(opts, {
+        onSuccess: (r) => {
+          if (r.result.kind === "needs-stash") {
+            setStashPromptOpen(true);
+            return;
+          }
+          if (r.result.kind === "stash-conflict") {
+            toast.warning(r.result.summary, { duration: 12000 });
+            return;
+          }
+          toast.success(r.result.summary);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Pull failed"),
+      }),
+    [pullM],
+  );
 
   const [selection, setSelection] = useState<FileSelection>(null);
   const stagedFiles = useMemo(() => status?.staged ?? [], [status]);
@@ -175,15 +196,26 @@ export function GitDiffView({
           icon="refresh"
           disabled={pullM.isPending}
           title="Pull latest from upstream (fast-forward only)"
-          onClick={() =>
-            pullM.mutate(undefined, {
-              onSuccess: (r) => toast.success(r.result.summary),
-              onError: (e) => toast.error(e instanceof Error ? e.message : "Pull failed"),
-            })
-          }
+          onClick={() => runPull()}
         >
           {pullM.isPending ? "Pulling…" : "Pull"}
         </Btn>
+        <ConfirmDialog
+          open={stashPromptOpen}
+          onClose={() => setStashPromptOpen(false)}
+          onConfirm={() => {
+            setStashPromptOpen(false);
+            runPull({ stash: true });
+          }}
+          title="Stash changes and pull?"
+          confirmLabel="Stash & pull"
+          variant="primary"
+          loading={pullM.isPending}
+        >
+          Your local changes block the pull. Concourse can stash them, pull the latest
+          code, then restore them on top. If restoring hits a conflict your changes stay
+          safe in the stash — nothing is discarded.
+        </ConfirmDialog>
         {/* Clickable branch switcher: list, checkout, and create branches. */}
         <BranchTypeahead
           projectId={projectId}

@@ -21,6 +21,8 @@ export type ChatStartRequest = {
   providerSessionId?: string;
   resume?: boolean;
   autoApproveWrites?: boolean;
+  disallowShell?: boolean;
+  privateKnowledge?: boolean;
   dangerouslySkipApprovals?: boolean;
   /** OpenAI-compatible endpoint for the "custom" direct engine. */
   baseUrl?: string;
@@ -185,6 +187,17 @@ export function registerChatHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
       // Optional capability: only stateless engines (direct) implement it.
       if (!s?.setModel) return { ok: false };
       s.setModel(model);
+      return { ok: true };
+    },
+    ipc,
+  );
+
+  safeHandle(
+    IPC.chatSetSkipApprovals,
+    (_e, { sessionId, value }: { sessionId: string; value: boolean }) => {
+      const s = sessions.get(sessionId);
+      if (!s?.setSkipApprovals) return { ok: false };
+      s.setSkipApprovals(value);
       return { ok: true };
     },
     ipc,

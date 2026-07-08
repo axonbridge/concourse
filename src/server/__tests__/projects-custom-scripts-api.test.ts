@@ -48,6 +48,7 @@ function makeProject(): string {
     savedSkipPermissions: false,
     savedBareSession: false,
     gitEnabled: true,
+    private: false,
     createdAt: now,
     updatedAt: now,
   });

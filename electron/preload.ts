@@ -95,6 +95,8 @@ const electronAPI = {
       providerSessionId?: string;
       resume?: boolean;
       autoApproveWrites?: boolean;
+      disallowShell?: boolean;
+      privateKnowledge?: boolean;
       dangerouslySkipApprovals?: boolean;
       baseUrl?: string;
     }): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.chatStart, opts),
@@ -102,6 +104,8 @@ const electronAPI = {
       ipcRenderer.invoke(IPC.chatSend, { sessionId, text }),
     setModel: (sessionId: string, model?: string): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(IPC.chatSetModel, { sessionId, model }),
+    setSkipApprovals: (sessionId: string, value: boolean): Promise<{ ok: boolean }> =>
+      ipcRenderer.invoke(IPC.chatSetSkipApprovals, { sessionId, value }),
     respondPermission: (sessionId: string, requestId: string, allow: boolean): Promise<{ ok: boolean }> =>
       ipcRenderer.invoke(IPC.chatRespondPermission, { sessionId, requestId, allow }),
     stop: (sessionId: string): Promise<{ ok: boolean }> =>
@@ -129,15 +133,24 @@ const electronAPI = {
     content: string,
   ): Promise<{ ok: true; path: string } | { ok: false; error?: string }> =>
     ipcRenderer.invoke(IPC.dialogSaveWorkflow, defaultName, content),
-  importWorkflowFile: (): Promise<{ name: string; content: string } | null> =>
+  importWorkflowFile: (): Promise<{ name: string; content: string; error?: string } | null> =>
     ipcRenderer.invoke(IPC.dialogImportWorkflow),
+  saveKnowledgeBundleFile: (
+    defaultName: string,
+    content: string,
+  ): Promise<{ ok: true; path: string } | { ok: false; error?: string }> =>
+    ipcRenderer.invoke(IPC.dialogSaveKnowledgeBundle, defaultName, content),
   pickTemplateFile: (): Promise<{ name: string; content: string } | null> =>
     ipcRenderer.invoke(IPC.dialogPickTemplate),
   attachments: {
     pick: (): Promise<Array<{ path: string; name: string; dataUrl?: string }>> =>
       ipcRenderer.invoke(IPC.dialogPickAttachments),
-    stage: (cwd: string, paths: string[]): Promise<Array<{ rel: string; name: string }>> =>
-      ipcRenderer.invoke(IPC.attachmentsStage, cwd, paths),
+    stage: (
+      cwd: string,
+      paths: string[],
+      sessionTitle?: string,
+    ): Promise<Array<{ rel: string; name: string }>> =>
+      ipcRenderer.invoke(IPC.attachmentsStage, cwd, paths, sessionTitle),
     describe: (paths: string[]): Promise<Array<{ path: string; name: string; dataUrl?: string }>> =>
       ipcRenderer.invoke(IPC.attachmentsDescribe, paths),
   },
@@ -159,8 +172,12 @@ const electronAPI = {
     html: string,
   ): Promise<{ ok: true; path: string } | { ok: false; error?: string }> =>
     ipcRenderer.invoke(IPC.dialogExportPdf, defaultName, html),
+  openPreviewWindow: (cwd: string, relPath: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke(IPC.previewOpenWindow, cwd, relPath),
   openPath: (path: string): Promise<{ ok: true } | { ok: false; error: string }> =>
     ipcRenderer.invoke(IPC.shellOpenPath, path),
+  revealPath: (path: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke(IPC.shellRevealPath, path),
   openFile: (path: string): Promise<{ ok: true } | { ok: false; error: string }> =>
     ipcRenderer.invoke(IPC.shellOpenFile, path),
   openExternal: (url: string): Promise<{ ok: true } | { ok: false; error: string }> =>
@@ -290,6 +307,13 @@ const electronAPI = {
   files: {
     list: (projectRoot: string): Promise<{ ok: true; files: string[] } | { ok: false; error: string }> =>
       ipcRenderer.invoke(IPC.filesList, projectRoot),
+    stat: (
+      projectRoot: string,
+      relPaths: string[],
+    ): Promise<
+      | { ok: true; mtimes: Record<string, number>; btimes: Record<string, number> }
+      | { ok: false; error: string }
+    > => ipcRenderer.invoke(IPC.filesStat, projectRoot, relPaths),
     read: (
       projectRoot: string,
       relPath: string,

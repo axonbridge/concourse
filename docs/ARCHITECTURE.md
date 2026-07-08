@@ -235,3 +235,89 @@ Dev mode swaps the server subprocess for Vite (`pnpm dev`, port 5173, data in
 the user-data dir. Crashes from all three surfaces (main, renderer, server)
 land in one rotating log file, exportable as a support bundle from
 Settings → General.
+
+## §7 Status & empirical findings (2026-07-06)
+
+Everything above is **shipped and user-verified** across all five engines
+(Claude, OpenCode, Codex*, Cursor*, direct OpenAI-compatible — *built,
+awaiting their CLIs for live testing).
+
+- **Workspace standard**: the normative folder spec lives in
+  [WORKSPACE-STANDARD.md](./WORKSPACE-STANDARD.md) — including `outputs/<command>/`,
+  `.scripts/`, and the `.concourse/` machine-local overlay for engineering repos.
+- **Integrations, three layers**: global config (personal, all projects) →
+  workspace `.mcp.json` (shareable contract, wins collisions) → keychain tokens
+  (by server URL — one sign-in covers every project).
+- **Two MCP server archetypes (tested)**: spec-compliant servers with dynamic
+  client registration (e.g. Atlassian) work on every engine via the in-app
+  client; connector-class servers (Google's calendarmcp/drivemcp/gmailmcp)
+  refuse third-party clients and work only on the Claude engine via the CLI's
+  own login. Status honestly separates "connected" from "signed in".
+- **Knowledge**: two scopes (workspace + org), knowledge-first protocol on all
+  read-heavy commands (stable facts served with citation + "refresh" escape;
+  point-in-time numbers never served from knowledge), app-written run records,
+  `/curate-knowledge` janitor. Org knowledge is machine-local v1; git-synced
+  sharing is the planned v2. Seed facts: `docs/org-knowledge-seed/`.
+- **Next frontier**: team rollout (pushing prepared repos + shared org
+  knowledge), signing/notarization for distribution.
+
+## §8 Knowledge retrieval — why there is no scoring algorithm (2026-07-06)
+
+Relevance is deliberately NOT computed by us — no embeddings, no vector store,
+no ranking math. Three delegation mechanisms:
+
+1. **Workspace & org knowledge: the model is the ranker.** Every session's
+   prompt carries an inline fact index — each fact's path plus its frontmatter
+   `description` (capped at 100 entries, `factIndexLines` in
+   `electron/knowledge/org-store.ts`). The model reads the index, decides
+   relevance, and `Read`s the file. Consequence: **the one-line description IS
+   the retrieval system** — a vague description makes a fact invisible, which
+   is why save-back instructions demand a recognizable one-liner and
+   `/curate-knowledge` maintains them. Fact-to-fact markdown links (OKF: links
+   are graph edges) let the model traverse to related concepts.
+2. **Confluence/Jira: Atlassian's search engine ranks.** The model writes
+   CQL/JQL through the MCP tools and iterates; our contribution is prompt-side
+   (which spaces/projects to search) plus learned quirks saved as facts.
+3. **Repos: grep and structure.** No index — symbol search and import-following
+   like an engineer.
+
+Epistemics rule (added after live testing 2026-07-06): answers that mix saved
+knowledge with reasoning must SEPARATE the two — verified-with-citations vs
+inference-not-verified — by default, in every knowledge prompt layer.
+
+**The known cliff: ~100 org facts**, where the inline index stops scaling.
+Documented revisit point (see the graphify decision in the plan): add a
+retrieval tool (indexed search over facts, or a graphify-style overlay) rather
+than growing the prompt. At single-digit fact counts, an LLM reading a
+well-described index beats cosine similarity, costs nothing to maintain, and
+stays fully inspectable.
+
+## §9 Self-maintaining knowledge (2026-07-07)
+
+Knowledge hygiene is the APP's responsibility, not a chore users schedule in
+their heads (user decision 2026-07-07: fully background, auto-applied).
+
+**Background curation job** (`src/lib/org-curation.ts`): weekly (or via
+Settings → Knowledge → "Curate now"), the app spawns a hidden chat session
+that curates the ORG knowledge folder — split overloaded facts into atomic
+cross-linked concepts, merge duplicates, archive expired point-in-time
+snapshots (retire, never delete), flag unverifiable staleness, refresh
+descriptions (the retrieval keys), update index.md. Containment instead of
+approval cards: writes are auto-approved BUT the session runs with
+`disallowShell` (Bash blocked at the engine's disallowedTools level — file
+tools only), its prompt scopes it to the org folder, every run appends to
+`org-knowledge/curation-log.md`, and the session itself is a normal task in a
+host project's session list — visible and replayable, never a hidden process.
+Anything that would still raise a card (an external write it has no business
+making) pauses the task in Needs-your-approval and rings the bell — graceful
+degradation, not silent power. Scheduling is a renderer-side check (Shell
+mount): `orgCurationLastRunAt` stamped at spawn to prevent duplicate runs.
+Workspace-scoped curation stays per-workspace via `/curate-knowledge`.
+
+**Knowledge graph view** (Settings → Knowledge): the graphify concept
+surfaced — facts are nodes, markdown links are edges, rendered as a
+deterministic circular SVG (readable to ~40 nodes; a force layout or real
+graph index is part of the ~100-fact cliff plan in §8). Hollow nodes (no
+links) are curation targets. The panel also shows the fact count against the
+index cliff, the curation schedule, and click-to-read for every fact — the
+org brain, visible without opening a project.

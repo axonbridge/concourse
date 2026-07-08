@@ -1823,6 +1823,20 @@ html[data-theme="light"][data-minimal="true"] .mc-card-frame[data-focused="true"
 .mc-md > *:first-child {
   margin-top: 0;
 }
+.mc-md-mermaid {
+  margin: 10px 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.mc-md-mermaid svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
 .mc-md > *:last-child {
   margin-bottom: 0;
 }

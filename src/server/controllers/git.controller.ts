@@ -323,13 +323,22 @@ export async function deleteBranch(rawId: string, request: Request): Promise<Res
   }
 }
 
+const pullBody = z.object({
+  worktreeId: z.string().nullable().optional(),
+  stash: z.boolean().optional(),
+});
+
 export async function pull(rawId: string, request: Request): Promise<Response> {
   const idParsed = idParam.safeParse(rawId);
   if (!idParsed.success) return notFound();
-  const parsed = await parseJsonBody(request, stageBody);
+  const parsed = await parseJsonBody(request, pullBody);
   if (!parsed.ok) return parsed.response;
   try {
-    return json({ result: await gitPull(idParsed.data, parsed.data.worktreeId ?? null) });
+    return json({
+      result: await gitPull(idParsed.data, parsed.data.worktreeId ?? null, {
+        stash: parsed.data.stash ?? false,
+      }),
+    });
   } catch (e) {
     return handleDomainError(e) ?? asGitErrorResponse(e);
   }

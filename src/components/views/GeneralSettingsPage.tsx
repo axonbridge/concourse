@@ -93,6 +93,9 @@ export function GeneralSettingsPage() {
     voiceCommandAliases: settings?.voiceCommandAliases ?? emptyVoiceCommandAliases(),
     voiceControlEnabled: settings?.voiceControlEnabled ?? false,
     projectTerminalsEnabled: settings?.projectTerminalsEnabled ?? true,
+    onboardingCompleted: settings?.onboardingCompleted ?? false,
+    orgCurationEnabled: settings?.orgCurationEnabled ?? true,
+    orgCurationLastRunAt: settings?.orgCurationLastRunAt ?? null,
     ...queryClient.getQueryData<AppSettings>(queryKeys.settings),
     worktreesEnabled:
       queryClient.getQueryData<AppSettings>(queryKeys.settings)?.worktreesEnabled ??

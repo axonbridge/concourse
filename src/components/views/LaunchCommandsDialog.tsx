@@ -3,11 +3,42 @@ import { Modal } from "~/components/ui/Modal";
 import { Btn } from "~/components/ui/Btn";
 import { EscTooltip } from "~/components/ui/Tooltip";
 import { Icon } from "~/components/ui/Icon";
+import { readProjectFile } from "~/lib/project-fs";
 import { LAUNCH_COMMANDS_MAX, parseLaunchCommands, type LaunchCommand } from "~/shared/domain";
 import type { Project } from "~/db/schema";
 
 function newRowId() {
   return `lc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+type ScriptSuggestion = { name: string; command: string };
+
+// Read the project's package.json scripts and turn each into a ready-to-add
+// launch command, using the package manager the lockfile says the repo uses.
+async function loadScriptSuggestions(projectRoot: string): Promise<ScriptSuggestion[]> {
+  const pkg = await readProjectFile(projectRoot, "package.json");
+  if (!pkg.ok || pkg.kind !== "text") return [];
+  let scripts: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(pkg.content) as { scripts?: Record<string, unknown> };
+    scripts = parsed.scripts ?? {};
+  } catch {
+    return [];
+  }
+  const names = Object.keys(scripts).filter(
+    (n) => typeof scripts[n] === "string" && !/^(pre|post)/.test(n),
+  );
+  if (names.length === 0) return [];
+  let runner = (s: string) => `npm run ${s}`;
+  const [pnpmLock, yarnLock, bunLock] = await Promise.all([
+    readProjectFile(projectRoot, "pnpm-lock.yaml"),
+    readProjectFile(projectRoot, "yarn.lock"),
+    readProjectFile(projectRoot, "bun.lockb"),
+  ]);
+  if (pnpmLock.ok) runner = (s) => `pnpm run ${s}`;
+  else if (yarnLock.ok) runner = (s) => `yarn ${s}`;
+  else if (bunLock.ok) runner = (s) => `bun run ${s}`;
+  return names.map((n) => ({ name: n, command: runner(n) }));
 }
 
 export function LaunchCommandsDialog({
@@ -24,12 +55,23 @@ export function LaunchCommandsDialog({
   const [rows, setRows] = useState<LaunchCommand[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<ScriptSuggestion[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setSaving(false);
     setRows(parseLaunchCommands(project?.launchCommands ?? null));
+    setSuggestions([]);
+    const root = project?.path;
+    if (!root) return;
+    let cancelled = false;
+    void loadScriptSuggestions(root).then((s) => {
+      if (!cancelled) setSuggestions(s);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open, project?.id]);
 
   const update = (id: string, patch: Partial<LaunchCommand>) =>
@@ -206,6 +248,57 @@ export function LaunchCommandsDialog({
             </span>
           </Btn>
         </div>
+
+        {suggestions.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10.5,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--text-faint)",
+              }}
+            >
+              From package.json
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {suggestions
+                .filter((s) => !rows.some((r) => r.command === s.command))
+                .map((s) => (
+                  <button
+                    key={s.name}
+                    disabled={rows.length >= LAUNCH_COMMANDS_MAX}
+                    title={s.command}
+                    onClick={() =>
+                      setRows((prev) =>
+                        prev.length >= LAUNCH_COMMANDS_MAX
+                          ? prev
+                          : [...prev, { id: newRowId(), name: s.name, command: s.command }],
+                      )
+                    }
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      background: "var(--surface-1)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text)",
+                      fontFamily: "var(--mono)",
+                      fontSize: 11.5,
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      cursor: rows.length >= LAUNCH_COMMANDS_MAX ? "default" : "pointer",
+                      opacity: rows.length >= LAUNCH_COMMANDS_MAX ? 0.5 : 1,
+                    }}
+                  >
+                    <Icon name="plus" size={10} />
+                    {s.name}
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div

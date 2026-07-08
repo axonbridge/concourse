@@ -42,6 +42,8 @@ import {
   SETTINGS_PANEL_IDS,
   type SettingsPanelId,
 } from "~/components/views/SettingsPanel";
+import { OnboardingWizard } from "~/components/views/OnboardingWizard";
+import { orgCurationDue, startOrgCuration } from "~/lib/org-curation";
 import { OPEN_SETTINGS_EVENT } from "~/lib/design-meta";
 import {
   requestCloseSettings,
@@ -157,6 +159,27 @@ if (typeof window !== "undefined") {
 }
 
 function RootComponent() {
+  // Document pop-out windows (/preview) are shell-less: one document, no
+  // TopBar/terminals/providers — the window itself is the frame.
+  const isStandaloneDoc = useRouterState({
+    select: (s) => s.location.pathname === "/preview",
+  });
+  if (isStandaloneDoc) {
+    return (
+      <html suppressHydrationWarning>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_THEME_SCRIPT }} />
+          <HeadContent />
+        </head>
+        <body>
+          <ClientOnly fallback={null}>
+            <Outlet />
+          </ClientOnly>
+          <Scripts />
+        </body>
+      </html>
+    );
+  }
   return (
     <html suppressHydrationWarning>
       <head>
@@ -274,6 +297,24 @@ function Shell() {
   const closeIntentTarget = closeIntentTargetId
     ? userTerminalSessions.find((s) => s.terminal.id === closeIntentTargetId)?.terminal ?? null
     : null;
+
+  // Background knowledge curation (weekly): knowledge hygiene is the app's
+  // responsibility. When due, spawn the hidden curation session; it lives as a
+  // normal task in a host project's session list, writes auto-approved but
+  // shell-blocked, every change audited in org-knowledge/curation-log.md.
+  const curationCheckedRef = useRef(false);
+  useEffect(() => {
+    if (curationCheckedRef.current) return;
+    if (!settings || !projects || projects.length === 0) return;
+    if (!getElectron()) return;
+    // The shell query cache seeds a PRE-0.7 settings shape on first paint —
+    // don't burn the once-per-launch check on a payload that can't answer.
+    if (!("orgCurationEnabled" in settings)) return;
+    curationCheckedRef.current = true;
+    if (orgCurationDue(settings, Date.now())) {
+      void startOrgCuration(projects);
+    }
+  }, [settings, projects]);
 
   useNavigationSwipe();
   const sessionNotifications = useSessionFinishNotifications();
@@ -565,6 +606,10 @@ function Shell() {
             onBack={closeSettingsPanel}
           />
         )}
+        {/* First-run setup — shows every launch until the last step is
+            completed; every step embeds a Settings page, so nothing here is
+            a dead end. */}
+        {settings && !settings.onboardingCompleted && <OnboardingWizard />}
         <Toaster
           position="bottom-right"
           theme={theme === "light" ? "light" : "dark"}

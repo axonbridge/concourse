@@ -38,6 +38,7 @@ export function ProjectDialog({
     pendingImage?: { sourcePath: string; extension: string } | null;
     worktreeSetupCommand?: string | null;
     gitEnabled?: boolean;
+    private?: boolean;
     /** Create mode only: the picked folder is empty — scaffold a workspace. */
     scaffoldWorkspace?: boolean;
     /** Create mode only: open the "Prepare for Concourse" chat after creating. */
@@ -66,6 +67,7 @@ export function ProjectDialog({
   const [iconColor, setIconColor] = useState("#ff5a1f");
   const [worktreeSetupCommand, setWorktreeSetupCommand] = useState("");
   const [gitEnabled, setGitEnabled] = useState(true);
+  const [privateProject, setPrivateProject] = useState(false);
   const [imagePath, setImagePath] = useState<string | null>(null);
   const [pendingImage, setPendingImage] = useState<
     { sourcePath: string; extension: string } | null
@@ -103,6 +105,7 @@ export function ProjectDialog({
       setIconColor(project?.iconColor || "#ff5a1f");
       setWorktreeSetupCommand(project?.worktreeSetupCommand || "");
       setGitEnabled(project?.gitEnabled !== false);
+      setPrivateProject(project?.private === true);
       setImagePath(project?.imagePath ?? null);
       setPendingImage(null);
       setError(null);
@@ -311,7 +314,7 @@ export function ProjectDialog({
           : {}),
         ...(!project && effectiveKind === "legacy-claude" ? { prepareWorkspace: true } : {}),
         ...(project ? { worktreeSetupCommand: worktreeSetupCommand.trim() || null } : {}),
-        ...(project ? { gitEnabled } : {}),
+        ...(project ? { gitEnabled, private: privateProject } : {}),
       });
     } catch (e: any) {
       const stderr = typeof e?.body?.stderr === "string" ? e.body.stderr.trim() : "";
@@ -906,6 +909,16 @@ export function ProjectDialog({
             label="Version control"
             checked={gitEnabled}
             onChange={setGitEnabled}
+          />
+        )}
+
+        {project && (
+          <ToggleRow
+            title="Private project"
+            description="Sessions here can read and cite org knowledge, but never write to it — everything learned stays in this project. For personal or sensitive work that shouldn't feed the shared brain by accident."
+            label="Private project"
+            checked={privateProject}
+            onChange={setPrivateProject}
           />
         )}
 

@@ -96,7 +96,7 @@ type BrokerTool = {
   description: string;
   parameters: Record<string, unknown>;
   action: ActionClass;
-  run: (args: Record<string, unknown>, cwd: string) => string;
+  run: (args: Record<string, unknown>, cwd: string, ctx?: { privateKnowledge?: boolean }) => string;
 };
 
 const BROKER_TOOLS: BrokerTool[] = [
@@ -151,9 +151,16 @@ const BROKER_TOOLS: BrokerTool[] = [
       additionalProperties: false,
     },
     action: "write",
-    run: (args, cwd) => {
+    run: (args, cwd, ctx) => {
       const p = safeResolve(cwd, String(args.path ?? ""));
       if (!p) return "Error: path is outside the workspace.";
+      // Private project: org knowledge is read-only — save locally instead.
+      if (ctx?.privateKnowledge) {
+        const org = ensureOrgKnowledge();
+        if (p === org || p.startsWith(org + path.sep)) {
+          return "Error: this is a private project — org knowledge is read-only. Save to this project's own knowledge (mark org-candidate: true if it belongs org-wide).";
+        }
+      }
       try {
         fs.mkdirSync(path.dirname(p), { recursive: true });
         fs.writeFileSync(p, String(args.content ?? ""), "utf8");
@@ -172,7 +179,7 @@ const OPENAI_TOOLS = BROKER_TOOLS.map((t) => ({
 
 // ── System prompt: files are the contract ───────────────────────────────────
 
-function buildSystemPrompt(cwd: string, initialText: string, mcpServers: string[]): string {
+function buildSystemPrompt(cwd: string, initialText: string, mcpServers: string[], privateKnowledge = false): string {
   const parts: string[] = [
     "You are Concourse, an AI workspace assistant for a business team.",
     "The workspace is a set of markdown files (commands, agents, skills, templates) — they are your instructions. Use the file tools to read anything you need; write outputs into the workspace with write_file.",
@@ -217,6 +224,11 @@ function buildSystemPrompt(cwd: string, initialText: string, mcpServers: string[
     }
   }
   parts.push(orgKnowledgePrompt());
+  if (privateKnowledge) {
+    parts.push(
+      "PRIVATE PROJECT: org knowledge is READ-ONLY here — use and cite org facts freely, but never write to the org folder (writes there are rejected). Save all durable learnings to this project's own knowledge; mark org-wide candidates with org-candidate: true.",
+    );
+  }
   parts.push(
     mcpServers.length
       ? `Connected integrations (via mcp__<server>__<tool> tools): ${mcpServers.join(", ")}. Use them for live data; never fabricate what a tool can fetch.`
@@ -282,6 +294,7 @@ export function directChatProvider(engine: DirectProvider): ChatProvider {
             opts.cwd,
             opts.initialText,
             [...new Set(mcpTools.map((t) => t.server))],
+            opts.privateKnowledge ?? false,
           ),
         };
       };
@@ -419,7 +432,7 @@ export function directChatProvider(engine: DirectProvider): ChatProvider {
                 dangerouslySkipApprovals: opts.dangerouslySkipApprovals,
               });
               const allowed = decision === "allow" ? true : await askPermission(name, summary);
-              result = allowed ? broker.run(args, opts.cwd) : "The user denied this action.";
+              result = allowed ? broker.run(args, opts.cwd, { privateKnowledge: opts.privateKnowledge }) : "The user denied this action.";
             } else if (mcp) {
               // Same read/write heuristic the Claude adapter applies to
               // mcp__server__tool names — reads flow, writes gate.

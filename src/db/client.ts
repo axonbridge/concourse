@@ -478,6 +478,7 @@ function ensureSchema(sqlite: Database.Database) {
   // this guard covers any schema-divergent build. See 0014_custom_scripts.sql.
   ensureColumn(sqlite, "projects", "custom_scripts", "TEXT");
   ensureColumn(sqlite, "projects", "git_enabled", "INTEGER NOT NULL DEFAULT 1");
+  ensureColumn(sqlite, "projects", "private", "INTEGER NOT NULL DEFAULT 0");
 
   // Terminal/session rows gained per-runtime scope after their first ship;
   // tolerate pre-existing tables created without it.
@@ -488,6 +489,8 @@ function ensureSchema(sqlite: Database.Database) {
   ensureColumn(sqlite, "tasks", "pinned", "INTEGER NOT NULL DEFAULT 0");
   ensureColumn(sqlite, "tasks", "mode", "TEXT NOT NULL DEFAULT 'terminal'");
   ensureColumn(sqlite, "tasks", "description", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(sqlite, "tasks", "model", "TEXT");
+  ensureColumn(sqlite, "tasks", "system", "INTEGER NOT NULL DEFAULT 0");
   sqlite.exec("CREATE INDEX IF NOT EXISTS tasks_project_worktree_scope_idx ON tasks(project_id, worktree_id, scope_id);");
   sqlite.exec("CREATE INDEX IF NOT EXISTS tasks_scope_idx ON tasks(scope_id);");
   sqlite.exec("CREATE INDEX IF NOT EXISTS tasks_pinned_idx ON tasks(pinned);");

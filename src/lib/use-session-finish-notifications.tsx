@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { mcToastCustom, McToastActions, McToastCloseButton } from "~/lib/mc-toast";
 import { useSettings } from "~/queries";
 import { useServerEvents, type ServerEvent } from "~/lib/use-events";
+import { ORG_CURATION_TITLE, requestCurationLogOpen } from "~/lib/org-curation";
+import { OPEN_SETTINGS_EVENT } from "~/lib/design-meta";
 import { CardFrame } from "~/components/ui/CardFrame";
 import { Btn } from "~/components/ui/Btn";
 import { Icon } from "~/components/ui/Icon";
@@ -177,6 +179,24 @@ export function useSessionFinishNotifications() {
         typeof rawScopeId === "string" ? rawScopeId : LOCAL_SCOPE_ID,
       );
       if (!id || !projectId) return;
+
+      // Background knowledge curation: a system job, not a user session —
+      // one quiet toast with a View button (opens Settings → Knowledge log),
+      // never a "Session finished — <project>" bell entry.
+      if (taskTitle.startsWith(ORG_CURATION_TITLE)) {
+        toast.success("Knowledge curation finished", {
+          action: {
+            label: "View",
+            onClick: () => {
+              requestCurationLogOpen();
+              window.dispatchEvent(
+                new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { panel: "knowledge" } }),
+              );
+            },
+          },
+        });
+        return;
+      }
 
       const notification: SessionFinishNotification = {
         kind: "session-finished",

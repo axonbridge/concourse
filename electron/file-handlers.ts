@@ -252,6 +252,31 @@ export function registerFileHandlers(ipc: IpcMain, getWin: () => BrowserWindow |
     }
   }, ipc);
 
+  // Batch mtime lookup for a small set of rel paths (the Outputs panel's
+  // session filter). Unresolvable/missing entries are simply omitted.
+  safeHandle(IPC.filesStat, async (_evt, projectRoot: string, relPaths: string[]) => {
+    if (!projectRoot || typeof projectRoot !== "string" || !Array.isArray(relPaths)) {
+      return { ok: false as const, error: "invalid args" };
+    }
+    const mtimes: Record<string, number> = {};
+    const btimes: Record<string, number> = {};
+    for (const rel of relPaths.slice(0, 2000)) {
+      if (typeof rel !== "string") continue;
+      const abs = resolveInsideRoot(projectRoot, rel);
+      if (!abs) continue;
+      try {
+        const st = fs.statSync(abs);
+        if (st.isFile()) {
+          mtimes[rel] = st.mtimeMs;
+          btimes[rel] = st.birthtimeMs;
+        }
+      } catch {
+        /* gone between list and stat */
+      }
+    }
+    return { ok: true as const, mtimes, btimes };
+  }, ipc);
+
   safeHandle(
     IPC.filesRead,
     async (_evt, projectRoot: string, relPath: string) => {

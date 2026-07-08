@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { scrubEnv } from "../../../src/domain/policy/secret-rules";
 
 // Shared plumbing for CLI harnesses that speak JSONL over stdout per turn
 // (Codex `exec --json`, Cursor `cursor-agent --output-format stream-json`).
@@ -11,6 +12,23 @@ export type JsonlTurn = {
   kill: () => void;
 };
 
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+function readEnvAllowlistFor(cwd: string): Set<string> {
+  try {
+    return new Set(
+      fs
+        .readFileSync(path.join(cwd, ".concourse", "env-allowlist"), "utf8")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith("#")),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
 export function runJsonlTurn(
   command: string,
   args: string[],
@@ -18,7 +36,14 @@ export function runJsonlTurn(
   onEvent: (ev: any) => void,
   onStderr?: (line: string) => void,
 ): JsonlTurn {
-  const proc = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+  // Credential guardrail: vendor CLIs get the same scrubbed env as the Claude
+  // engine (per-project grants via <cwd>/.concourse/env-allowlist are read by
+  // the caller-agnostic scrub here to keep one behavior everywhere).
+  const proc = spawn(command, args, {
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: scrubEnv(process.env, readEnvAllowlistFor(cwd)).env,
+  });
   let buf = "";
   proc.stdout.on("data", (chunk: Buffer) => {
     buf += chunk.toString();
