@@ -2,6 +2,14 @@
 
 All notable changes to this project, newest first.
 
+## 0.7.4
+
+- ✨ exports wear the compact professional card layout: navy titles with a centered header and teal rule, rounded pale-blue emoji section bars with a teal edge, blockquotes as rounded light cards with subtle blue borders, uppercase labels, and teal clickable links — in both Word and PDF
+- ✨ task lists export as real checkboxes: `- [ ]` / `- [x]` become ☐/☑ (blue-gray pending, green done) that print consistently and survive Word's importer, which drops form controls
+- ✨ PDF pages are US Letter with narrow 0.5in margins — nearly full printable width, compact and phone-readable; Word documents open with the same page setup instead of Word's defaults
+- ✨ exported mermaid diagrams match the new palette: teal-bordered pale-blue nodes with navy text
+- ✨ sessions author diagrams with the matching palette too: teal process, amber decision, green output, pale-blue input, navy-outlined external
+
 ## 0.7.3
 
 - ✨ documents now follow the Meridian design system (DESIGN.md): Poppins headlines + DM Sans body, primary-blue title rule, tonal surface panels and soft ghost rules instead of hard lines, neutral-ink text — in Word, PDF, and exported diagrams

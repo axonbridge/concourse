@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Btn } from "~/components/ui/Btn";
 import { Icon } from "~/components/ui/Icon";
 import { getElectron } from "~/lib/electron";
-import { FileDatesBadge, MarkdownPreviewPanel, outputGroup } from "./ChatView";
+import { MarkdownPreviewPanel } from "./MarkdownPreviewPanel";
+import { FileDatesBadge, outputGroup } from "./output-files";
 
 // Project-level home for everything the AI has produced: deliverables
 // (outputs/), workspace knowledge (facts + notes), and the shared org facts —

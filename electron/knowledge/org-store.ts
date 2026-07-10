@@ -146,14 +146,14 @@ then walk the user through it in chat. Prefer mermaid over ASCII art, image
 generation, or external tools. Only deviate when the user names a specific
 format (an ASCII sketch, a PNG, a slide, a specific tool).
 
-House diagram style (the Meridian palette — Pivot Health design system):
-color nodes by MEANING using classDef tints — process/flow \`#d7ecfd\` stroke
-\`#0086e7\` (primary blue), decision/human gate \`#ffeccc\` stroke \`#b97e1e\`
-(amber — attention, use sparingly), output/result \`#f8dcc5\` stroke
-\`#cf6600\` (tertiary orange), input/source \`#e1e8ff\` stroke \`#5566a0\`
-(neutral tint), external system \`#ffffff\` stroke \`#303a52\` (ink). Example:
-\`classDef process fill:#d7ecfd,stroke:#0086e7\`. Group related steps in
-subgraphs. Keep this palette unless the user asks for plain/minimal.
+House diagram style (the compact professional card layout palette): color
+nodes by MEANING using classDef tints — process/flow \`#dceff6\` stroke
+\`#19799a\` (teal), decision/human gate \`#ffeccc\` stroke \`#b97e1e\`
+(amber — attention, use sparingly), output/result \`#e2f4ec\` stroke
+\`#159a63\` (completed green), input/source \`#e7f2f7\` stroke \`#65758a\`
+(pale blue), external system \`#ffffff\` stroke \`#153d5c\` (navy outline).
+Example: \`classDef process fill:#dceff6,stroke:#19799a\`. Group related
+steps in subgraphs. Keep this palette unless the user asks for plain/minimal.
 
 Document writing style: plain words over typographic symbols — write
 "section 4" or "Part 4", never "§4"; avoid ¶, †, and similar marks. These

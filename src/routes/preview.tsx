@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { z } from "zod";
-import { MarkdownPreviewPanel } from "~/components/views/ChatView";
+import { MarkdownPreviewPanel } from "~/components/views/MarkdownPreviewPanel";
 import { CONCOURSE_TOAST_CLASS_NAMES, CONCOURSE_TOAST_CLOSE_ICON } from "~/lib/mc-toast";
 import { useTheme } from "~/lib/use-theme";
 

@@ -742,10 +742,12 @@ safeHandle(IPC.dialogExportPdf, async (_evt, defaultName: string, html: string) 
   });
   try {
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    // US Letter portrait with narrow 0.5in margins — the compact professional
+    // card layout's page setup (nearly full printable width, minimal waste).
     const pdf = await printWin.webContents.printToPDF({
       printBackground: true,
-      pageSize: "A4",
-      margins: { top: 0.6, bottom: 0.6, left: 0.55, right: 0.55 },
+      pageSize: "Letter",
+      margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
     });
     fs.writeFileSync(result.filePath, pdf);
     return { ok: true as const, path: result.filePath };
