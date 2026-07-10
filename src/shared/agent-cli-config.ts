@@ -53,7 +53,10 @@ export const AGENT_CLI_CONFIG = {
     versionScheme: "semver",
     minimumVersion: "2.1.146",
     packageUrl: "https://docs.anthropic.com/en/docs/claude-code/setup",
-    updateCommands: ["npm install -g @anthropic-ai/claude-code@latest"],
+    // The native self-updater updates the SAME binary the app resolves —
+    // `npm -g` on multi-node-manager machines (fnm+volta) updates a shadowed
+    // copy and the app never sees the new version.
+    updateCommands: ["claude update"],
   }),
   codex: withResolveAs({
     agent: "codex",
