@@ -2,6 +2,11 @@
 
 All notable changes to this project, newest first.
 
+## 0.7.7
+
+- ✨ Outputs: clicking an image opens it in the preview panel (like markdown), including the standalone preview window
+- ✨ Settings → AI: "Update CLI" button on each installed engine's card — runs the platform-correct update in the app terminal
+
 ## 0.7.6
 
 - ✨ "Update required" dialog gains a one-click **Update now** (runs in the project terminal; volta→npm→brew cascade on macOS)
