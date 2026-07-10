@@ -2,6 +2,10 @@
 
 All notable changes to this project, newest first.
 
+## 0.7.5
+
+- ✨ Codex model list: GPT-5.6 generation (Sol / Terra / Luna) added to the no-API-key fallback; stale GPT-5.4 base entry dropped
+
 ## 0.7.4
 
 - ✨ exports wear the compact professional card layout: navy titles with a centered header and teal rule, rounded pale-blue emoji section bars with a teal edge, blockquotes as rounded light cards with subtle blue borders, uppercase labels, and teal clickable links — in both Word and PDF
