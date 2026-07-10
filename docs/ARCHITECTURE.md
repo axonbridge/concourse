@@ -336,8 +336,8 @@ flowchart LR
     DOC -- "IPC dialog:exportPdf" --> PDF["hidden sandboxed window<br/>printToPDF · Letter · 0.5in"]
 ```
 
-One builder, two formats: `buildExportHtml` (ChatView.tsx) clones the
-already-rendered preview DOM, applies Word-safe transforms (diagrams
+One builder, two formats: `buildExportHtml` (src/lib/document-export.ts)
+clones the already-rendered preview DOM, applies Word-safe transforms (diagrams
 rasterized light-themed because Word can't parse SVG and the screen may be
 dark; GFM checkbox inputs swapped for glyphs because Word drops form
 controls), and wraps it in a styled shell. Word saves that HTML directly as
@@ -353,8 +353,8 @@ setup rides in an mso conditional comment Chromium never parses.
 
 Style lives in exactly two places — keep them in sync:
 
-- `buildExportHtml` in `src/components/views/ChatView.tsx` — the export
-  stylesheet + the mermaid export palette (`mermaidPngForExport`).
+- `src/lib/document-export.ts` — the export stylesheet, transforms, and the
+  mermaid export palette (`mermaidPngForExport`).
 - the diagram-authoring guidance in `electron/knowledge/org-store.ts` — the
   classDef tints sessions use when writing diagrams (classDef colors override
   the export theme, so these must match the palette).
