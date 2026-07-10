@@ -1302,6 +1302,17 @@ export function MarkdownPreviewPanel({
       mark.textContent = box.checked ? "☑ " : "☐ ";
       box.replaceWith(mark);
     }
+    // Label headings render uppercase. CSS text-transform handles the PDF,
+    // but Word's HTML importer doesn't honor it — uppercase the text itself.
+    const walkTextNodes = (el: Element, fn: (t: Text) => void) => {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) fn(n as Text);
+    };
+    for (const label of Array.from(clone.querySelectorAll("h4"))) {
+      walkTextNodes(label, (t) => {
+        t.textContent = (t.textContent ?? "").toUpperCase();
+      });
+    }
     // Title area: a leading h1 (plus an immediately following paragraph as the
     // subtitle) becomes a centered document header with a teal rule below it.
     const mdRoot = clone.querySelector(".mc-md") ?? clone;
@@ -1356,8 +1367,15 @@ export function MarkdownPreviewPanel({
   a { color: #1684b5; text-decoration: underline; }
   strong { color: #153d5c; }
   img { max-width: 100%; }
-</style></head>
-<body>${html}</body></html>`;
+</style>
+<!--[if gte mso 9]><style>
+  /* Word-only page setup, hidden from Chromium in a conditional comment so it
+     can't fight the margins printToPDF is given. Mirrors the PDF: US Letter
+     portrait, 0.5in margins. */
+  @page WordSection1 { size: 8.5in 11.0in; margin: 0.5in 0.5in 0.5in 0.5in; }
+  div.WordSection1 { page: WordSection1; }
+</style><![endif]--></head>
+<body><div class="WordSection1">${html}</div></body></html>`;
     return { title, doc };
   }, [relPath]);
 
