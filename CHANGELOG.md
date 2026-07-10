@@ -8,6 +8,7 @@ All notable changes to this project, newest first.
 - ✨ task lists export as real checkboxes: `- [ ]` / `- [x]` become ☐/☑ (blue-gray pending, green done) that print consistently and survive Word's importer, which drops form controls
 - ✨ PDF pages are US Letter with narrow 0.5in margins — nearly full printable width, compact and phone-readable; Word documents open with the same page setup instead of Word's defaults
 - ✨ exported mermaid diagrams match the new palette: teal-bordered pale-blue nodes with navy text
+- ✨ sessions author diagrams with the matching palette too: teal process, amber decision, green output, pale-blue input, navy-outlined external
 
 ## 0.7.3
 

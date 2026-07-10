@@ -143,7 +143,7 @@ sequenceDiagram
     U->>Chat: /command … or plain message
     Note over IPC: every turn opens a run trace<br/>(command name, engine, model, t₀)
     Chat->>K: agent writes files (facts, notes, outputs)
-    Note over Chat: meeting notes / 1:1s / decisions →<br/>knowledge/notes/&lt;date&gt;-&lt;slug&gt;.md (OKF concept)
+    Note over Chat: meeting notes / 1:1s / decisions →<br/>knowledge/notes/#lt;date#gt;-#lt;slug#gt;.md (OKF concept)
     Chat-->>IPC: Write/Edit tool events observed
     Chat-->>IPC: turn settles (awaiting-input / error / stopped)
     alt command ran, or chat turn wrote files
@@ -321,3 +321,40 @@ graph index is part of the ~100-fact cliff plan in §8). Hollow nodes (no
 links) are curation targets. The panel also shows the fact count against the
 index cliff, the curation schedule, and click-to-read for every fact — the
 org brain, visible without opening a project.
+
+## §10 Documents: preview & export (2026-07-10)
+
+Markdown outputs are first-class deliverables, so the app renders and exports
+them itself — no converter dependencies (no pandoc, no python-docx).
+
+```mermaid
+flowchart LR
+    MD["outputs/*.md"] --> PV["MarkdownPreviewPanel<br/>react-markdown + GFM<br/>live mermaid (theme-matched)"]
+    PV -- "clone rendered DOM" --> TX["export transforms<br/>mermaid → light 3x PNG<br/>checkboxes → ☐/☑ glyphs<br/>leading h1+p → title header"]
+    TX --> DOC["one styled HTML document<br/>(house export style)"]
+    DOC -- "save as .doc" --> WORD["Word / Pages / Docs<br/>(opens HTML natively)"]
+    DOC -- "IPC dialog:exportPdf" --> PDF["hidden sandboxed window<br/>printToPDF · Letter · 0.5in"]
+```
+
+One builder, two formats: `buildExportHtml` (ChatView.tsx) clones the
+already-rendered preview DOM, applies Word-safe transforms (diagrams
+rasterized light-themed because Word can't parse SVG and the screen may be
+dark; GFM checkbox inputs swapped for glyphs because Word drops form
+controls), and wraps it in a styled shell. Word saves that HTML directly as
+`.doc`; PDF ships it over IPC to the main process, which prints it in a
+hidden sandboxed BrowserWindow via Chromium's `printToPDF`.
+
+**The house export style** is the compact professional card layout: US Letter
+portrait with 0.5in margins, Inter/Arial body, navy `#153d5c` headings, teal
+`#19799a` accents, a centered title header over a teal rule, rounded
+pale-blue section bars (`h1`/`h2`), blockquotes as rounded light cards,
+`h4` as uppercase labels, ☐/☑ task checkboxes, teal links. Word-only page
+setup rides in an mso conditional comment Chromium never parses.
+
+Style lives in exactly two places — keep them in sync:
+
+- `buildExportHtml` in `src/components/views/ChatView.tsx` — the export
+  stylesheet + the mermaid export palette (`mermaidPngForExport`).
+- the diagram-authoring guidance in `electron/knowledge/org-store.ts` — the
+  classDef tints sessions use when writing diagrams (classDef colors override
+  the export theme, so these must match the palette).

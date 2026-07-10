@@ -1284,7 +1284,7 @@ export function MarkdownPreviewPanel({
       const source = decodeURIComponent(wrapper.getAttribute("data-mermaid-source") ?? "");
       const png = source ? await mermaidPngForExport(source) : null;
       if (!png) continue; // keep the inline svg — PDF can still render it
-      // Full page width — natural mermaid size reads tiny on an A4/letter page.
+      // Full page width — natural mermaid size reads tiny on a letter page.
       // Percentage lets Word and printToPDF each resolve against their own
       // content width; the 3x raster keeps it crisp at that size.
       const img = document.createElement("img");
