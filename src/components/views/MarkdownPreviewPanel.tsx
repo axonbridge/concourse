@@ -28,6 +28,7 @@ export function MarkdownPreviewPanel({
   standalone?: boolean;
 }) {
   const [content, setContent] = useState<string | null>(null);
+  const [image, setImage] = useState<{ dataUrl: string; mimeType: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -61,6 +62,7 @@ export function MarkdownPreviewPanel({
   useEffect(() => {
     let cancelled = false;
     setContent(null);
+    setImage(null);
     setError(null);
     void (async () => {
       try {
@@ -68,6 +70,8 @@ export function MarkdownPreviewPanel({
         if (cancelled) return;
         if (result && "ok" in result && result.ok && result.kind === "text") {
           setContent(result.content);
+        } else if (result && "ok" in result && result.ok && result.kind === "image") {
+          setImage({ dataUrl: result.dataUrl, mimeType: result.mimeType });
         } else {
           setError("Could not read this file.");
         }
@@ -199,6 +203,27 @@ export function MarkdownPreviewPanel({
       <div ref={contentRef} style={{ flex: 1, overflow: "auto", padding: "16px 20px" }}>
         {error ? (
           <div style={{ fontSize: 13, color: "var(--status-failed)" }}>{error}</div>
+        ) : image ? (
+          <div
+            style={{
+              minHeight: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <img
+              src={image.dataUrl}
+              alt={basename}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+                borderRadius: 8,
+                boxShadow: "0 10px 36px rgba(0, 0, 0, 0.25)",
+              }}
+            />
+          </div>
         ) : content === null ? (
           <div style={{ fontSize: 13, color: "var(--text-dim)" }}>Loading…</div>
         ) : (

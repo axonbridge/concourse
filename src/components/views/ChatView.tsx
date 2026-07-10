@@ -469,7 +469,9 @@ export function ChatView({
         rel = p;
       }
       if (!rel) return false; // absolute path outside both roots → OS open
-      if (!/\.(md|markdown)$/i.test(rel)) {
+      // Markdown AND images render in the side panel; everything else opens
+      // in the OS default app.
+      if (!/\.(md|markdown|png|jpe?g|gif|webp|bmp|ico)$/i.test(rel)) {
         void getElectron()?.openFile(`${root}/${rel}`);
         return true;
       }
@@ -1060,8 +1062,8 @@ export function ChatView({
                         const isOrg = f.startsWith("org-knowledge/");
                         const root = isOrg && orgDir ? orgDir : cwd;
                         const rel = isOrg ? f.slice("org-knowledge/".length) : f;
-                        if (/\.(md|markdown)$/i.test(f)) setPreview({ root, rel });
-                        // Non-markdown: reveal in Finder (user picks what opens it).
+                        if (/\.(md|markdown|png|jpe?g|gif|webp|bmp|ico)$/i.test(f)) setPreview({ root, rel });
+                        // Other file types: reveal in Finder (user picks what opens it).
                         else void getElectron()?.revealPath(`${root}/${rel}`);
                       }}
                       style={{
