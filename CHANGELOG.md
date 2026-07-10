@@ -2,6 +2,12 @@
 
 All notable changes to this project, newest first.
 
+## 0.7.6
+
+- ✨ "Update required" dialog gains a one-click **Update now** (runs in the project terminal; volta→npm→brew cascade on macOS)
+- 🐛 chat errors are visible: failed turns show the error message as a notice bubble instead of only a status dot; codex API errors unwrapped to the human message
+- ✨ Codex CLI minimum raised to 0.144 (required by the GPT-5.6 models)
+
 ## 0.7.5
 
 - ✨ Codex model list: GPT-5.6 generation (Sol / Terra / Luna) added to the no-API-key fallback; stale GPT-5.4 base entry dropped

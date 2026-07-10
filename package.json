@@ -1,6 +1,6 @@
 {
   "name": "concourse",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "Desktop control surface for managing agentic coding work across many projects.",
   "license": "MIT",
   "private": true,
