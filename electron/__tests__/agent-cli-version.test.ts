@@ -96,8 +96,8 @@ describe("agent CLI version helpers", () => {
   });
 
   it("compares semantic versions against configured minimums", () => {
-    expect(compareCliVersions("0.131.9", AGENT_CLI_CONFIG.codex.minimumVersion, "semver")).toBeLessThan(0);
-    expect(compareCliVersions("0.132.0", AGENT_CLI_CONFIG.codex.minimumVersion, "semver")).toBe(0);
+    expect(compareCliVersions("0.143.9", AGENT_CLI_CONFIG.codex.minimumVersion, "semver")).toBeLessThan(0);
+    expect(compareCliVersions("0.144.0", AGENT_CLI_CONFIG.codex.minimumVersion, "semver")).toBe(0);
     expect(compareCliVersions("2.1.145", AGENT_CLI_CONFIG["claude-code"].minimumVersion, "semver")).toBeLessThan(0);
     expect(compareCliVersions("2.1.146", AGENT_CLI_CONFIG["claude-code"].minimumVersion, "semver")).toBe(0);
   });

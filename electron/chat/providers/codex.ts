@@ -86,7 +86,20 @@ export const codexChatProvider: ChatProvider = {
     let stopped = false;
     const backlog: string[] = [];
 
-    const fail = (detail: string) => emit({ kind: "status", sessionId: sid, status: "error", detail });
+    // API failures arrive as JSON-in-a-string ('{"type":"error","status":400,
+    // "error":{"message":"…"}}') — unwrap to the human message before showing.
+    const cleanError = (raw: string): string => {
+      try {
+        const outer = JSON.parse(raw);
+        const msg = outer?.error?.message ?? outer?.message;
+        if (typeof msg === "string" && msg.trim()) return msg.trim();
+      } catch {
+        /* not JSON — use as-is */
+      }
+      return raw;
+    };
+    const fail = (detail: string) =>
+      emit({ kind: "status", sessionId: sid, status: "error", detail: cleanError(detail) });
 
     const handleEvent = (ev: any) => {
       if (ev?.type === "thread.started" && ev.thread_id) {

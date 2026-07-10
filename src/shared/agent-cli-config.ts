@@ -60,7 +60,9 @@ export const AGENT_CLI_CONFIG = {
     command: "codex",
     label: "Codex",
     versionScheme: "semver",
-    minimumVersion: "0.132.0",
+    // 0.144+ is required for the GPT-5.6 generation (sol/terra/luna) — older
+    // CLIs get a 400 from the API on those models.
+    minimumVersion: "0.144.0",
     packageUrl: "https://www.npmjs.com/package/@openai/codex",
     updateCommands: {
       default: ["npm install -g @openai/codex@latest"],

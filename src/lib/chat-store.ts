@@ -122,6 +122,14 @@ function ensureSubscribed() {
       state.streamingText = (state.streamingText ?? "") + event.text;
     } else if (event.kind === "status") {
       state.status = event.status;
+      // Errors carry a detail the user must actually SEE — a status dot alone
+      // reads as "nothing happened" (bit us with a too-old codex CLI 400).
+      if (event.status === "error" && event.detail) {
+        state.items = [
+          ...state.items,
+          { id: `err-${state.items.length}`, type: "notice", text: `Error: ${event.detail}` },
+        ];
+      }
       if (event.status !== "awaiting-permission") state.permission = null;
       // Idle states clear the live activity label.
       if (event.status !== "running" && event.status !== "starting") {
