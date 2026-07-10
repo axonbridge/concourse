@@ -49,7 +49,6 @@ import { HotkeyTooltip, StaticHotkeyTooltip } from "~/components/ui/Tooltip";
 import { Modal } from "~/components/ui/Modal";
 import { ConfirmDialog } from "~/components/ui/ConfirmDialog";
 import { RemoveProjectConfirmDialog } from "~/components/views/RemoveProjectConfirmDialog";
-import { TextField } from "~/components/ui/TextField";
 import { useHotkey } from "~/lib/use-hotkey";
 import { isSettingsOverlayOpen } from "~/lib/settings-navigation";
 import { ApiError, api, type AppSettings } from "~/lib/api";
@@ -163,22 +162,20 @@ import { useFileBrowserViewOpen } from "~/lib/file-browser-view-store";
 import { FileBrowserView } from "~/components/views/FileBrowserView";
 import { KnowledgeOutputsView } from "~/components/views/KnowledgeOutputsView";
 import {
-  WORKTREE_DELETE_FILES_MAX_HEIGHT,
   OPTIMISTIC_WORKTREE_ID_PREFIX,
   deleteWorktreeOptionsForMode,
   firstDisplayedTask,
-  formatWorktreeChangeStatus,
   gitUnavailableTitle,
   launchUrlPort,
-  worktreeChangeLabel,
   type DeleteWorktreeMode,
   type SessionView,
 } from "~/components/views/project/helpers";
 import { SessionScopeToggle } from "~/components/views/project/SessionScopeToggle";
 import { WorktreeToggleGroup } from "~/components/views/project/WorktreeToggleGroup";
 import { ProjectGitStatusButton } from "~/components/views/project/ProjectGitStatusButton";
-import { WorktreeChangeStat } from "~/components/views/project/WorktreeChangeStat";
 import { RunStatusPill } from "~/components/views/project/RunStatusPill";
+import { ProjectPathIssueDialogs } from "~/components/views/project/ProjectPathIssueDialogs";
+import { DeleteWorktreeDialog } from "~/components/views/project/DeleteWorktreeDialog";
 
 export const Route = createFileRoute("/projects/$id")({
   component: ProjectPage,
@@ -3142,134 +3139,22 @@ function ProjectPage() {
         onClose={() => setAgentUpdateRequired(null)}
       />
 
-      <Modal
-        open={!!projectPathIssue}
+      <ProjectPathIssueDialogs
+        issue={projectPathIssue}
+        issueIsWorktree={pathIssueIsWorktree}
+        checkErrorMessage={projectPathCheck.state === "error" ? projectPathCheck.message : null}
+        actionError={projectPathActionError}
+        deletingWorktree={deletingWorktree}
+        removingProject={removingMissingProject}
+        repairingPath={repairingProjectPath}
+        retryingCheck={retryingProjectPath}
         onClose={closePathIssue}
-        title={pathIssueIsWorktree ? "Worktree folder missing" : "Project folder missing"}
-        width={540}
-        footer={
-          <>
-            <StaticHotkeyTooltip hotkey="Esc">
-              <Btn
-                variant="ghost"
-                onClick={closePathIssue}
-              >
-                Back to projects
-              </Btn>
-            </StaticHotkeyTooltip>
-            {pathIssueIsWorktree ? (
-              <>
-                <Btn
-                  variant="danger"
-                  icon="trash"
-                  onClick={() => void deleteSelectedWorktree()}
-                  disabled={deletingWorktree}
-                >
-                  {deletingWorktree ? "Deleting..." : "Delete worktree"}
-                </Btn>
-                <Btn
-                  variant="primary"
-                  icon="folder"
-                  onClick={() => selectWorktree(MAIN_WORKTREE_ID)}
-                  disabled={deletingWorktree}
-                >
-                  Switch to main
-                </Btn>
-              </>
-            ) : (
-              <>
-                <Btn
-                  variant="danger"
-                  icon="trash"
-                  onClick={() => void removeMissingProject()}
-                  disabled={repairingProjectPath || removingMissingProject}
-                >
-                  {removingMissingProject ? "Removing..." : "Remove project"}
-                </Btn>
-                <Btn
-                  variant="primary"
-                  icon="folder"
-                  onClick={() => void repairMissingProjectPath()}
-                  disabled={repairingProjectPath || removingMissingProject}
-                >
-                  {repairingProjectPath ? "Updating..." : "Choose new folder"}
-                </Btn>
-              </>
-            )}
-          </>
-        }
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text)" }}>
-            {projectPathIssue?.message ?? "Concourse cannot find this project folder."}
-            {" "}
-            {pathIssueIsWorktree
-              ? "Switch back to the main project folder, or delete this missing worktree."
-              : "Choose the folder in its new location, or remove the project from Concourse."}
-          </div>
-          {projectPathActionError && (
-            <div
-              style={{
-                border: "1px solid color-mix(in srgb, var(--status-failed) 55%, transparent)",
-                borderRadius: 10,
-                background: "color-mix(in srgb, var(--status-failed) 12%, transparent)",
-                color: "var(--status-failed)",
-                padding: "9px 11px",
-                fontFamily: "var(--mono)",
-                fontSize: 11.5,
-                lineHeight: 1.45,
-              }}
-            >
-              {projectPathActionError}
-            </div>
-          )}
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              background: "var(--surface-0)",
-              padding: "10px 12px",
-              fontFamily: "var(--mono)",
-              fontSize: 11.5,
-              color: "var(--text-dim)",
-              lineHeight: 1.45,
-              wordBreak: "break-all",
-            }}
-          >
-            {projectPathIssue?.path}
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={projectPathCheck.state === "error"}
-        onClose={closePathIssue}
-        title="Could not check project folder"
-        width={500}
-        footer={
-          <>
-            <StaticHotkeyTooltip hotkey="Esc">
-              <Btn variant="ghost" onClick={closePathIssue}>
-                Back to projects
-              </Btn>
-            </StaticHotkeyTooltip>
-            <Btn
-              variant="primary"
-              icon="refresh"
-              onClick={() => void retryProjectPathCheck()}
-              disabled={retryingProjectPath}
-            >
-              {retryingProjectPath ? "Checking..." : "Retry"}
-            </Btn>
-          </>
-        }
-      >
-        <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text)" }}>
-          {projectPathCheck.state === "error"
-            ? projectPathCheck.message
-            : "Concourse could not verify this project path."}
-        </div>
-      </Modal>
+        onDeleteWorktree={() => void deleteSelectedWorktree()}
+        onSwitchToMain={() => selectWorktree(MAIN_WORKTREE_ID)}
+        onRemoveProject={removeMissingProject}
+        onRepairPath={repairMissingProjectPath}
+        onRetryCheck={retryProjectPathCheck}
+      />
 
       <CommandPicker
         open={showCommandPicker}
@@ -3427,192 +3312,23 @@ function ProjectPage() {
       />
 
       {selectedWorktree && !selectedWorktree.isMain && (
-        <Modal
+        <DeleteWorktreeDialog
           open={confirmDeleteWorktree}
+          worktree={selectedWorktree}
+          dirty={selectedWorktreeDirty}
+          statusPending={selectedWorktreeStatusPending}
+          changeCount={selectedWorktreeChangeCount}
+          stagedCount={gitStatus?.staged.length ?? 0}
+          unstagedCount={gitStatus?.unstaged.length ?? 0}
+          changedFiles={worktreeChangedFiles}
+          confirmName={worktreeDeleteConfirmName}
+          onConfirmNameChange={setWorktreeDeleteConfirmName}
+          discardConfirmMatches={worktreeDiscardConfirmMatches}
+          deleting={deletingWorktree}
           onClose={closeDeleteWorktreeDialog}
-          title={selectedWorktreeDirty ? "Delete dirty worktree" : "Delete worktree"}
-          width={760}
-          maxWidth="calc(100vw - 32px)"
-          footerStyle={{ flexWrap: "nowrap", overflowX: "auto" }}
-          footer={
-            <>
-              <StaticHotkeyTooltip hotkey="Esc">
-                <Btn
-                  variant="ghost"
-                  onClick={closeDeleteWorktreeDialog}
-                  disabled={deletingWorktree}
-                >
-                  Cancel
-                </Btn>
-              </StaticHotkeyTooltip>
-              {selectedWorktreeDirty ? (
-                <>
-                  <Btn
-                    variant="ghost"
-                    icon="git-branch"
-                    onClick={reviewSelectedWorktreeChanges}
-                    disabled={deletingWorktree}
-                  >
-                    Review changes
-                  </Btn>
-                  <Btn
-                    variant="primary"
-                    icon="archive"
-                    onClick={() => void deleteSelectedWorktree("stash")}
-                    disabled={deletingWorktree}
-                  >
-                    {deletingWorktree ? "Deleting..." : "Stash and delete"}
-                  </Btn>
-                  <Btn
-                    variant="danger"
-                    icon="trash"
-                    onClick={() => void deleteSelectedWorktree("discard")}
-                    disabled={deletingWorktree || !worktreeDiscardConfirmMatches}
-                  >
-                    Discard and delete
-                  </Btn>
-                </>
-              ) : (
-                <Btn
-                  variant="danger"
-                  icon="trash"
-                  onClick={() => void deleteSelectedWorktree("clean")}
-                  disabled={deletingWorktree || selectedWorktreeStatusPending}
-                >
-                  {selectedWorktreeStatusPending
-                    ? "Checking..."
-                    : deletingWorktree
-                      ? "Deleting..."
-                      : "Delete"}
-                </Btn>
-              )}
-            </>
-          }
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ fontSize: 13, color: "var(--text)" }}>
-                Delete worktree &ldquo;{selectedWorktree.name}&rdquo;?
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.5 }}>
-                Concourse will remove this worktree folder. The branch is kept.
-              </div>
-            </div>
-            <div
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                background: "var(--surface-0)",
-                padding: "9px 11px",
-                fontFamily: "var(--mono)",
-                fontSize: 11.5,
-                color: "var(--text-dim)",
-                lineHeight: 1.45,
-                wordBreak: "break-all",
-              }}
-            >
-              {selectedWorktree.path}
-            </div>
-
-            {selectedWorktreeStatusPending && (
-              <div
-                role="status"
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  background: "var(--surface-0)",
-                  padding: "9px 11px",
-                  color: "var(--text-dim)",
-                  fontSize: 12,
-                  lineHeight: 1.5,
-                }}
-              >
-                Checking for uncommitted changes before delete is enabled.
-              </div>
-            )}
-
-            {selectedWorktreeDirty && (
-              <>
-                <div
-                  style={{
-                    border: "1px solid color-mix(in srgb, var(--status-failed) 45%, transparent)",
-                    borderRadius: 8,
-                    background: "color-mix(in srgb, var(--status-failed) 10%, transparent)",
-                    padding: "10px 12px",
-                    color: "var(--text)",
-                    fontSize: 12,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  This worktree has {worktreeChangeLabel(selectedWorktreeChangeCount)}.
-                  Review them, stash them before deletion, or type the worktree name to discard them.
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                    gap: 8,
-                  }}
-                >
-                  <WorktreeChangeStat
-                    label="Staged"
-                    count={gitStatus?.staged.length ?? 0}
-                  />
-                  <WorktreeChangeStat
-                    label="Unstaged"
-                    count={gitStatus?.unstaged.length ?? 0}
-                  />
-                </div>
-                {worktreeChangedFiles.length > 0 && (
-                  <div
-                    role="region"
-                    aria-label="Changed files in worktree"
-                    style={{
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      background: "var(--surface-0)",
-                      maxHeight: WORKTREE_DELETE_FILES_MAX_HEIGHT,
-                      overflowX: "hidden",
-                      overflowY: "auto",
-                    }}
-                  >
-                    {worktreeChangedFiles.map((file, index) => (
-                      <div
-                        key={`${file.area}:${file.status}:${file.path}:${index}`}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "92px minmax(0, 1fr)",
-                          gap: 10,
-                          padding: "7px 10px",
-                          borderTop: index === 0 ? 0 : "1px solid var(--border)",
-                          fontFamily: "var(--mono)",
-                          fontSize: 11,
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        <span style={{ color: "var(--text-faint)" }}>
-                          {formatWorktreeChangeStatus(file.area, file.status)}
-                        </span>
-                        <span style={{ color: "var(--text-dim)", wordBreak: "break-all" }}>
-                          {file.path}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <TextField
-                  label="Discard confirmation"
-                  value={worktreeDeleteConfirmName}
-                  onChange={setWorktreeDeleteConfirmName}
-                  placeholder={selectedWorktree.name}
-                  mono
-                  hint={`Type ${selectedWorktree.name} to enable Discard and delete.`}
-                  ariaLabel={`Type ${selectedWorktree.name} to discard changes and delete the worktree`}
-                />
-              </>
-            )}
-          </div>
-        </Modal>
+          onDelete={(mode) => void deleteSelectedWorktree(mode)}
+          onReviewChanges={reviewSelectedWorktreeChanges}
+        />
       )}
 
       <LaunchCommandsDialog
