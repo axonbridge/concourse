@@ -1166,46 +1166,46 @@ async function mermaidPngForExport(
 ): Promise<{ dataUrl: string; width: number; height: number } | null> {
   try {
     const mermaid = (await import("mermaid")).default;
-    // Exports render diagrams in the Meridian palette (DESIGN.md): primary
-    // blue nodes on tonal surfaces, neutral ink text. classDef colors in the
-    // diagram source still override these defaults.
+    // Exports render diagrams in the export palette (the compact card layout
+    // style guide): teal-bordered pale-blue nodes on light surfaces, navy
+    // text. classDef colors in the diagram source still override these.
     mermaid.initialize({
       startOnLoad: false,
       theme: "base",
       securityLevel: "strict",
-      fontFamily: '"DM Sans", "Segoe UI", Helvetica, Arial, sans-serif',
+      fontFamily: 'Inter, "Segoe UI", Arial, Helvetica, sans-serif',
       flowchart: { htmlLabels: false },
       suppressErrorRendering: true,
       themeVariables: {
         background: "transparent",
-        primaryColor: "#d7ecfd",
-        primaryBorderColor: "#0086e7",
-        primaryTextColor: "#1c2438",
-        secondaryColor: "#f1f3ff",
+        primaryColor: "#dceff6",
+        primaryBorderColor: "#19799a",
+        primaryTextColor: "#153d5c",
+        secondaryColor: "#e7f2f7",
         tertiaryColor: "#ffffff",
-        mainBkg: "#d7ecfd",
-        nodeBorder: "#0086e7",
-        lineColor: "#6b7590",
-        textColor: "#303a52",
-        titleColor: "#1c2438",
-        clusterBkg: "#f1f3ff",
-        clusterBorder: "#c9d4f5",
-        edgeLabelBackground: "#f1f3ff",
+        mainBkg: "#dceff6",
+        nodeBorder: "#19799a",
+        lineColor: "#65758a",
+        textColor: "#26384a",
+        titleColor: "#153d5c",
+        clusterBkg: "#f8fbfc",
+        clusterBorder: "#c7dde8",
+        edgeLabelBackground: "#e7f2f7",
         noteBkgColor: "#ffeccc",
         noteBorderColor: "#cf6600",
-        noteTextColor: "#303a52",
-        actorBkg: "#d7ecfd",
-        actorBorder: "#0086e7",
-        actorTextColor: "#1c2438",
-        actorLineColor: "#6b7590",
-        signalColor: "#6b7590",
-        signalTextColor: "#303a52",
-        labelBoxBkgColor: "#f1f3ff",
-        labelBoxBorderColor: "#c9d4f5",
-        labelTextColor: "#303a52",
-        loopTextColor: "#303a52",
-        activationBkgColor: "#e1e8ff",
-        activationBorderColor: "#6b7590",
+        noteTextColor: "#26384a",
+        actorBkg: "#dceff6",
+        actorBorder: "#19799a",
+        actorTextColor: "#153d5c",
+        actorLineColor: "#65758a",
+        signalColor: "#65758a",
+        signalTextColor: "#26384a",
+        labelBoxBkgColor: "#e7f2f7",
+        labelBoxBorderColor: "#c7dde8",
+        labelTextColor: "#26384a",
+        loopTextColor: "#26384a",
+        activationBkgColor: "#e7f2f7",
+        activationBorderColor: "#65758a",
       },
     });
     const { svg } = await mermaid.render(`mc-export-mermaid-${++mermaidExportSeq}`, source);
@@ -1293,33 +1293,68 @@ export function MarkdownPreviewPanel({
       img.style.cssText = "width:100%;height:auto;";
       wrapper.replaceWith(img);
     }
+    // GFM task-list checkboxes arrive as disabled <input type="checkbox">.
+    // Swap them for ☐/☑ glyphs — they print consistently, survive Word's HTML
+    // importer (which drops form controls), and take color (green = done).
+    for (const box of Array.from(clone.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))) {
+      const mark = document.createElement("span");
+      mark.className = box.checked ? "mc-x-box mc-x-done" : "mc-x-box";
+      mark.textContent = box.checked ? "☑ " : "☐ ";
+      box.replaceWith(mark);
+    }
+    // Title area: a leading h1 (plus an immediately following paragraph as the
+    // subtitle) becomes a centered document header with a teal rule below it.
+    const mdRoot = clone.querySelector(".mc-md") ?? clone;
+    const firstEl = mdRoot.firstElementChild;
+    if (firstEl?.tagName === "H1") {
+      const header = document.createElement("header");
+      header.className = "mc-x-header";
+      const sibling = firstEl.nextElementSibling;
+      const subtitle = sibling?.tagName === "P" ? sibling : null;
+      firstEl.replaceWith(header);
+      header.appendChild(firstEl);
+      if (subtitle) header.appendChild(subtitle);
+    }
     const html = clone.innerHTML;
     if (!html) return null;
     const title = (relPath.split("/").pop() ?? "document").replace(/\.(md|markdown)$/i, "");
-    // House document style — the Pivot Health "Meridian" system (see
-    // ~/Downloads/DESIGN.md): Poppins headlines + DM Sans body, primary blue
-    // #0086E7, neutral ink #303A52, tonal surfaces (#f1f3ff / #e1e8ff) instead
-    // of hard lines, ghost borders only. Solid colors (Word's HTML parser).
+    // House document style — the compact professional card layout (Jesus
+    // Guzman's PDF style guide): Inter/Arial body, navy #153D5C headings, teal
+    // #19799A accents, rounded pale-blue section bars with a teal edge,
+    // rounded light cards with subtle blue borders, ☐/☑ task checkboxes,
+    // tight spacing so pages stay compact and phone-readable. Solid colors and
+    // simple selectors so Word's HTML parser degrades gracefully (it just
+    // ignores border-radius / break-inside).
     const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
 <head><meta charset="utf-8"><title>${title}</title>
 <style>
-  body { font-family: "DM Sans", "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #303a52; }
-  h1, h2, h3, h4 { font-family: Poppins, "Segoe UI", Helvetica, Arial, sans-serif; color: #1c2438; }
-  h1 { font-size: 19pt; font-weight: 600; border-bottom: 1px solid #e1e8ff; padding-bottom: 4pt; }
-  h1:first-of-type { font-size: 22pt; border-bottom: 4px solid #0086e7; padding-bottom: 8pt; letter-spacing: -0.02em; }
-  h2 { font-size: 15pt; font-weight: 600; border-bottom: 1px solid #e1e8ff; padding-bottom: 3pt; }
-  h3 { font-size: 12.5pt; font-weight: 600; } h4 { font-size: 11.5pt; }
-  blockquote { background: #f1f3ff; border-left: 4px solid #0086e7; padding: 9pt 14pt; margin: 10pt 0; }
-  blockquote p { margin: 4pt 0; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #dfe3f2; padding: 5pt 10pt; text-align: left; vertical-align: top; }
-  th { background: #e1e8ff; color: #1c2438; }
-  code { font-family: Consolas, Menlo, monospace; font-size: 10pt; background: #f1f3ff; border-radius: 4px; padding: 1pt 4pt; color: #303a52; }
-  pre { background: #f1f3ff; border-radius: 8px; padding: 9pt 12pt; }
+  body { font-family: Inter, "Segoe UI", Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.25; color: #26384a; }
+  p { margin: 5pt 0; }
+  h1, h2, h3, h4 { color: #153d5c; page-break-after: avoid; break-after: avoid; }
+  .mc-x-header { text-align: center; border-bottom: 2pt solid #19799a; padding-bottom: 8pt; margin-bottom: 10pt; }
+  .mc-x-header h1 { font-size: 25pt; font-weight: 700; margin: 0; background: none; border: none; padding: 0; }
+  .mc-x-header p { color: #65758a; font-size: 11pt; margin: 4pt 0 0; }
+  h1, h2 { background: #e7f2f7; border-left: 5pt solid #19799a; border-radius: 7pt; padding: 7pt 10pt; margin: 12pt 0 6pt; }
+  h1 { font-size: 16pt; font-weight: 700; }
+  h2 { font-size: 15pt; font-weight: 700; }
+  h3 { font-size: 12.5pt; font-weight: 700; margin: 10pt 0 4pt; }
+  h4 { font-size: 9.5pt; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #4c6579; margin: 7pt 0 3pt; }
+  blockquote { background: #f8fbfc; border: 1pt solid #c7dde8; border-radius: 8pt; padding: 10pt 12pt; margin: 8pt 0; page-break-inside: avoid; break-inside: avoid; }
+  blockquote p { margin: 3pt 0; }
+  ul, ol { margin: 5pt 0; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  ul.contains-task-list { list-style: none; padding-left: 4pt; }
+  .mc-x-box { color: #65758a; }
+  .mc-x-done { color: #159a63; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0; }
+  th, td { border: 1pt solid #c7dde8; padding: 4pt 8pt; text-align: left; vertical-align: top; }
+  th { background: #e7f2f7; color: #153d5c; }
+  code { font-family: Consolas, Menlo, monospace; font-size: 9.5pt; background: #eef4f8; border-radius: 4px; padding: 1pt 4pt; color: #26384a; }
+  pre { background: #f8fbfc; border: 1pt solid #c7dde8; border-radius: 8pt; padding: 8pt 10pt; page-break-inside: avoid; break-inside: avoid; }
   pre code { background: none; padding: 0; }
-  hr { border: none; border-top: 1px solid #e1e8ff; margin: 16pt 0; }
-  a { color: #0086e7; }
-  strong { color: #1c2438; }
+  hr { border: none; border-top: 1pt solid #c7dde8; margin: 10pt 0; }
+  a { color: #1684b5; text-decoration: underline; }
+  strong { color: #153d5c; }
   img { max-width: 100%; }
 </style></head>
 <body>${html}</body></html>`;
