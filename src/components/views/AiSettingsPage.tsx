@@ -9,6 +9,10 @@ import { queryKeys, useSettings } from "~/queries";
 import { useRouter } from "@tanstack/react-router";
 import { AI_PROVIDERS, aiProviderInfo, type AiProviderInfo, type EngineId } from "~/shared/ai-providers";
 import { agentSetupCommand, AGENT_SETUP } from "~/shared/agent-setup-commands";
+import {
+  agentCliConfigForAgent,
+  resolveAgentCliUpdateCommands,
+} from "~/shared/agent-cli-config";
 import { useUserTerminals } from "~/lib/user-terminal-store";
 import { requestCloseSettings } from "~/lib/settings-navigation";
 import type { TaskAgent } from "~/shared/domain";
@@ -172,6 +176,24 @@ export function AiSettingsPage() {
     void router.navigate({ to: "/" });
   };
 
+  // One-click CLI update for already-installed engines — the platform-correct
+  // update cascade (volta→npm→brew on macOS) in the same dashboard terminal
+  // flow. Renderer runs on the same OS as main, so process.platform-style
+  // detection maps from the UA.
+  const runCliUpdate = async (agent: TaskAgent) => {
+    const cfg = agentCliConfigForAgent(agent);
+    const platform: NodeJS.Platform = navigator.userAgent.includes("Windows")
+      ? "win32"
+      : navigator.userAgent.includes("Mac")
+        ? "darwin"
+        : "linux";
+    const command = resolveAgentCliUpdateCommands(cfg.updateCommands, platform)[0];
+    if (!command) return;
+    await createHomeSetupTerminal(`${cfg.label} update`, command);
+    requestCloseSettings();
+    void router.navigate({ to: "/" });
+  };
+
   // The setup area rendered inside the SELECTED card: auth status + key
   // controls (+ endpoint URL for the custom engine). Everything an engine
   // needs lives on its card.
@@ -226,6 +248,20 @@ export function AiSettingsPage() {
               </Btn>
             </div>
           )}
+          {p.kind === "harness" &&
+            electron &&
+            detection?.[DETECT_KEY[p.id as TaskAgent]] === true && (
+              <div style={{ flexShrink: 0 }}>
+                <Btn
+                  variant="ghost"
+                  icon="download"
+                  title={`Update the ${p.label} CLI to the latest version`}
+                  onClick={() => void runCliUpdate(p.id as TaskAgent)}
+                >
+                  Update CLI
+                </Btn>
+              </div>
+            )}
           {envVar && electron && !editing && (
             <div style={{ flexShrink: 0 }}>
               {hasKey ? (
