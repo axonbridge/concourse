@@ -1,6 +1,6 @@
 import * as os from "node:os";
-import { resolveAgentCommandOnPath } from "../../../electron/agent-cli-resolution";
-import { sanitizedProcessEnv } from "../../../electron/shell-env";
+import { resolveAgentCommandOnPath } from "../../shared/agent-cli-resolution";
+import { sanitizedProcessEnv } from "../../shared/shell-env";
 import {
   COMMIT_CLI_VALUES,
   type CommitCli,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { resolveAgentCommandOnPath } from "../agent-cli-resolution";
+import { resolveAgentCommandOnPath } from "../../src/shared/agent-cli-resolution";
 
 function touch(file: string) {
   fs.mkdirSync(path.dirname(file), { recursive: true });

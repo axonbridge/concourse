@@ -8,7 +8,7 @@ import {
   resolveCommandOnPath,
   setCanonicalPathEnv,
   shellArgsForCommand,
-} from "../../../electron/shell-env";
+} from "../../shared/shell-env";
 
 function touch(file: string) {
   fs.mkdirSync(path.dirname(file), { recursive: true });

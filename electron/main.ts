@@ -43,8 +43,8 @@ import {
 } from "./whisper-server";
 import { registerFileHandlers, disposeAllFileWatchers } from "./file-handlers";
 import { IPC } from "./ipc-channels";
-import { resolveAgentCommandOnPath } from "./agent-cli-resolution";
-import { augmentProcessEnv, sanitizedProcessEnv } from "./shell-env";
+import { resolveAgentCommandOnPath } from "../src/shared/agent-cli-resolution";
+import { augmentProcessEnv, sanitizedProcessEnv } from "../src/shared/shell-env";
 import { registerUpdateManager } from "./update-manager";
 import {
   disposeApiTokenStore,

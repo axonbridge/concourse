@@ -2,9 +2,9 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { resolveAgentCommandOnPath } from "../../../electron/agent-cli-resolution";
-import { resolveCommandOnPath, sanitizedProcessEnv } from "../../../electron/shell-env";
-import { isWindowsCommandScript } from "../../../electron/windows-cmd";
+import { resolveAgentCommandOnPath } from "../../shared/agent-cli-resolution";
+import { resolveCommandOnPath, sanitizedProcessEnv } from "../../shared/shell-env";
+import { isWindowsCommandScript } from "../../shared/windows-cmd";
 
 export type RunCliOptions = {
   cwd?: string;

@@ -7,12 +7,12 @@ import { spawnSync } from "node:child_process";
 import { installAgentHooks } from "./agent-hooks";
 import { IPC } from "./ipc-channels";
 import { safeHandle } from "./ipc-safe-handle";
-import { resolveAgentCommandOnPath } from "./agent-cli-resolution";
+import { resolveAgentCommandOnPath } from "../src/shared/agent-cli-resolution";
 import {
   resolveShell,
   sanitizedProcessEnv,
   shellArgsForCommand,
-} from "./shell-env";
+} from "../src/shared/shell-env";
 import { loadProjectRoots } from "./project-roots";
 import { MAX_TCP_PORT } from "../src/shared/tcp-port";
 import { shortId } from "../src/shared/short-id";

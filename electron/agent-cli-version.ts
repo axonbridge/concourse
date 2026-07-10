@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { AgentCliVersionRequirement } from "./agent-cli-version-requirements";
 import { resolveAgentCliUpdateCommands } from "./agent-cli-version-requirements";
-import { buildCmdScriptCommand, isWindowsCommandScript } from "./windows-cmd";
+import { buildCmdScriptCommand, isWindowsCommandScript } from "../src/shared/windows-cmd";
 
 export type AgentVersionCheck =
   | {

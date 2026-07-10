@@ -1,5 +1,5 @@
 import * as os from "node:os";
-import { pathLookupCandidates } from "../src/shared/agent-cli-config";
+import { pathLookupCandidates } from "./agent-cli-config";
 import { resolveCommandOnPath } from "./shell-env";
 
 export function resolveAgentCommandOnPath(

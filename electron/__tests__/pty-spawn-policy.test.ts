@@ -3,8 +3,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
-import { buildUserPath, resolveCommandOnPath } from "../shell-env";
-import { resolveAgentCommandOnPath } from "../agent-cli-resolution";
+import { buildUserPath, resolveCommandOnPath } from "../../src/shared/shell-env";
+import { resolveAgentCommandOnPath } from "../../src/shared/agent-cli-resolution";
 import {
   resolveSpawnPlan,
   SpawnPolicyError,

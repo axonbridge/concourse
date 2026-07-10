@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
-import { agentHomePathSuffixes } from "../src/shared/agent-cli-config";
+import { agentHomePathSuffixes } from "./agent-cli-config";
 
 const SHELL_ENV_START = "__CONCOURSE_ENV_START__";
 const SHELL_ENV_END = "__CONCOURSE_ENV_END__";
