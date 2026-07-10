@@ -130,8 +130,7 @@ describe("agent CLI version helpers", () => {
       "npm install -g @openai/codex@latest",
     ]);
     expect(resolveAgentCliUpdateCommands(codexRequirement.updateCommands, "darwin")).toEqual([
-      "npm install -g @openai/codex@latest",
-      "brew upgrade codex",
+      "if command -v volta >/dev/null 2>&1; then volta install node @openai/codex; elif command -v npm >/dev/null 2>&1; then npm install -g @openai/codex@latest; else brew upgrade codex || brew install codex; fi",
     ]);
   });
 });

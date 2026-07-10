@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { toast } from "sonner";
 import { Modal } from "~/components/ui/Modal";
 import { Btn } from "~/components/ui/Btn";
+import { useUserTerminals } from "~/lib/user-terminal-store";
 import { openExternal } from "~/lib/open-external";
 import { HotkeyTooltip } from "~/components/ui/Tooltip";
 import { useHotkey } from "~/lib/use-hotkey";
@@ -28,6 +31,27 @@ export function AgentUpdateRequiredDialog({
     ? availability.updateCommands
     : DEFAULT_UPDATE_COMMANDS;
   const packageUrl = availability?.packageUrl;
+  const { createTerminal } = useUserTerminals();
+  const [updating, setUpdating] = useState(false);
+
+  // Run the first update command in the project's terminal drawer (visible
+  // right behind this dialog) — same one-click pattern as CLI installs and
+  // tunnel-tool setup. Non-runnable placeholder text gets no button.
+  const runnableCommand = availability?.updateCommands?.[0] ?? null;
+  const runUpdate = () => {
+    if (!runnableCommand || updating) return;
+    setUpdating(true);
+    void createTerminal({ name: `${label} update`, startCommand: runnableCommand })
+      .then((t) => {
+        if (!t) throw new Error("No project terminal available");
+        toast.success(`${label} update is running in the terminal below — retry when it finishes`);
+        onClose();
+      })
+      .catch((e) => {
+        toast.error(e instanceof Error ? e.message : "Could not open the update terminal");
+      })
+      .finally(() => setUpdating(false));
+  };
 
   useHotkey("dialog.submit", () => onClose(), { enabled: open });
 
@@ -55,10 +79,15 @@ export function AgentUpdateRequiredDialog({
             </Btn>
           )}
           <HotkeyTooltip action="dialog.submit">
-            <Btn variant="primary" icon="check" onClick={onClose}>
+            <Btn variant="ghost" onClick={onClose}>
               Got it
             </Btn>
           </HotkeyTooltip>
+          {runnableCommand && (
+            <Btn variant="primary" icon="download" disabled={updating} onClick={runUpdate}>
+              {updating ? "Opening…" : "Update now"}
+            </Btn>
+          )}
         </>
       }
     >

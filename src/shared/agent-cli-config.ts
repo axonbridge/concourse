@@ -66,7 +66,9 @@ export const AGENT_CLI_CONFIG = {
     packageUrl: "https://www.npmjs.com/package/@openai/codex",
     updateCommands: {
       default: ["npm install -g @openai/codex@latest"],
-      darwin: ["npm install -g @openai/codex@latest", "brew upgrade codex"],
+      // Cascade mirrors the install flow: volta-managed CLIs must update via
+      // volta (npm -g installs but leaves no shim), npm otherwise, brew last.
+      darwin: ["if command -v volta >/dev/null 2>&1; then volta install node @openai/codex; elif command -v npm >/dev/null 2>&1; then npm install -g @openai/codex@latest; else brew upgrade codex || brew install codex; fi"],
     },
   }),
   "cursor-cli": withResolveAs({
